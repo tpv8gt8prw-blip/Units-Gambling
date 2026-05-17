@@ -1,0 +1,13 @@
+{
+  "name": "untis-sync-test",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sync-Test fuer Gambling-Stundenplan",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "webuntis": "^2.2.1"
+  }
+}
