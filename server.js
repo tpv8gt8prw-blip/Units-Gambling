@@ -3,13 +3,49 @@
 
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 const { WebUntis } = require('webuntis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+/* ============================================================
+   UPSTASH REDIS (cloud sync)
+============================================================ */
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || '';
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const CLOUD_ENABLED = !!(UPSTASH_URL && UPSTASH_TOKEN);
+
+function userKey(school, username, password) {
+  const h = crypto.createHash('sha256').update(`${school}:${username}:${password}`).digest('hex');
+  return `gs:${h}`;
+}
+
+async function upstashCmd(cmd) {
+  if (!CLOUD_ENABLED) return null;
+  try {
+    const r = await fetch(UPSTASH_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cmd)
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (_) { return null; }
+}
+
+async function cloudGet(key) {
+  const d = await upstashCmd(['GET', key]);
+  return d ? d.result : null;
+}
+
+async function cloudSet(key, value) {
+  const d = await upstashCmd(['SET', key, value]);
+  return !!(d && d.result === 'OK');
+}
 
 function validCreds(c) {
   return c && c.school && c.server && c.username && c.password;
@@ -75,6 +111,38 @@ app.post('/api/timetable-week', async (req, res) => {
   }
 });
 
+/* ============================================================
+   GAME STATE SYNC
+============================================================ */
+app.post('/api/state/get', async (req, res) => {
+  const { school, username, password } = req.body || {};
+  if (!school || !username || !password) {
+    return res.status(400).json({ error: 'creds missing' });
+  }
+  if (!CLOUD_ENABLED) {
+    return res.json({ ok: true, state: null, cloudEnabled: false });
+  }
+  const key = userKey(school, username, password);
+  const raw = await cloudGet(key);
+  let state = null;
+  if (raw) { try { state = JSON.parse(raw); } catch (_) {} }
+  res.json({ ok: true, state, cloudEnabled: true });
+});
+
+app.post('/api/state/save', async (req, res) => {
+  const { school, username, password, state } = req.body || {};
+  if (!school || !username || !password || !state) {
+    return res.status(400).json({ error: 'data missing' });
+  }
+  if (!CLOUD_ENABLED) {
+    return res.json({ ok: false, cloudEnabled: false });
+  }
+  const key = userKey(school, username, password);
+  const ok = await cloudSet(key, JSON.stringify(state));
+  res.json({ ok, cloudEnabled: true });
+});
+
 app.listen(PORT, () => {
-  console.log(`\n  untis.sync running -> http://localhost:${PORT}\n`);
+  console.log(`\n  untis.sync running -> http://localhost:${PORT}`);
+  console.log(`  cloud sync: ${CLOUD_ENABLED ? 'ON' : 'OFF (set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)'}\n`);
 });

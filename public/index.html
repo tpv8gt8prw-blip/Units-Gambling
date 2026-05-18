@@ -83,7 +83,7 @@
   /* ===================== WALLET BAR (Casino on) ===================== */
   .wallet-bar { display: none; }
   [data-casino="on"] .wallet-bar {
-    display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 22px;
+    display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 22px;
     margin-top: 24px; padding: 16px 22px;
     background: var(--bg-2); border: 1px solid var(--line-2);
     position: relative; overflow: hidden;
@@ -117,6 +117,20 @@
     letter-spacing: 0.15em; cursor: pointer; transition: all .15s;
   }
   .stat-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Sync indicator */
+  #syncDot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--dim);
+    position: relative; z-index: 1; transition: background .25s, box-shadow .25s;
+  }
+  #syncDot[data-state="idle"] { background: var(--dim); }
+  #syncDot[data-state="loading"], #syncDot[data-state="saving"] {
+    background: var(--neon); animation: syncPulse 1s ease-in-out infinite;
+  }
+  #syncDot[data-state="synced"] { background: var(--win); box-shadow: 0 0 8px var(--win); }
+  #syncDot[data-state="off"] { background: var(--dim); }
+  #syncDot[data-state="error"] { background: var(--cancel); box-shadow: 0 0 8px var(--cancel); }
+  @keyframes syncPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
   /* ===================== LOGIN ===================== */
   section { margin-top: 48px; }
@@ -485,7 +499,7 @@
         <button data-casino="off" class="active">plan</button>
         <button data-casino="on">🎰 casino</button>
       </div>
-      <div class="tag"><span class="dot"></span>v1.1</div>
+      <div class="tag"><span class="dot"></span>v1.2</div>
     </div>
   </header>
 
@@ -504,6 +518,7 @@
       <div class="wallet-val streak" id="wStreak">0</div>
     </div>
     <button class="stat-btn" id="openStats">stats</button>
+    <div id="syncDot" data-state="idle" title="Cloud Sync"></div>
   </div>
 
   <!-- LOGIN -->
@@ -566,7 +581,7 @@
 
   <footer>
     <span>GambleTable — sitebuilt labs</span>
-    <span>build 1.1 // details</span>
+    <span>build 1.2 // cloud-sync</span>
   </footer>
 </div>
 
@@ -742,7 +757,77 @@ const DEFAULT_STATE = {
 let state = Object.assign({}, DEFAULT_STATE, LS.getJSON('game', {}));
 state.playedLessons = state.playedLessons || {};
 
-function saveState() { LS.setJSON('game', state); updateWalletUI(); }
+function saveState() {
+  LS.setJSON('game', state);
+  updateWalletUI();
+  scheduleCloudSave();
+}
+
+/* ============================================================
+   CLOUD SYNC
+============================================================ */
+let cloudSyncTimer = null;
+let cloudInFlight = false;
+let cloudEnabled = null; // null = unknown, true/false after first check
+
+function scheduleCloudSave() {
+  if (!creds) return;
+  if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(saveToCloud, 1500);
+}
+
+async function saveToCloud() {
+  if (!creds || cloudInFlight || cloudEnabled === false) return;
+  cloudInFlight = true;
+  setSyncIndicator('saving');
+  try {
+    const r = await fetch('/api/state/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...creds, state })
+    });
+    const data = await r.json();
+    cloudEnabled = data.cloudEnabled !== false;
+    setSyncIndicator(data.ok ? 'synced' : 'off');
+  } catch (e) {
+    setSyncIndicator('error');
+  } finally {
+    cloudInFlight = false;
+  }
+}
+
+async function loadFromCloud() {
+  if (!creds) return false;
+  setSyncIndicator('loading');
+  try {
+    const r = await fetch('/api/state/get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(creds)
+    });
+    const data = await r.json();
+    cloudEnabled = data.cloudEnabled !== false;
+    if (data.ok && data.state) {
+      state = Object.assign({}, DEFAULT_STATE, data.state);
+      state.playedLessons = state.playedLessons || {};
+      LS.setJSON('game', state);
+      updateWalletUI();
+      if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
+      setSyncIndicator('synced');
+      return true;
+    }
+    setSyncIndicator(cloudEnabled ? 'synced' : 'off');
+  } catch (e) {
+    setSyncIndicator('error');
+  }
+  return false;
+}
+
+function setSyncIndicator(state) {
+  const el = $('#syncDot');
+  if (!el) return;
+  el.dataset.state = state;
+}
 
 function xpForLevel(lvl) { return 100 * lvl + 50 * lvl * (lvl - 1); }
 function applyXP(amount) {
@@ -1395,6 +1480,7 @@ $('#loginBtn').addEventListener('click', () => {
   LS.set('server', server); LS.set('school', school); LS.set('user', username);
   creds = { server, school, username, password };
   currentMonday = getMonday(new Date());
+  loadFromCloud(); // fire and forget — will re-render when state arrives
   fetchWeek(currentMonday);
 });
 
