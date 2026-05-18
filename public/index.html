@@ -372,7 +372,7 @@
 
   /* Week grid */
   .week-grid {
-    display: grid; grid-template-columns: 58px repeat(3, minmax(136px, 1fr));
+    display: grid; grid-template-columns: 58px repeat(5, minmax(116px, 1fr));
     gap: 1px; background: var(--sep-2);
     border: 1px solid var(--glass-border);
     border-radius: var(--r-xl); overflow: hidden;
@@ -427,22 +427,17 @@
     border-left: 3px solid transparent;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     cursor: pointer;
-    will-change: transform;
   }
-  .lesson-card:hover {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.06), transparent),
-      var(--fill);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.08);
-    transform: translateY(-1px) scale(1.012);
+  @media (hover: hover) and (pointer: fine) {
+    .lesson-card:hover {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.06), transparent),
+        var(--fill);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
   }
-  .lesson-card:active { transform: scale(0.97); background: var(--fill); }
-  .lesson-card.card-pop {
-    z-index: 4;
-    transform-origin: center bottom;
-    animation: lessonCardPop .58s var(--ease-pop) both;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 16px 34px color-mix(in srgb, var(--accent) 24%, transparent);
-  }
+  .lesson-card:active { background: var(--fill); }
   .lesson-card .subj {
     font-family: var(--ff-r); font-size: 15px; font-weight: 750;
     line-height: 1.15; letter-spacing: 0;
@@ -556,9 +551,9 @@
   .modal-bg {
     position: fixed; inset: 0; z-index: 1000;
     background: rgba(0,0,0,0.46);
-    backdrop-filter: blur(12px) saturate(1.08); -webkit-backdrop-filter: blur(12px) saturate(1.08);
+    backdrop-filter: blur(8px) saturate(1.04); -webkit-backdrop-filter: blur(8px) saturate(1.04);
     display: none; align-items: flex-end; justify-content: center;
-    opacity: 0; transition: opacity .28s var(--ease-out);
+    opacity: 0; transition: opacity .2s var(--ease-out);
   }
   .modal-bg.open { display: flex; opacity: 1; }
   .modal-card {
@@ -572,17 +567,18 @@
     padding: 8px 20px calc(var(--safe-bottom) + 28px);
     max-height: 92vh; overflow-y: auto;
     opacity: 0;
-    transform: translateY(28px) scale(0.965);
+    transform: translate3d(0, 32px, 0) scale(0.98);
     transform-origin: 50% 100%;
-    transition: transform .42s var(--ease-pop), opacity .24s var(--ease-out);
+    transition: opacity .18s var(--ease-out);
     position: relative;
     box-shadow: 0 -18px 58px rgba(0,0,0,0.34);
-    backdrop-filter: blur(24px) saturate(1.08); -webkit-backdrop-filter: blur(24px) saturate(1.08);
+    backdrop-filter: blur(16px) saturate(1.04); -webkit-backdrop-filter: blur(16px) saturate(1.04);
+    will-change: transform, opacity;
+    contain: paint;
   }
   .modal-bg.open .modal-card {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    animation: sheetRiseJiggle .54s var(--ease-pop) both;
+    animation: sheetRiseJiggle .34s var(--ease-out) both;
   }
   .modal-card::before {
     content: ''; display: block; width: 36px; height: 5px;
@@ -741,20 +737,11 @@
     animation: confetti-fall var(--dur, 3s) cubic-bezier(.2,.7,.5,1) forwards;
     border-radius: 2px;
   }
-  @keyframes lessonCardPop {
-    0% { transform: translateY(0) scale(0.95) rotate(0deg); }
-    30% { transform: translateY(-28px) scale(1.07) rotate(-0.7deg); }
-    50% { transform: translateY(-12px) scale(0.985) rotate(0.55deg); }
-    70% { transform: translateY(-18px) scale(1.025) rotate(-0.28deg); }
-    86% { transform: translateY(-4px) scale(0.998) rotate(0.12deg); }
-    100% { transform: translateY(0) scale(1) rotate(0deg); }
-  }
   @keyframes sheetRiseJiggle {
-    0% { opacity: 0; transform: translateY(54px) scale(0.955); }
-    56% { opacity: 1; transform: translateY(-9px) scale(1.018); }
-    74% { transform: translateY(4px) scale(0.995); }
-    90% { transform: translateY(-2px) scale(1.004); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+    0% { opacity: 0; transform: translate3d(0, 38px, 0) scale(0.98); }
+    58% { opacity: 1; transform: translate3d(0, -5px, 0) scale(1.006); }
+    82% { transform: translate3d(0, 2px, 0) scale(0.998); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
   }
   @keyframes pickPop {
     0% { transform: scale(0.96); }
@@ -882,8 +869,15 @@
     .view-toggle button { flex: 1; }
     .meta-row { grid-template-columns: repeat(2, 1fr); }
     .week-grid {
-      grid-template-columns: 52px repeat(3, minmax(128px, 1fr));
+      grid-template-columns: 52px repeat(5, minmax(112px, 1fr));
       border-radius: var(--r-lg);
+    }
+    .modal-bg {
+      backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    }
+    .modal-card {
+      backdrop-filter: none; -webkit-backdrop-filter: none;
+      box-shadow: 0 -12px 34px rgba(0,0,0,0.30);
     }
     .logo { font-size: 26px; }
     .reel { height: 110px; }
@@ -998,9 +992,8 @@
         <button class="smbtn" id="nextBtn">Next →</button>
       </div>
       <div class="view-toggle" id="viewToggle" aria-label="Ansicht">
-        <button data-days="1" class="active">1 Tag</button>
-        <button data-days="2">2 Tage</button>
-        <button data-days="3">3 Tage</button>
+        <button data-view="day" class="active">Tag</button>
+        <button data-view="week">Woche</button>
       </div>
     </div>
 
@@ -1492,14 +1485,6 @@ function spinReel(reelEl, finalKey, duration) {
 
 let currentLesson = null, pickedOutcome = null, pickedAmount = 50, spinning = false;
 
-function popLessonCard(card) {
-  if (!card) return;
-  card.classList.remove('card-pop');
-  void card.offsetWidth;
-  card.classList.add('card-pop');
-  card.addEventListener('animationend', () => card.classList.remove('card-pop'), { once: true });
-}
-
 function openSlot(lesson) {
   initAudio(); Sound.tap(); Haptic.medium();
   $('.reels')?.classList.remove('spinning');
@@ -1760,8 +1745,8 @@ const msg = $('#msg');
 const ttMsg = $('#ttMsg');
 
 let creds = null;
-let viewDays = Math.min(3, Math.max(1, parseInt(LS.get('viewDays') || '1', 10) || 1));
-let currentMonday = startOfDay(new Date());
+let viewMode = LS.get('viewMode') === 'week' ? 'week' : 'day';
+let currentMonday = normalizeRangeStart(new Date(), viewMode);
 let lastLessons = null, lastMonday = null, lastHomeworks = [];
 
 ['server','school','user'].forEach(id => { const v = LS.get(id); if (v) $('#' + id).value = v; });
@@ -1770,24 +1755,34 @@ function setStatus(t, html, err = false) {
   if (!html) { t.innerHTML = ''; return; }
   t.innerHTML = `<div class="status${err ? ' err' : ''}">${html}</div>`;
 }
-function viewDayLabel(days = viewDays) {
-  return `${days} Tag${days > 1 ? 'e' : ''}`;
+function currentViewDays() {
+  return viewMode === 'week' ? 5 : 1;
+}
+function viewStepDays() {
+  return viewMode === 'week' ? 7 : 1;
+}
+function viewLabel(mode = viewMode) {
+  return mode === 'week' ? 'Woche' : 'Tag';
+}
+function normalizeRangeStart(date, mode = viewMode) {
+  return mode === 'week' ? getMonday(date) : startOfDay(date);
 }
 function getRangeEnd(start) {
-  return addDays(start, viewDays - 1);
+  return addDays(start, currentViewDays() - 1);
 }
 function updateViewToggle() {
   $$('#viewToggle button').forEach(btn => {
-    const active = parseInt(btn.dataset.days, 10) === viewDays;
+    const active = btn.dataset.view === viewMode;
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
 }
-function setViewDays(days) {
-  const nextDays = Math.min(3, Math.max(1, parseInt(days, 10) || 1));
-  if (nextDays === viewDays) return;
-  viewDays = nextDays;
-  LS.set('viewDays', String(viewDays));
+function setViewMode(mode) {
+  const nextMode = mode === 'week' ? 'week' : 'day';
+  if (nextMode === viewMode) return;
+  viewMode = nextMode;
+  LS.set('viewMode', viewMode);
+  currentMonday = normalizeRangeStart(currentMonday, viewMode);
   updateViewToggle();
   if (creds) fetchWeek(currentMonday);
   else if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
@@ -1799,12 +1794,12 @@ function setNavDisabled(d) {
 
 async function fetchWeek(monday) {
   if (!creds) return;
-  monday = startOfDay(monday);
+  monday = normalizeRangeStart(monday);
   currentMonday = monday;
   const first = loginView.style.display !== 'none';
   const rangeEnd = getRangeEnd(monday);
   if (first) { setStatus(msg, `<span class="spinner"></span>verbinde mit ${escapeHtml(creds.server)}…`); $('#loginBtn').disabled = true; }
-  else { setStatus(ttMsg, `<span class="spinner"></span>lade ${viewDayLabel()}…`); setNavDisabled(true); }
+  else { setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`); setNavDisabled(true); }
   try {
     const res = await fetch('/api/timetable-week', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -1824,14 +1819,14 @@ async function fetchWeek(monday) {
 }
 
 function renderWeek(lessons, monday) {
-  monday = startOfDay(monday);
+  monday = normalizeRangeStart(monday);
   lastLessons = lessons; lastMonday = monday;
   const today = new Date();
   const allLessons = Array.isArray(lessons) ? lessons : [];
   for (const l of allLessons) l._status = getLessonStatus(l);
 
   const days = [];
-  for (let i = 0; i < viewDays; i++) days.push(addDays(monday, i));
+  for (let i = 0; i < currentViewDays(); i++) days.push(addDays(monday, i));
   const visibleDates = new Set(days.map(untisDateInt));
   const visibleLessons = allLessons.filter(l => visibleDates.has(Number(l.date)));
 
@@ -1840,16 +1835,17 @@ function renderWeek(lessons, monday) {
   $('#cancelCount').textContent = visibleLessons.filter(l => l._status === 'cancelled').length;
 
   const rangeEnd = days[days.length - 1];
-  $('#weekLabel').textContent = viewDays === 1
+  $('#weekLabel').textContent = viewMode === 'day'
     ? days[0].toLocaleDateString('de-AT', { weekday:'long' })
-    : viewDayLabel();
-  $('#weekRange').textContent = viewDays === 1
+    : `KW ${isoWeekNumber(days[0])}`;
+  $('#weekRange').textContent = viewMode === 'day'
     ? `${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} · KW ${isoWeekNumber(days[0])}`
     : `${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} – ${rangeEnd.toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} · KW ${isoWeekNumber(days[0])}`;
 
   const grid = $('#weekGrid');
-  const minCol = viewDays === 1 ? 220 : viewDays === 2 ? 160 : 128;
-  grid.style.gridTemplateColumns = `58px repeat(${viewDays}, minmax(${minCol}px, 1fr))`;
+  grid.style.gridTemplateColumns = viewMode === 'day'
+    ? '58px minmax(220px, 1fr)'
+    : '58px repeat(5, minmax(116px, 1fr))';
   if (visibleLessons.length === 0) {
     grid.innerHTML = `<div style="grid-column: 1 / -1;" class="empty">Keine Stunden in dieser Ansicht<small>Anderen Tag wählen oder weiter navigieren.</small></div>`;
     return;
@@ -1920,18 +1916,15 @@ $('#weekGrid').addEventListener('click', (e) => {
   const overlay = e.target.closest('.bet-overlay');
   if (overlay) {
     e.stopPropagation();
-    const card = overlay.closest('.lesson-card');
-    popLessonCard(card);
     const id = overlay.dataset.lessonId;
     const lesson = (lastLessons || []).find(l => lessonId(l) === id);
-    if (lesson) setTimeout(() => openSlot(lesson), 260);
+    if (lesson) openSlot(lesson);
     return;
   }
   const card = e.target.closest('.lesson-card');
   if (card && card.dataset.lessonId) {
-    popLessonCard(card);
     const lesson = (lastLessons || []).find(l => lessonId(l) === card.dataset.lessonId);
-    if (lesson) setTimeout(() => openDetails(lesson), 260);
+    if (lesson) openDetails(lesson);
   }
 });
 
@@ -1947,7 +1940,7 @@ $('#loginBtn').addEventListener('click', () => {
   if (!server || !school || !username || !password) { setStatus(msg, 'Bitte alle Felder ausfüllen.', true); Haptic.warning(); return; }
   LS.set('server', server); LS.set('school', school); LS.set('user', username);
   creds = { server, school, username, password };
-  currentMonday = startOfDay(new Date());
+  currentMonday = normalizeRangeStart(new Date());
   loadFromCloud();
   fetchWeek(currentMonday);
 });
@@ -1959,13 +1952,13 @@ $('#logoutBtn').addEventListener('click', () => {
   loginView.style.display = 'block';
   setStatus(msg, '');
 });
-$('#prevBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = addDays(currentMonday, -viewDays); fetchWeek(currentMonday); });
-$('#nextBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = addDays(currentMonday, viewDays); fetchWeek(currentMonday); });
-$('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = startOfDay(new Date()); fetchWeek(currentMonday); });
+$('#prevBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = addDays(currentMonday, -viewStepDays()); fetchWeek(currentMonday); });
+$('#nextBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = addDays(currentMonday, viewStepDays()); fetchWeek(currentMonday); });
+$('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = normalizeRangeStart(new Date()); fetchWeek(currentMonday); });
 $$('#viewToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
     Sound.tap(); Haptic.select();
-    setViewDays(btn.dataset.days);
+    setViewMode(btn.dataset.view);
   });
 });
 
