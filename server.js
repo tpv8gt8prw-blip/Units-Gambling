@@ -19,8 +19,17 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || '';
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 const CLOUD_ENABLED = !!(UPSTASH_URL && UPSTASH_TOKEN);
 
-function userKey(school, username, password) {
-  const h = crypto.createHash('sha256').update(`${school}:${username}:${password}`).digest('hex');
+function normalizeKeyPart(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function userKey({ server, school, username }) {
+  const id = [
+    normalizeKeyPart(server).replace(/^https?:\/\//, '').replace(/\/.*$/, ''),
+    normalizeKeyPart(school),
+    normalizeKeyPart(username)
+  ].join(':');
+  const h = crypto.createHash('sha256').update(id).digest('hex');
   return `gs:${h}`;
 }
 
@@ -32,9 +41,21 @@ async function upstashCmd(cmd) {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(cmd)
     });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch (_) { return null; }
+    const text = await r.text();
+    if (!r.ok) {
+      console.error('[Upstash Error]', r.status, text);
+      return null;
+    }
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      console.error('[Upstash Parse Error]', err.message);
+      return null;
+    }
+  } catch (err) {
+    console.error('[Upstash Network Error]', err.message);
+    return null;
+  }
 }
 
 async function cloudGet(key) {
@@ -115,14 +136,14 @@ app.post('/api/timetable-week', async (req, res) => {
    GAME STATE SYNC
 ============================================================ */
 app.post('/api/state/get', async (req, res) => {
-  const { school, username, password } = req.body || {};
+  const { server, school, username, password } = req.body || {};
   if (!school || !username || !password) {
     return res.status(400).json({ error: 'creds missing' });
   }
   if (!CLOUD_ENABLED) {
     return res.json({ ok: true, state: null, cloudEnabled: false });
   }
-  const key = userKey(school, username, password);
+  const key = userKey({ server, school, username });
   const raw = await cloudGet(key);
   let state = null;
   if (raw) { try { state = JSON.parse(raw); } catch (_) {} }
@@ -130,16 +151,36 @@ app.post('/api/state/get', async (req, res) => {
 });
 
 app.post('/api/state/save', async (req, res) => {
-  const { school, username, password, state } = req.body || {};
+  const { server, school, username, password, state } = req.body || {};
   if (!school || !username || !password || !state) {
     return res.status(400).json({ error: 'data missing' });
   }
   if (!CLOUD_ENABLED) {
     return res.json({ ok: false, cloudEnabled: false });
   }
-  const key = userKey(school, username, password);
+  const key = userKey({ server, school, username });
   const ok = await cloudSet(key, JSON.stringify(state));
   res.json({ ok, cloudEnabled: true });
+});
+
+app.get('/api/cloud-status', async (_req, res) => {
+  const status = {
+    ok: true,
+    cloudEnabled: CLOUD_ENABLED,
+    hasUpstashUrl: !!UPSTASH_URL,
+    hasUpstashToken: !!UPSTASH_TOKEN,
+    upstashHost: null,
+    ping: null
+  };
+  if (UPSTASH_URL) {
+    try { status.upstashHost = new URL(UPSTASH_URL).host; } catch (_) {}
+  }
+  if (CLOUD_ENABLED) {
+    const pong = await upstashCmd(['PING']);
+    status.ping = pong?.result || null;
+    status.ok = status.ping === 'PONG';
+  }
+  res.status(status.ok ? 200 : 503).json(status);
 });
 
 app.listen(PORT, () => {

@@ -1152,6 +1152,16 @@ function isoWeekNumber(d) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
+function apiPost(path, payload) {
+  if (window.location.protocol === 'file:') {
+    return Promise.reject(new Error('Backend nicht erreichbar: bitte die Render-URL oder http://localhost:3000 öffnen, nicht index.html direkt.'));
+  }
+  return fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
 
 /* ============================================================
    STATUS DETECTION (Untis API)
@@ -1410,25 +1420,24 @@ async function saveToCloud() {
   if (!creds || cloudInFlight || cloudEnabled === false) return;
   cloudInFlight = true; setSync('saving');
   try {
-    const r = await fetch('/api/state/save', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...creds, state })
-    });
+    const r = await apiPost('/api/state/save', { ...creds, state });
     const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'cloud save failed');
     cloudEnabled = d.cloudEnabled !== false;
-    setSync(d.ok ? 'synced' : 'off');
-  } catch (_) { setSync('error'); }
+    setSync(d.ok ? 'synced' : 'error');
+  } catch (err) {
+    console.warn('[Cloud Save]', err.message);
+    setSync('error');
+  }
   finally { cloudInFlight = false; }
 }
 async function loadFromCloud() {
-  if (!creds) return false;
+  if (!creds) return 'skipped';
   setSync('loading');
   try {
-    const r = await fetch('/api/state/get', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(creds)
-    });
+    const r = await apiPost('/api/state/get', creds);
     const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'cloud load failed');
     cloudEnabled = d.cloudEnabled !== false;
     if (d.ok && d.state) {
       state = Object.assign({}, DEFAULT_STATE, d.state);
@@ -1437,11 +1446,15 @@ async function loadFromCloud() {
       updateWalletUI(); updateSwitches(); updateSoundIcon();
       if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
       setSync('synced');
-      return true;
+      return 'loaded';
     }
     setSync(cloudEnabled ? 'synced' : 'off');
-  } catch (_) { setSync('error'); }
-  return false;
+    return cloudEnabled ? 'empty' : 'off';
+  } catch (err) {
+    console.warn('[Cloud Load]', err.message);
+    setSync('error');
+    return 'error';
+  }
 }
 function setSync(s) { const el = $('#syncDot'); if (el) el.dataset.state = s; }
 
@@ -1801,10 +1814,7 @@ async function fetchWeek(monday) {
   if (first) { setStatus(msg, `<span class="spinner"></span>verbinde mit ${escapeHtml(creds.server)}…`); $('#loginBtn').disabled = true; }
   else { setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`); setNavDisabled(true); }
   try {
-    const res = await fetch('/api/timetable-week', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ ...creds, rangeStart: isoDate(monday), rangeEnd: isoDate(rangeEnd) })
-    });
+    const res = await apiPost('/api/timetable-week', { ...creds, rangeStart: isoDate(monday), rangeEnd: isoDate(rangeEnd) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'unbekannter fehler');
     lastHomeworks = data.homeworks || [];
@@ -1931,7 +1941,7 @@ $('#weekGrid').addEventListener('click', (e) => {
 /* ============================================================
    AUTH EVENTS
 ============================================================ */
-$('#loginBtn').addEventListener('click', () => {
+$('#loginBtn').addEventListener('click', async () => {
   initAudio(); Sound.tap(); Haptic.medium();
   const server = $('#server').value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   const school = $('#school').value.trim();
@@ -1941,7 +1951,8 @@ $('#loginBtn').addEventListener('click', () => {
   LS.set('server', server); LS.set('school', school); LS.set('user', username);
   creds = { server, school, username, password };
   currentMonday = normalizeRangeStart(new Date());
-  loadFromCloud();
+  const cloudResult = await loadFromCloud();
+  if (cloudResult === 'empty') saveToCloud();
   fetchWeek(currentMonday);
 });
 $('#logoutBtn').addEventListener('click', () => {
@@ -1970,6 +1981,10 @@ $$('#viewToggle button').forEach(btn => {
 updateWalletUI();
 updateSwitches();
 updateViewToggle();
+if (window.location.protocol === 'file:') {
+  setStatus(msg, 'Du öffnest gerade die HTML-Datei direkt. Login und Cloud-Sync funktionieren nur über deine Render-URL oder lokal mit http://localhost:3000.', true);
+  setSync('error');
+}
 
 // Unlock audio on first interaction for mobile browsers
 document.addEventListener('touchstart', initAudio, { once: true });
