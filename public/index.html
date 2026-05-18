@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GambleTable</title>
-<link rel="apple-touch-icon" href="/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -426,6 +425,32 @@
   }
   .reset-btn:hover { background: rgba(201,56,56,0.1); }
 
+  /* Details modal */
+  .details-list { margin-top: 24px; display: flex; flex-direction: column; }
+  .detail-row {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--dim);
+  }
+  .detail-value {
+    font-family: 'Instrument Serif', serif; font-size: 20px; line-height: 1.35;
+    word-wrap: break-word;
+  }
+  .detail-value.warn { color: var(--warn); }
+  .detail-value.cancel { color: var(--cancel); }
+  .detail-value.win { color: var(--win); }
+  .detail-value .meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); margin-top: 4px; display: block; }
+  .detail-hw {
+    background: var(--bg-2); border-left: 3px solid var(--accent);
+    padding: 12px 14px; margin-top: 8px;
+  }
+  .detail-hw .hw-text { font-family: 'Instrument Serif', serif; font-size: 17px; line-height: 1.4; }
+  .detail-hw .hw-meta { font-size: 10px; color: var(--dim); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.15em; }
+  .detail-hw.completed .hw-text { text-decoration: line-through; opacity: 0.5; }
+
   /* ===================== RESPONSIVE ===================== */
   @media (max-width: 960px) {
     .wrap { padding: 24px 16px 60px; }
@@ -460,7 +485,7 @@
         <button data-casino="off" class="active">plan</button>
         <button data-casino="on">🎰 casino</button>
       </div>
-      <div class="tag"><span class="dot"></span>v1.0</div>
+      <div class="tag"><span class="dot"></span>v1.1</div>
     </div>
   </header>
 
@@ -541,7 +566,7 @@
 
   <footer>
     <span>GambleTable — sitebuilt labs</span>
-    <span>build 1.0 // slot-machine</span>
+    <span>build 1.1 // details</span>
   </footer>
 </div>
 
@@ -608,6 +633,16 @@
     </div>
 
     <button class="reset-btn" id="resetBtn">reset progress</button>
+  </div>
+</div>
+
+<!-- ===================== DETAILS MODAL ===================== -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal-card">
+    <button class="modal-close" id="detailClose">×</button>
+    <div class="sub" id="detailDate">—</div>
+    <h2 id="detailTitle">—</h2>
+    <div class="details-list" id="detailContent"></div>
   </div>
 </div>
 
@@ -800,6 +835,126 @@ function setCasino(mode) {
 }
 $$('#casinoToggle button').forEach(b => b.addEventListener('click', () => setCasino(b.dataset.casino)));
 setCasino(LS.get('casino') || 'off');
+
+/* ============================================================
+   DETAILS MODAL
+============================================================ */
+function openDetails(lesson) {
+  const ds = String(lesson.date);
+  const dt = new Date();
+  dt.setFullYear(parseInt(ds.slice(0,4)), parseInt(ds.slice(4,6))-1, parseInt(ds.slice(6,8)));
+
+  const subj = (lesson.su && lesson.su[0]) ? (lesson.su[0].longname || lesson.su[0].name) : '—';
+  $('#detailTitle').innerHTML = `${escapeHtml(subj)}<em>.</em>`;
+  $('#detailDate').textContent = `${dt.toLocaleDateString('de-AT', { weekday: 'long', day: '2-digit', month: 'long' })} · ${formatTime(lesson.startTime)} – ${formatTime(lesson.endTime)}`;
+
+  const status = getLessonStatus(lesson);
+  const rows = [];
+
+  // STATUS
+  if (status === 'cancelled') {
+    rows.push({ label: 'Status', value: 'Entfällt', accent: 'cancel' });
+  } else if (status === 'irregular') {
+    rows.push({ label: 'Status', value: 'Suppliert / Änderung', accent: 'warn' });
+  } else {
+    rows.push({ label: 'Status', value: 'Normal' });
+  }
+
+  // LEHRER
+  const te = lesson.te && lesson.te[0];
+  if (te) {
+    let html = '';
+    const long = te.longname && te.longname !== te.name ? te.longname : null;
+    if (te.orgname && te.orgname !== te.name) {
+      html = `<span class="strike">${escapeHtml(te.orgname)}</span>${te.name ? ' → ' + escapeHtml(te.name) : ''}`;
+    } else {
+      html = escapeHtml(te.name || te.longname || '—');
+    }
+    if (long && !te.orgname) html += `<span class="meta">${escapeHtml(long)}</span>`;
+    rows.push({ label: 'Lehrer', html });
+  }
+
+  // RAUM
+  const ro = lesson.ro && lesson.ro[0];
+  if (ro) {
+    let html = '';
+    if (ro.orgname && ro.orgname !== ro.name) {
+      html = `<span class="strike">${escapeHtml(ro.orgname)}</span> → ${escapeHtml(ro.name)}`;
+    } else {
+      html = escapeHtml(ro.name || '—');
+    }
+    if (ro.longname && ro.longname !== ro.name) html += `<span class="meta">${escapeHtml(ro.longname)}</span>`;
+    rows.push({ label: 'Raum', html });
+  }
+
+  // KLASSE
+  const kl = lesson.kl && lesson.kl[0];
+  if (kl) rows.push({ label: 'Klasse', value: kl.longname || kl.name });
+
+  // VERTRETUNGS-INFO
+  if (lesson.substText) rows.push({ label: 'Vertretungs-Info', value: lesson.substText, accent: 'warn' });
+
+  // INFO / NOTIZEN
+  if (lesson.info) rows.push({ label: 'Info', value: lesson.info });
+  if (lesson.lstext) rows.push({ label: 'Notiz vom Lehrer', value: lesson.lstext });
+  if (lesson.bkText) rows.push({ label: 'Buchung', value: lesson.bkText });
+  if (lesson.bkRemark) rows.push({ label: 'Anmerkung', value: lesson.bkRemark });
+
+  // AKTIVITÄTS-TYP (Schularbeit, Prüfung, etc.)
+  if (lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
+    rows.push({ label: 'Typ', value: lesson.activityType, accent: 'warn' });
+  }
+
+  // HAUSAUFGABEN
+  const hwForLesson = (lastHomeworks || []).filter(hw => hw.lessonId === lesson.id);
+  if (hwForLesson.length > 0) {
+    const hwHtml = hwForLesson.map(hw => {
+      const dueDate = hw.date ? formatUntisDateLabel(hw.date) : '';
+      const completed = hw.completed || hw.done;
+      return `
+        <div class="detail-hw${completed ? ' completed' : ''}">
+          <div class="hw-text">${escapeHtml(hw.text || '—')}</div>
+          ${dueDate ? `<div class="hw-meta">Fällig: ${dueDate}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+    rows.push({ label: 'Hausaufgaben', html: hwHtml });
+  }
+
+  // WETT-HISTORY
+  const lid = lessonId(lesson);
+  const played = state.playedLessons[lid];
+  if (played) {
+    const outcomeNames = { normal: 'Normal', irregular: 'Suppliert', cancelled: 'Entfällt' };
+    const val = `${outcomeNames[played.outcome]} · ${played.bet}c → ${played.result === 'win' ? '+' + played.payout : '−' + played.bet}c`;
+    rows.push({
+      label: 'Deine Wette',
+      value: val,
+      accent: played.result === 'win' ? 'win' : 'cancel'
+    });
+  }
+
+  $('#detailContent').innerHTML = rows.map(r => `
+    <div class="detail-row">
+      <div class="detail-label">${escapeHtml(r.label)}</div>
+      <div class="detail-value ${r.accent || ''}">${r.html != null ? r.html : escapeHtml(r.value)}</div>
+    </div>
+  `).join('');
+
+  $('#detailModal').classList.add('open');
+}
+
+function formatUntisDateLabel(untisInt) {
+  const s = String(untisInt);
+  if (s.length !== 8) return s;
+  const d = new Date(parseInt(s.slice(0,4)), parseInt(s.slice(4,6))-1, parseInt(s.slice(6,8)));
+  return d.toLocaleDateString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit' });
+}
+
+$('#detailClose').addEventListener('click', () => $('#detailModal').classList.remove('open'));
+$('#detailModal').addEventListener('click', (e) => {
+  if (e.target === $('#detailModal')) $('#detailModal').classList.remove('open');
+});
 
 /* ============================================================
    SLOT MACHINE
@@ -1052,7 +1207,7 @@ const ttMsg = $('#ttMsg');
 
 let creds = null;
 let currentMonday = getMonday(new Date());
-let lastLessons = null, lastMonday = null;
+let lastLessons = null, lastMonday = null, lastHomeworks = [];
 
 ['server','school','user'].forEach(id => {
   const v = LS.get(id);
@@ -1090,6 +1245,7 @@ async function fetchWeek(monday) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'unbekannter fehler');
 
+    lastHomeworks = data.homeworks || [];
     renderWeek(data.timetable || [], monday);
     loginView.style.display = 'none';
     weekView.style.display = 'block';
@@ -1163,17 +1319,26 @@ function renderWeek(lessons, monday) {
     }
   }
   grid.innerHTML = html;
-
-  // Wire bet buttons
-  $$('.bet-overlay').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.lessonId;
-      const lesson = lessons.find(l => lessonId(l) === id);
-      if (lesson) openSlot(lesson);
-    });
-  });
 }
+
+/* === Event delegation: card clicks (bet OR details) === */
+$('#weekGrid').addEventListener('click', (e) => {
+  // Bet overlay click → slot machine
+  const overlay = e.target.closest('.bet-overlay');
+  if (overlay) {
+    e.stopPropagation();
+    const id = overlay.dataset.lessonId;
+    const lesson = (lastLessons || []).find(l => lessonId(l) === id);
+    if (lesson) openSlot(lesson);
+    return;
+  }
+  // Card body click → details modal
+  const card = e.target.closest('.lesson-card');
+  if (card && card.dataset.lessonId) {
+    const lesson = (lastLessons || []).find(l => lessonId(l) === card.dataset.lessonId);
+    if (lesson) openDetails(lesson);
+  }
+});
 
 function renderCard(l) {
   const status = l._status || getLessonStatus(l);
@@ -1200,7 +1365,7 @@ function renderCard(l) {
   const tooltip = tooltipParts.filter(Boolean).join(' · ');
 
   return `
-    <div class="lesson-card ${status} ${playedClass}" ${dataResult} title="${escapeHtml(tooltip)}">
+    <div class="lesson-card ${status} ${playedClass}" data-lesson-id="${escapeHtml(lid)}" ${dataResult} title="${escapeHtml(tooltip)}">
       <div class="subj">${escapeHtml(subj)}</div>
       <div class="detail">
         ${teacherHtml ? `<b>${teacherHtml}</b>` : ''}

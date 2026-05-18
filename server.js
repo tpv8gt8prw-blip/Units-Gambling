@@ -48,9 +48,27 @@ app.post('/api/timetable-week', async (req, res) => {
   try {
     const start = new Date(rangeStart);
     const end = new Date(rangeEnd);
-    const timetable = await withUntis(creds, u => u.getOwnTimetableForRange(start, end));
-    timetable.sort((a, b) => (a.date - b.date) || (a.startTime - b.startTime));
-    res.json({ ok: true, rangeStart, rangeEnd, timetable });
+
+    const result = await withUntis(creds, async (u) => {
+      const timetable = await u.getOwnTimetableForRange(start, end);
+      // Homework is optional, swallow errors if not supported
+      let hwResp = null;
+      try { hwResp = await u.getHomeWorksFor(start, end); } catch (_) {}
+      return { timetable, hwResp };
+    });
+
+    result.timetable.sort((a, b) => (a.date - b.date) || (a.startTime - b.startTime));
+
+    // Extract homeworks (API shape varies between versions)
+    let homeworks = [];
+    const h = result.hwResp;
+    if (h) {
+      if (Array.isArray(h)) homeworks = h;
+      else if (Array.isArray(h.homeworks)) homeworks = h.homeworks;
+      else if (h.data && Array.isArray(h.data.homeworks)) homeworks = h.data.homeworks;
+    }
+
+    res.json({ ok: true, rangeStart, rangeEnd, timetable: result.timetable, homeworks });
   } catch (err) {
     console.error('[Untis Week Error]', err.message);
     res.status(401).json({ error: err.message || 'Login fehlgeschlagen' });
