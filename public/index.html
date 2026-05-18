@@ -43,31 +43,30 @@
     --focus: rgba(233,111,0,0.38);
   }
   :root[data-theme="dark"] {
-    --bg: #0f0d0a;
-    --bg-1: rgba(30,27,22,0.90);
-    --bg-2: rgba(43,38,31,0.88);
-    --bg-3: #3d352b;
-    --fill: rgba(155,142,126,0.22);
-    --fill-2: rgba(155,142,126,0.15);
-    --fill-3: rgba(155,142,126,0.09);
+    --bg: #111111;
+    --bg-1: rgba(24,24,24,0.96);
+    --bg-2: rgba(31,31,31,0.94);
+    --bg-3: #2a2a2a;
+    --fill: rgba(132,132,132,0.22);
+    --fill-2: rgba(132,132,132,0.14);
+    --fill-3: rgba(132,132,132,0.08);
     --ink: #ffffff;
     --ink-2: rgba(235,235,245,0.85);
     --ink-3: rgba(235,235,245,0.6);
     --ink-4: rgba(235,235,245,0.30);
-    --sep: rgba(140,126,108,0.46);
-    --sep-2: rgba(140,126,108,0.22);
-    --glass: rgba(24,21,17,0.72);
-    --glass-strong: rgba(30,27,22,0.90);
-    --glass-border: rgba(255,244,230,0.11);
+    --sep: rgba(120,120,120,0.34);
+    --sep-2: rgba(120,120,120,0.16);
+    --glass: rgba(17,17,17,0.80);
+    --glass-strong: rgba(24,24,24,0.96);
+    --glass-border: rgba(255,255,255,0.08);
     --cancel-bg: rgba(255,69,58,0.16);
     --warn-bg: rgba(255,159,10,0.16);
     --win-bg: rgba(48,209,88,0.14);
-    --today-bg: rgba(233,111,0,0.16);
-    --card-border: rgba(255,244,230,0.10);
+    --today-bg: rgba(233,111,0,0.10);
+    --card-border: rgba(255,255,255,0.08);
     --shadow: 0 1px 1px rgba(0,0,0,0.35), 0 18px 48px rgba(0,0,0,0.32);
     --shadow-soft: 0 12px 32px rgba(0,0,0,0.22);
-    --page-aura: radial-gradient(circle at 18% -8%, rgba(233,111,0,0.30), transparent 30%),
-                 linear-gradient(180deg, rgba(255,242,225,0.04), transparent 230px);
+    --page-aura: linear-gradient(180deg, #151515 0%, #111111 240px);
   }
   :root[data-theme="light"] {
     --bg: #f7f1e8;
@@ -410,6 +409,7 @@
     border-left: 3px solid transparent;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     cursor: pointer;
+    will-change: transform;
   }
   .lesson-card:hover {
     background:
@@ -419,7 +419,11 @@
     transform: translateY(-1px) scale(1.012);
   }
   .lesson-card:active { transform: scale(0.97); background: var(--fill); }
-  .lesson-card.card-pop { animation: lessonCardPop .34s var(--ease-pop); }
+  .lesson-card.card-pop {
+    z-index: 4;
+    animation: lessonCardPop .42s var(--ease-pop);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 16px 34px color-mix(in srgb, var(--accent) 24%, transparent);
+  }
   .lesson-card .subj {
     font-family: var(--ff-r); font-size: 15px; font-weight: 750;
     line-height: 1.15; letter-spacing: 0;
@@ -463,6 +467,11 @@
     border-left-color: var(--accent);
     background:
       linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, transparent), rgba(255,214,10,0.08)),
+      var(--fill-2);
+  }
+  :root[data-theme="dark"][data-casino="on"] .lesson-card:not(.played) {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent),
       var(--fill-2);
   }
   [data-casino="on"] .lesson-card.played { border-left-color: var(--win); }
@@ -710,8 +719,9 @@
     border-radius: 2px;
   }
   @keyframes lessonCardPop {
-    0% { transform: scale(0.965); }
-    58% { transform: scale(1.035); }
+    0% { transform: translateY(0) scale(0.94); }
+    48% { transform: translateY(-5px) scale(1.075); }
+    76% { transform: translateY(-2px) scale(0.992); }
     100% { transform: scale(1); }
   }
   @keyframes pickPop {
@@ -1310,7 +1320,7 @@ function spawnConfetti(count, colors) {
 ============================================================ */
 function setTheme(t) {
   document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0f0d0a' : '#f7f1e8');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#111111' : '#f7f1e8');
   LS.set('theme', t);
   $$('#themeToggle button').forEach(b => b.classList.toggle('active', b.dataset.theme === t));
 }
@@ -1833,17 +1843,18 @@ $('#weekGrid').addEventListener('click', (e) => {
   const overlay = e.target.closest('.bet-overlay');
   if (overlay) {
     e.stopPropagation();
-    popLessonCard(overlay.closest('.lesson-card'));
+    const card = overlay.closest('.lesson-card');
+    popLessonCard(card);
     const id = overlay.dataset.lessonId;
     const lesson = (lastLessons || []).find(l => lessonId(l) === id);
-    if (lesson) openSlot(lesson);
+    if (lesson) setTimeout(() => openSlot(lesson), 95);
     return;
   }
   const card = e.target.closest('.lesson-card');
   if (card && card.dataset.lessonId) {
     popLessonCard(card);
     const lesson = (lastLessons || []).find(l => lessonId(l) === card.dataset.lessonId);
-    if (lesson) openDetails(lesson);
+    if (lesson) setTimeout(() => openDetails(lesson), 95);
   }
 });
 
