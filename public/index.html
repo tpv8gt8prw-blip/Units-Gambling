@@ -1469,6 +1469,10 @@ function setCasino(m) {
   document.documentElement.dataset.casino = m;
   LS.set('casino', m);
   $$('#casinoToggle button').forEach(b => b.classList.toggle('active', b.dataset.casino === m));
+  if (lastLessons && lastMonday) {
+    setStatus(ttMsg, '');
+    renderWeek(lastLessons, lastMonday);
+  }
 }
 $$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino); }));
 setCasino(LS.get('casino') || 'off');
