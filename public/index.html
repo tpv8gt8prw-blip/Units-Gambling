@@ -1465,16 +1465,16 @@ function setTheme(t) {
 $$('#themeToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setTheme(b.dataset.theme); }));
 setTheme(LS.get('theme') || 'light');
 
-function setCasino(m) {
+function setCasino(m, rerender = false) {
   document.documentElement.dataset.casino = m;
   LS.set('casino', m);
   $$('#casinoToggle button').forEach(b => b.classList.toggle('active', b.dataset.casino === m));
-  if (lastLessons && lastMonday) {
+  if (rerender && lastLessons && lastMonday) {
     setStatus(ttMsg, '');
     renderWeek(lastLessons, lastMonday);
   }
 }
-$$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino); }));
+$$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino, true); }));
 setCasino(LS.get('casino') || 'off');
 
 function updateSoundIcon() { $('#soundToggle').textContent = state.soundEnabled ? '🔊' : '🔇'; }
