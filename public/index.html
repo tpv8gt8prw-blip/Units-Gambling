@@ -346,31 +346,29 @@
   }
 
   /* Stats meta row */
-  .meta-strip {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px; margin-bottom: 14px;
-    background: var(--glass-strong); border: 1px solid var(--glass-border);
-    border-radius: var(--r-md);
-    font-size: 13px; color: var(--ink-2); font-weight: 500;
-    overflow-x: auto; white-space: nowrap; flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
+  .meta-row {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+    margin-bottom: 20px;
   }
-  .meta-strip .m-key {
-    font-family: var(--ff-r); font-weight: 700; color: var(--ink);
-    letter-spacing: -0.01em;
+  .meta {
+    background: var(--glass-strong); padding: 15px 16px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg); box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    min-width: 0;
   }
-  .meta-strip .m-sep {
-    color: var(--ink-4); padding: 0 2px;
+  .meta b {
+    display: block; font-family: var(--ff-r); font-size: 26px; font-weight: 700;
+    line-height: 1; letter-spacing: 0; margin-bottom: 5px;
+    font-variant-numeric: tabular-nums;
   }
-  .meta-strip .m-range {
-    color: var(--ink-3); font-variant-numeric: tabular-nums;
+  .meta span {
+    font-size: 12px; color: var(--ink-3); font-weight: 500;
+    white-space: nowrap;
   }
-  .meta-strip .m-count {
-    color: var(--ink-3); font-variant-numeric: tabular-nums;
-  }
-  .meta-strip .m-count b {
-    font-weight: 700; color: var(--ink-2);
-  }
+  .meta.warn b { color: var(--warn); }
+  .meta.cancel b { color: var(--cancel); }
+  .meta .range { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
 
   /* Week grid */
   .week-grid {
@@ -502,35 +500,6 @@
   .bet-overlay .lbl {
     font-size: 10px; font-weight: 750; color: var(--ink-2);
     text-transform: uppercase; letter-spacing: 0.05em;
-  }
-  .bet-overlay.locked .icon { opacity: 0.5; filter: grayscale(0.4); }
-  .bet-overlay.locked .lbl { color: var(--ink-4); font-size: 9px; }
-
-  /* Toast (für Lock Hints) */
-  .toast {
-    position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 24px);
-    transform: translate3d(-50%, 16px, 0); z-index: 2000;
-    background: rgba(28,28,30,0.92); color: white;
-    padding: 12px 20px; border-radius: var(--r-full);
-    font-size: 14px; font-weight: 500;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    opacity: 0; pointer-events: none;
-    transition: opacity .22s var(--ease-out), transform .22s var(--ease-out);
-    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    max-width: 80vw; text-align: center;
-  }
-  .toast.show {
-    opacity: 1; transform: translate3d(-50%, 0, 0);
-  }
-  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) {
-    background: var(--fill-3);
-    border-left-color: var(--ink-4);
-    opacity: 0.7;
-  }
-  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) .subj,
-  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) .detail,
-  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) .stat {
-    filter: blur(8px); opacity: 0.25;
   }
   .lesson-card.played::after {
     content: attr(data-result);
@@ -666,12 +635,7 @@
   .reels.spinning .reel { animation: reelCabinetShake .12s ease-in-out infinite alternate; }
   .reel-strip {
     position: absolute; left: 0; right: 0; top: 0;
-    display: flex; flex-direction: column;
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    contain: layout style;
+    display: flex; flex-direction: column; will-change: transform;
   }
   .reel-symbol {
     height: 130px; display: flex; flex-direction: column;
@@ -867,20 +831,6 @@
     word-wrap: break-word; max-width: 70%;
   }
   .detail-row.stacked .detail-value { text-align: left; max-width: 100%; }
-  .detail-row.highlight {
-    background: var(--warn-bg);
-    border-left: 3px solid var(--warn);
-    border-radius: var(--r-sm);
-    padding: 12px 14px;
-    margin: 4px 0;
-    border-bottom: none;
-  }
-  .detail-row.highlight + .detail-row { border-top: none; }
-  .detail-row.highlight .detail-label { color: var(--warn); font-weight: 600; }
-  .detail-row.highlight .detail-value {
-    font-family: var(--ff); font-size: 15px; font-weight: 500;
-    line-height: 1.4; letter-spacing: 0;
-  }
   .detail-value.warn { color: var(--warn); }
   .detail-value.cancel { color: var(--cancel); }
   .detail-value.win { color: var(--win); }
@@ -917,7 +867,7 @@
     .nav, .view-toggle { width: 100%; }
     .nav { display: grid; grid-template-columns: 1fr 1fr 1fr; }
     .view-toggle button { flex: 1; }
-    .meta-strip { font-size: 12px; padding: 8px 12px; gap: 8px; }
+    .meta-row { grid-template-columns: repeat(2, 1fr); }
     .week-grid {
       grid-template-columns: 52px repeat(5, minmax(112px, 1fr));
       border-radius: var(--r-lg);
@@ -929,31 +879,10 @@
       backdrop-filter: none; -webkit-backdrop-filter: none;
       box-shadow: 0 -12px 34px rgba(0,0,0,0.30);
     }
-    /* Performance: reduce/disable heavy filters + animations on mobile */
-    [data-casino="on"] .lesson-card:not(.played) .subj,
-    [data-casino="on"] .lesson-card:not(.played) .detail,
-    [data-casino="on"] .lesson-card:not(.played) .stat {
-      filter: blur(3px);
-    }
-    /* Disable the frame pulse on mobile entirely (expensive) and slow shake to be smoother */
-    .reels.spinning { animation: none; }
-    .reels.spinning .reel { animation: none; }
-    /* Subtle scale-only shake on the whole reels box — single transform, GPU-cheap */
-    .reels.spinning { animation: reelGentleShake .22s ease-in-out infinite alternate; }
-    @keyframes reelGentleShake {
-      0%   { transform: translate3d(0,0,0); }
-      100% { transform: translate3d(0,1px,0); }
-    }
     .logo { font-size: 26px; }
     .reel { height: 110px; }
     .reel-symbol { height: 110px; }
     .reel-symbol .glyph { font-size: 40px; }
-    /* Smaller, fewer confetti pieces — fewer DOM nodes to animate */
-    .confetti { width: 7px; height: 10px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .reels.spinning, .reels.spinning .reel { animation: none !important; }
-    .confetti { display: none !important; }
   }
   @media (max-width: 480px) {
     .picker.amounts { grid-template-columns: repeat(4, 1fr); }
@@ -961,6 +890,7 @@
     .header-actions { width: 100%; justify-content: space-between; }
     .toggle { flex: 1; }
     .toggle button { flex: 1; padding-left: 8px; padding-right: 8px; }
+    .meta b { font-size: 22px; }
     .login-card { padding-left: 14px; padding-right: 14px; }
     .field { align-items: flex-start; flex-direction: column; gap: 5px; }
     .field input { width: 100%; text-align: left; }
@@ -1067,16 +997,11 @@
       </div>
     </div>
 
-    <div class="meta-strip">
-      <span class="m-key" id="weekLabel">—</span>
-      <span class="m-sep">·</span>
-      <span class="m-range" id="weekRange">—</span>
-      <span class="m-sep">·</span>
-      <span class="m-count"><b id="lessonCount">0</b> Std</span>
-      <span class="m-sep" id="metaSepSupp" hidden>·</span>
-      <span class="m-count" id="metaSupp" hidden><b id="supplCount" style="color:var(--warn);">0</b> supp</span>
-      <span class="m-sep" id="metaSepCancel" hidden>·</span>
-      <span class="m-count" id="metaCancel" hidden><b id="cancelCount" style="color:var(--cancel);">0</b> aus</span>
+    <div class="meta-row">
+      <div class="meta"><b id="weekLabel">—</b><span id="weekRange">—</span></div>
+      <div class="meta"><b id="lessonCount">0</b><span>Stunden</span></div>
+      <div class="meta warn"><b id="supplCount">0</b><span>Suppliert</span></div>
+      <div class="meta cancel"><b id="cancelCount">0</b><span>Entfällt</span></div>
     </div>
 
     <div class="week-grid" id="weekGrid"></div>
@@ -1263,43 +1188,7 @@ function renderEntry(e) {
   }
   return escapeHtml(name);
 }
-// Show the "as-planned" version of teacher/room/subject (ignore substitutions)
-function renderOriginalEntry(e) {
-  if (!e) return '';
-  const orig = e.orgname && e.orgname.trim() ? e.orgname : (e.name || '');
-  return escapeHtml(orig);
-}
 function lessonId(l) { return `${l.date}-${l.startTime}-${(l.su?.[0]?.id) || 0}`; }
-
-// Convert Untis YYYYMMDD int to Date at midnight
-function parseUntisDate(u) {
-  const s = String(u);
-  return new Date(parseInt(s.slice(0,4)), parseInt(s.slice(4,6))-1, parseInt(s.slice(6,8)));
-}
-// Convert Untis HHMM int to minutes since midnight
-function untisTimeToMinutes(t) {
-  const s = String(t).padStart(4, '0');
-  return parseInt(s.slice(0,-2)) * 60 + parseInt(s.slice(-2));
-}
-// Returns true if lesson is on today
-function isLessonToday(l) {
-  const today = new Date();
-  const ld = parseUntisDate(l.date);
-  return ld.getFullYear() === today.getFullYear()
-      && ld.getMonth() === today.getMonth()
-      && ld.getDate() === today.getDate();
-}
-// Lock reason: null = gamblable, otherwise reason key
-function getLockReason(l) {
-  if (!isLessonToday(l)) return 'not-today';
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  if (nowMin < 7 * 60) return 'before-7';
-  const lessonStart = untisTimeToMinutes(l.startTime);
-  if (nowMin >= lessonStart) return 'already-started';
-  return null;
-}
-function canGamble(l) { return getLockReason(l) === null; }
 
 /* ============================================================
    STATE
@@ -1348,20 +1237,8 @@ function initAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   } catch (_) {}
 }
-function resumeAudio() {
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
-  }
-}
-// iOS pauses AudioContext when app goes to background → resume on return
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) resumeAudio();
-});
-window.addEventListener('focus', resumeAudio);
-window.addEventListener('pageshow', resumeAudio);
 function tone({ freq, dur, type = 'sine', vol = 0.08, attack = 0.005, slide }) {
   if (!audioCtx || !state.soundEnabled) return;
-  if (audioCtx.state === 'suspended') { audioCtx.resume().catch(() => {}); return; }
   const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const g = audioCtx.createGain();
@@ -1469,10 +1346,6 @@ function animateCoins(delta) {
 }
 function spawnConfetti(count, colors) {
   colors = colors || ['#e96f00','#ff9d26','#ffd60a','#30d158','#ff453a'];
-  // Reduce particle count on mobile for smoother frame rate
-  const isMobile = window.matchMedia('(max-width: 760px)').matches;
-  if (isMobile) count = Math.min(count, Math.ceil(count * 0.55));
-  const frag = document.createDocumentFragment();
   for (let i = 0; i < count; i++) {
     const c = document.createElement('div');
     c.className = 'confetti';
@@ -1481,10 +1354,9 @@ function spawnConfetti(count, colors) {
     c.style.setProperty('--dur', (2 + Math.random() * 2) + 's');
     c.style.animationDelay = (Math.random() * 0.4) + 's';
     c.style.transform = `rotate(${Math.random() * 360}deg)`;
-    frag.appendChild(c);
+    document.body.appendChild(c);
     setTimeout(() => c.remove(), 5000);
   }
-  document.body.appendChild(frag);
 }
 
 /* ============================================================
@@ -1503,8 +1375,6 @@ function setCasino(m) {
   document.documentElement.dataset.casino = m;
   LS.set('casino', m);
   $$('#casinoToggle button').forEach(b => b.classList.toggle('active', b.dataset.casino === m));
-  // Re-render so counts + lesson cards update for plan/casino mode
-  if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
 }
 $$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino); }));
 setCasino(LS.get('casino') || 'off');
@@ -1660,10 +1530,7 @@ function openSlot(lesson) {
   $('#slotModal').classList.add('open');
 }
 function closeSlot() {
-  // Cancel any in-flight vibration pattern if user closes the modal mid-spin
-  if (state.hapticEnabled && navigator.vibrate) {
-    try { navigator.vibrate(0); } catch (_) {}
-  }
+  stopRollingHaptic();
   $('.reels')?.classList.remove('spinning');
   $('#slotModal').classList.remove('open');
   currentLesson = null;
@@ -1706,20 +1573,7 @@ $('#spinBtn').addEventListener('click', async () => {
   $('#spinBtn').disabled = true;
   $('#spinBtn').textContent = 'Spinning…';
 
-  // Vibration: send the FULL spin pattern in one call so it survives in a user-gesture context.
-  // (Android supports navigator.vibrate; iOS Safari does not — there it stays silent.)
-  if (state.hapticEnabled && navigator.vibrate) {
-    try {
-      // ~3.2s pattern: ramp from quick rolling pulses to bigger thumps as reels land
-      navigator.vibrate([
-        20, 70, 18, 70, 18, 70, 18, 70, 18, 70,   // reel 0 spinning
-        25, 75, 22, 75, 22, 75, 22, 75,            // reel 1
-        35, 100, 30, 100, 35, 110, 45, 130,        // reel 2 — heavier
-        80                                          // final landing thump
-      ]);
-    } catch (_) {}
-  }
-  Sound.spin(); Haptic.heavy();
+  Sound.spin(); Haptic.heavy(); startRollingHaptic();
   $('.reels')?.classList.add('spinning');
   state.coins -= pickedAmount;
   state.totalSpins += 1;
@@ -1731,6 +1585,7 @@ $('#spinBtn').addEventListener('click', async () => {
   try {
     await Promise.all(reels.map((sel, i) => spinReel($(sel), real, durations[i])));
   } finally {
+    stopRollingHaptic();
     $('.reels')?.classList.remove('spinning');
   }
 
@@ -1823,67 +1678,37 @@ function openDetails(lesson) {
   $('#detailDate').textContent = `${dt.toLocaleDateString('de-AT', { weekday:'long', day:'2-digit', month:'long' })} · ${formatTime(lesson.startTime)} – ${formatTime(lesson.endTime)}`;
 
   const status = getLessonStatus(lesson);
-  const lid = lessonId(lesson);
-  const played = state.playedLessons[lid];
-  const casinoOn = document.documentElement.dataset.casino === 'on';
-  // showReal = casino mode OR already played → user is allowed to see real status & substitution data
-  const showReal = casinoOn || !!played;
-
   const rows = [];
+  if (status === 'cancelled') rows.push({ label:'Status', value:'Entfällt', accent:'cancel' });
+  else if (status === 'irregular') rows.push({ label:'Status', value:'Suppliert', accent:'warn' });
+  else rows.push({ label:'Status', value:'Normal' });
 
-  // Status (only when showReal — in plan mode hide entirely so user can't infer)
-  if (showReal) {
-    if (status === 'cancelled') rows.push({ label:'Status', value:'Entfällt', accent:'cancel' });
-    else if (status === 'irregular') rows.push({ label:'Status', value:'Suppliert', accent:'warn' });
-    else rows.push({ label:'Status', value:'Normal' });
-  }
-
-  // Teacher
   const te = lesson.te?.[0];
   if (te) {
     let html = '';
-    if (showReal && te.orgname && te.orgname !== te.name) {
+    if (te.orgname && te.orgname !== te.name) {
       html = `<span class="strike">${escapeHtml(te.orgname)}</span>${te.name ? ' → ' + escapeHtml(te.name) : ''}`;
-    } else {
-      // Plan mode: always show the planned (original) teacher
-      const planned = (te.orgname && te.orgname.trim()) ? te.orgname : (te.longname || te.name || '—');
-      html = escapeHtml(planned);
-    }
+    } else html = escapeHtml(te.longname || te.name || '—');
     rows.push({ label:'Lehrer', html });
   }
-
-  // Room
   const ro = lesson.ro?.[0];
   if (ro) {
     let html = '';
-    if (showReal && ro.orgname && ro.orgname !== ro.name) {
-      html = `<span class="strike">${escapeHtml(ro.orgname)}</span> → ${escapeHtml(ro.name)}`;
-    } else {
-      const planned = (ro.orgname && ro.orgname.trim()) ? ro.orgname : (ro.name || '—');
-      html = escapeHtml(planned);
-    }
+    if (ro.orgname && ro.orgname !== ro.name) html = `<span class="strike">${escapeHtml(ro.orgname)}</span> → ${escapeHtml(ro.name)}`;
+    else html = escapeHtml(ro.name || '—');
     rows.push({ label:'Raum', html });
   }
-
-  // Klasse — always show
   const kl = lesson.kl?.[0];
   if (kl) rows.push({ label:'Klasse', value: kl.longname || kl.name });
-
-  // Substitution / Vertretung info — only when showReal
-  if (showReal) {
-    if (lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
-    if (lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
-      rows.push({ label:'Typ', value: lesson.activityType, accent:'warn' });
-    }
+  if (lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
+  if (lesson.info) rows.push({ label:'Info', value: lesson.info, stacked: true });
+  if (lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true });
+  if (lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
+  if (lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
+  if (lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
+    rows.push({ label:'Typ', value: lesson.activityType, accent:'warn' });
   }
 
-  // Lehrer-Notiz (lstext) + Info — these are general lesson notes from teacher, always useful
-  if (lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true, highlight: true });
-  if (lesson.info && (showReal || !lesson.substText)) rows.push({ label:'Info', value: lesson.info, stacked: true });
-  if (showReal && lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
-  if (showReal && lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
-
-  // Hausaufgaben — always show, they're not spoiler
   const hwForLesson = (lastHomeworks || []).filter(hw => hw.lessonId === lesson.id);
   if (hwForLesson.length > 0) {
     const html = hwForLesson.map(hw => {
@@ -1894,21 +1719,22 @@ function openDetails(lesson) {
         ${due ? `<div class="hw-meta">Fällig: ${due}</div>` : ''}
       </div>`;
     }).join('');
-    rows.push({ label: hwForLesson.length === 1 ? 'Hausaufgabe' : 'Hausaufgaben', html, stacked: true });
+    rows.push({ label:'Hausaufgaben', html, stacked: true });
   }
 
-  // Bereits gespielt — Ergebnis anzeigen
-  if (played) {
+  const lid = lessonId(lesson);
+  const p = state.playedLessons[lid];
+  if (p) {
     const names = { normal:'Normal', irregular:'Suppliert', cancelled:'Entfällt' };
     rows.push({
-      label:'Dein Tipp',
-      value: `${names[played.outcome]} · ${played.bet}c → ${played.result === 'win' ? '+' + played.payout : '−' + played.bet}c`,
-      accent: played.result === 'win' ? 'win' : 'cancel'
+      label:'Deine Wette',
+      value: `${names[p.outcome]} · ${p.bet}c → ${p.result === 'win' ? '+' + p.payout : '−' + p.bet}c`,
+      accent: p.result === 'win' ? 'win' : 'cancel'
     });
   }
 
   $('#detailContent').innerHTML = rows.map(r => `
-    <div class="detail-row${r.stacked ? ' stacked' : ''}${r.highlight ? ' highlight' : ''}">
+    <div class="detail-row${r.stacked ? ' stacked' : ''}">
       <div class="detail-label">${escapeHtml(r.label)}</div>
       <div class="detail-value ${r.accent || ''}">${r.html != null ? r.html : escapeHtml(r.value)}</div>
     </div>
@@ -1941,30 +1767,6 @@ let lastLessons = null, lastMonday = null, lastHomeworks = [];
 function setStatus(t, html, err = false) {
   if (!html) { t.innerHTML = ''; return; }
   t.innerHTML = `<div class="status${err ? ' err' : ''}">${html}</div>`;
-}
-function showToast(text, duration = 2500) {
-  let el = $('#toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'toast';
-    el.style.cssText = `
-      position:fixed; bottom:calc(var(--safe-bottom,0px) + 80px); left:50%;
-      transform:translateX(-50%) translateY(20px); opacity:0;
-      background:var(--bg-1); color:var(--ink); border:1px solid var(--sep);
-      padding:10px 18px; border-radius:var(--r-full); font-size:14px; font-weight:600;
-      box-shadow:var(--shadow); z-index:9999; pointer-events:none; white-space:nowrap;
-      transition:opacity .2s, transform .2s;
-    `;
-    document.body.appendChild(el);
-  }
-  el.textContent = text;
-  requestAnimationFrame(() => {
-    el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)';
-    clearTimeout(el._t);
-    el._t = setTimeout(() => {
-      el.style.opacity = '0'; el.style.transform = 'translateX(-50%) translateY(20px)';
-    }, duration);
-  });
 }
 function currentViewDays() {
   return viewMode === 'week' ? 5 : 1;
@@ -2009,12 +1811,8 @@ async function fetchWeek(monday) {
   currentMonday = monday;
   const first = loginView.style.display !== 'none';
   const rangeEnd = getRangeEnd(monday);
-  if (first) {
-    // Update existing spinner text (loginBtn already disabled by caller)
-    setStatus(msg, `<span class="spinner"></span>Lade Stundenplan von ${escapeHtml(creds.server)}…`);
-  } else {
-    setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`); setNavDisabled(true);
-  }
+  if (first) { setStatus(msg, `<span class="spinner"></span>verbinde mit ${escapeHtml(creds.server)}…`); $('#loginBtn').disabled = true; }
+  else { setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`); setNavDisabled(true); }
   try {
     const res = await apiPost('/api/timetable-week', { ...creds, rangeStart: isoDate(monday), rangeEnd: isoDate(rangeEnd) });
     const data = await res.json();
@@ -2042,19 +1840,9 @@ function renderWeek(lessons, monday) {
   const visibleDates = new Set(days.map(untisDateInt));
   const visibleLessons = allLessons.filter(l => visibleDates.has(Number(l.date)));
 
-  const suppCount = visibleLessons.filter(l => l._status === 'irregular').length;
-  const cancCount = visibleLessons.filter(l => l._status === 'cancelled').length;
-  const casinoOn = document.documentElement.dataset.casino === 'on';
   $('#lessonCount').textContent = visibleLessons.length;
-  $('#supplCount').textContent = suppCount;
-  $('#cancelCount').textContent = cancCount;
-  // Show supp/cancel counts always when > 0; hide in plan-mode (to prevent spoiling)
-  const showSupp = suppCount > 0 && casinoOn;
-  const showCanc = cancCount > 0 && casinoOn;
-  $('#metaSupp').hidden = !showSupp;
-  $('#metaSepSupp').hidden = !showSupp;
-  $('#metaCancel').hidden = !showCanc;
-  $('#metaSepCancel').hidden = !showCanc;
+  $('#supplCount').textContent = visibleLessons.filter(l => l._status === 'irregular').length;
+  $('#cancelCount').textContent = visibleLessons.filter(l => l._status === 'cancelled').length;
 
   const rangeEnd = days[days.length - 1];
   $('#weekLabel').textContent = viewMode === 'day'
@@ -2106,43 +1894,18 @@ function renderWeek(lessons, monday) {
 }
 
 function renderCard(l) {
-  const realStatus = l._status || getLessonStatus(l);
-  const lid = lessonId(l);
-  const played = state.playedLessons[lid];
-  const casinoOn = document.documentElement.dataset.casino === 'on';
-
-  // showReal: zeige echte Daten (Lehrer-Strikethrough, Status, etc.)
-  //   true wenn Casino-Modus (blurred), oder schon getippt (sieht das Ergebnis)
-  //   false in Plan-Modus → zeige "geplanten" Stundenplan ohne Supplierungen
-  const showReal = casinoOn || !!played;
-
-  const status = showReal ? realStatus : 'normal';
+  const status = l._status || getLessonStatus(l);
   const subj = l.su?.[0]?.name || '—';
   const longName = l.su?.[0]?.longname || '';
-  const teacher = showReal ? renderEntry(l.te?.[0]) : renderOriginalEntry(l.te?.[0]);
-  const room = showReal ? renderEntry(l.ro?.[0]) : renderOriginalEntry(l.ro?.[0]);
-  const statText = showReal
-    ? (realStatus === 'cancelled' ? 'entfällt' : realStatus === 'irregular' ? 'suppliert' : '')
-    : '';
-
-  // Lock state — nur relevant in Casino mode für nicht-gespielte Karten
-  const lockReason = (casinoOn && !played) ? getLockReason(l) : null;
-  const overlayLockClass = lockReason ? ' locked' : '';
-  const lockLabels = {
-    'not-today': { icon: '🔒', label: 'nur heute' },
-    'before-7': { icon: '🌅', label: 'ab 7 Uhr' },
-    'already-started': { icon: '⏰', label: 'vorbei' }
-  };
-  const lockInfo = lockReason ? lockLabels[lockReason] : { icon: '🎰', label: 'Tipp ab' };
-
-  // Tooltip — nur echte Daten zeigen wenn appropriate
+  const teacher = renderEntry(l.te?.[0]);
+  const room = renderEntry(l.ro?.[0]);
+  const statText = status === 'cancelled' ? 'entfällt' : status === 'irregular' ? 'suppliert' : '';
+  const lid = lessonId(l);
+  const played = state.playedLessons[lid];
   const tt = [longName];
-  if (showReal) {
-    if (l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
-    if (l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
-    if (l.substText) tt.push(l.substText);
-  }
-
+  if (l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
+  if (l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
+  if (l.substText) tt.push(l.substText);
   return `
     <div class="lesson-card ${status} ${played?'played':''}" data-lesson-id="${escapeHtml(lid)}" ${played?`data-result="${played.result}"`:''} title="${escapeHtml(tt.filter(Boolean).join(' · '))}">
       <div class="subj">${escapeHtml(subj)}</div>
@@ -2151,9 +1914,9 @@ function renderCard(l) {
         ${room ? `<span>${room}</span>` : ''}
       </div>
       ${statText ? `<div class="stat">${statText}</div>` : ''}
-      <div class="bet-overlay${overlayLockClass}" data-lesson-id="${escapeHtml(lid)}"${lockReason?` data-lock="${lockReason}"`:''}>
-        <div class="icon">${lockInfo.icon}</div>
-        <div class="lbl">${lockInfo.label}</div>
+      <div class="bet-overlay" data-lesson-id="${escapeHtml(lid)}">
+        <div class="icon">🎰</div>
+        <div class="lbl">Tipp ab</div>
       </div>
     </div>
   `;
@@ -2163,18 +1926,6 @@ $('#weekGrid').addEventListener('click', (e) => {
   const overlay = e.target.closest('.bet-overlay');
   if (overlay) {
     e.stopPropagation();
-    // Locked? → kein Spielen, kurzes Feedback
-    if (overlay.classList.contains('locked')) {
-      Sound.tap(); Haptic.warning();
-      const reason = overlay.dataset.lock;
-      const msgs = {
-        'not-today': 'Tippen nur am heutigen Tag',
-        'before-7': 'Tippen ab 7 Uhr freigeschaltet',
-        'already-started': 'Stunde hat bereits begonnen'
-      };
-      showToast(msgs[reason] || 'Nicht verfügbar');
-      return;
-    }
     const id = overlay.dataset.lessonId;
     const lesson = (lastLessons || []).find(l => lessonId(l) === id);
     if (lesson) openSlot(lesson);
@@ -2197,21 +1948,12 @@ $('#loginBtn').addEventListener('click', async () => {
   const username = $('#user').value.trim();
   const password = $('#pass').value;
   if (!server || !school || !username || !password) { setStatus(msg, 'Bitte alle Felder ausfüllen.', true); Haptic.warning(); return; }
-  // Show spinner IMMEDIATELY — Render free tier cold start can take 30–60s
-  setStatus(msg, `<span class="spinner"></span>Verbinde mit ${escapeHtml(server)}…`);
-  $('#loginBtn').disabled = true;
   LS.set('server', server); LS.set('school', school); LS.set('user', username);
   creds = { server, school, username, password };
   currentMonday = normalizeRangeStart(new Date());
-  try {
-    const cloudResult = await loadFromCloud();
-    if (cloudResult === 'empty') saveToCloud();
-    await fetchWeek(currentMonday);
-  } catch (e) {
-    setStatus(msg, `Fehler: ${escapeHtml(e.message)}`, true);
-  } finally {
-    $('#loginBtn').disabled = false;
-  }
+  const cloudResult = await loadFromCloud();
+  if (cloudResult === 'empty') saveToCloud();
+  fetchWeek(currentMonday);
 });
 $('#logoutBtn').addEventListener('click', () => {
   Sound.tap(); Haptic.light();
