@@ -346,29 +346,31 @@
   }
 
   /* Stats meta row */
-  .meta-row {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
-    margin-bottom: 20px;
+  .meta-strip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; margin-bottom: 14px;
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-md);
+    font-size: 13px; color: var(--ink-2); font-weight: 500;
+    overflow-x: auto; white-space: nowrap; flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
-  .meta {
-    background: var(--glass-strong); padding: 15px 16px;
-    border: 1px solid var(--glass-border);
-    border-radius: var(--r-lg); box-shadow: var(--shadow-soft);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    min-width: 0;
+  .meta-strip .m-key {
+    font-family: var(--ff-r); font-weight: 700; color: var(--ink);
+    letter-spacing: -0.01em;
   }
-  .meta b {
-    display: block; font-family: var(--ff-r); font-size: 26px; font-weight: 700;
-    line-height: 1; letter-spacing: 0; margin-bottom: 5px;
-    font-variant-numeric: tabular-nums;
+  .meta-strip .m-sep {
+    color: var(--ink-4); padding: 0 2px;
   }
-  .meta span {
-    font-size: 12px; color: var(--ink-3); font-weight: 500;
-    white-space: nowrap;
+  .meta-strip .m-range {
+    color: var(--ink-3); font-variant-numeric: tabular-nums;
   }
-  .meta.warn b { color: var(--warn); }
-  .meta.cancel b { color: var(--cancel); }
-  .meta .range { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+  .meta-strip .m-count {
+    color: var(--ink-3); font-variant-numeric: tabular-nums;
+  }
+  .meta-strip .m-count b {
+    font-weight: 700; color: var(--ink-2);
+  }
 
   /* Week grid */
   .week-grid {
@@ -500,6 +502,35 @@
   .bet-overlay .lbl {
     font-size: 10px; font-weight: 750; color: var(--ink-2);
     text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .bet-overlay.locked .icon { opacity: 0.5; filter: grayscale(0.4); }
+  .bet-overlay.locked .lbl { color: var(--ink-4); font-size: 9px; }
+
+  /* Toast (für Lock Hints) */
+  .toast {
+    position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 24px);
+    transform: translate3d(-50%, 16px, 0); z-index: 2000;
+    background: rgba(28,28,30,0.92); color: white;
+    padding: 12px 20px; border-radius: var(--r-full);
+    font-size: 14px; font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s var(--ease-out), transform .22s var(--ease-out);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    max-width: 80vw; text-align: center;
+  }
+  .toast.show {
+    opacity: 1; transform: translate3d(-50%, 0, 0);
+  }
+  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) {
+    background: var(--fill-3);
+    border-left-color: var(--ink-4);
+    opacity: 0.7;
+  }
+  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) .subj,
+  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) .detail,
+  [data-casino="on"] .lesson-card:not(.played):has(.bet-overlay.locked) .stat {
+    filter: blur(8px); opacity: 0.25;
   }
   .lesson-card.played::after {
     content: attr(data-result);
@@ -867,7 +898,7 @@
     .nav, .view-toggle { width: 100%; }
     .nav { display: grid; grid-template-columns: 1fr 1fr 1fr; }
     .view-toggle button { flex: 1; }
-    .meta-row { grid-template-columns: repeat(2, 1fr); }
+    .meta-strip { font-size: 12px; padding: 8px 12px; gap: 8px; }
     .week-grid {
       grid-template-columns: 52px repeat(5, minmax(112px, 1fr));
       border-radius: var(--r-lg);
@@ -879,6 +910,14 @@
       backdrop-filter: none; -webkit-backdrop-filter: none;
       box-shadow: 0 -12px 34px rgba(0,0,0,0.30);
     }
+    /* Performance: reduce/disable heavy filters on mobile */
+    [data-casino="on"] .lesson-card:not(.played) .subj,
+    [data-casino="on"] .lesson-card:not(.played) .detail,
+    [data-casino="on"] .lesson-card:not(.played) .stat {
+      filter: blur(3px);
+    }
+    .reels.spinning { animation: none; }
+    .reels.spinning .reel { animation: reelCabinetShake .18s ease-in-out infinite alternate; }
     .logo { font-size: 26px; }
     .reel { height: 110px; }
     .reel-symbol { height: 110px; }
@@ -890,7 +929,6 @@
     .header-actions { width: 100%; justify-content: space-between; }
     .toggle { flex: 1; }
     .toggle button { flex: 1; padding-left: 8px; padding-right: 8px; }
-    .meta b { font-size: 22px; }
     .login-card { padding-left: 14px; padding-right: 14px; }
     .field { align-items: flex-start; flex-direction: column; gap: 5px; }
     .field input { width: 100%; text-align: left; }
@@ -997,11 +1035,16 @@
       </div>
     </div>
 
-    <div class="meta-row">
-      <div class="meta"><b id="weekLabel">—</b><span id="weekRange">—</span></div>
-      <div class="meta"><b id="lessonCount">0</b><span>Stunden</span></div>
-      <div class="meta warn"><b id="supplCount">0</b><span>Suppliert</span></div>
-      <div class="meta cancel"><b id="cancelCount">0</b><span>Entfällt</span></div>
+    <div class="meta-strip">
+      <span class="m-key" id="weekLabel">—</span>
+      <span class="m-sep">·</span>
+      <span class="m-range" id="weekRange">—</span>
+      <span class="m-sep">·</span>
+      <span class="m-count"><b id="lessonCount">0</b> Std</span>
+      <span class="m-sep" id="metaSepSupp" hidden>·</span>
+      <span class="m-count" id="metaSupp" hidden><b id="supplCount" style="color:var(--warn);">0</b> supp</span>
+      <span class="m-sep" id="metaSepCancel" hidden>·</span>
+      <span class="m-count" id="metaCancel" hidden><b id="cancelCount" style="color:var(--cancel);">0</b> aus</span>
     </div>
 
     <div class="week-grid" id="weekGrid"></div>
@@ -1188,7 +1231,43 @@ function renderEntry(e) {
   }
   return escapeHtml(name);
 }
+// Show the "as-planned" version of teacher/room/subject (ignore substitutions)
+function renderOriginalEntry(e) {
+  if (!e) return '';
+  const orig = e.orgname && e.orgname.trim() ? e.orgname : (e.name || '');
+  return escapeHtml(orig);
+}
 function lessonId(l) { return `${l.date}-${l.startTime}-${(l.su?.[0]?.id) || 0}`; }
+
+// Convert Untis YYYYMMDD int to Date at midnight
+function parseUntisDate(u) {
+  const s = String(u);
+  return new Date(parseInt(s.slice(0,4)), parseInt(s.slice(4,6))-1, parseInt(s.slice(6,8)));
+}
+// Convert Untis HHMM int to minutes since midnight
+function untisTimeToMinutes(t) {
+  const s = String(t).padStart(4, '0');
+  return parseInt(s.slice(0,-2)) * 60 + parseInt(s.slice(-2));
+}
+// Returns true if lesson is on today
+function isLessonToday(l) {
+  const today = new Date();
+  const ld = parseUntisDate(l.date);
+  return ld.getFullYear() === today.getFullYear()
+      && ld.getMonth() === today.getMonth()
+      && ld.getDate() === today.getDate();
+}
+// Lock reason: null = gamblable, otherwise reason key
+function getLockReason(l) {
+  if (!isLessonToday(l)) return 'not-today';
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (nowMin < 7 * 60) return 'before-7';
+  const lessonStart = untisTimeToMinutes(l.startTime);
+  if (nowMin >= lessonStart) return 'already-started';
+  return null;
+}
+function canGamble(l) { return getLockReason(l) === null; }
 
 /* ============================================================
    STATE
@@ -1894,18 +1973,43 @@ function renderWeek(lessons, monday) {
 }
 
 function renderCard(l) {
-  const status = l._status || getLessonStatus(l);
-  const subj = l.su?.[0]?.name || '—';
-  const longName = l.su?.[0]?.longname || '';
-  const teacher = renderEntry(l.te?.[0]);
-  const room = renderEntry(l.ro?.[0]);
-  const statText = status === 'cancelled' ? 'entfällt' : status === 'irregular' ? 'suppliert' : '';
+  const realStatus = l._status || getLessonStatus(l);
   const lid = lessonId(l);
   const played = state.playedLessons[lid];
+  const casinoOn = document.documentElement.dataset.casino === 'on';
+
+  // showReal: zeige echte Daten (Lehrer-Strikethrough, Status, etc.)
+  //   true wenn Casino-Modus (blurred), oder schon getippt (sieht das Ergebnis)
+  //   false in Plan-Modus → zeige "geplanten" Stundenplan ohne Supplierungen
+  const showReal = casinoOn || !!played;
+
+  const status = showReal ? realStatus : 'normal';
+  const subj = l.su?.[0]?.name || '—';
+  const longName = l.su?.[0]?.longname || '';
+  const teacher = showReal ? renderEntry(l.te?.[0]) : renderOriginalEntry(l.te?.[0]);
+  const room = showReal ? renderEntry(l.ro?.[0]) : renderOriginalEntry(l.ro?.[0]);
+  const statText = showReal
+    ? (realStatus === 'cancelled' ? 'entfällt' : realStatus === 'irregular' ? 'suppliert' : '')
+    : '';
+
+  // Lock state — nur relevant in Casino mode für nicht-gespielte Karten
+  const lockReason = (casinoOn && !played) ? getLockReason(l) : null;
+  const overlayLockClass = lockReason ? ' locked' : '';
+  const lockLabels = {
+    'not-today': { icon: '🔒', label: 'nur heute' },
+    'before-7': { icon: '🌅', label: 'ab 7 Uhr' },
+    'already-started': { icon: '⏰', label: 'vorbei' }
+  };
+  const lockInfo = lockReason ? lockLabels[lockReason] : { icon: '🎰', label: 'Tipp ab' };
+
+  // Tooltip — nur echte Daten zeigen wenn appropriate
   const tt = [longName];
-  if (l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
-  if (l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
-  if (l.substText) tt.push(l.substText);
+  if (showReal) {
+    if (l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
+    if (l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
+    if (l.substText) tt.push(l.substText);
+  }
+
   return `
     <div class="lesson-card ${status} ${played?'played':''}" data-lesson-id="${escapeHtml(lid)}" ${played?`data-result="${played.result}"`:''} title="${escapeHtml(tt.filter(Boolean).join(' · '))}">
       <div class="subj">${escapeHtml(subj)}</div>
@@ -1914,9 +2018,9 @@ function renderCard(l) {
         ${room ? `<span>${room}</span>` : ''}
       </div>
       ${statText ? `<div class="stat">${statText}</div>` : ''}
-      <div class="bet-overlay" data-lesson-id="${escapeHtml(lid)}">
-        <div class="icon">🎰</div>
-        <div class="lbl">Tipp ab</div>
+      <div class="bet-overlay${overlayLockClass}" data-lesson-id="${escapeHtml(lid)}"${lockReason?` data-lock="${lockReason}"`:''}>
+        <div class="icon">${lockInfo.icon}</div>
+        <div class="lbl">${lockInfo.label}</div>
       </div>
     </div>
   `;
@@ -1926,6 +2030,18 @@ $('#weekGrid').addEventListener('click', (e) => {
   const overlay = e.target.closest('.bet-overlay');
   if (overlay) {
     e.stopPropagation();
+    // Locked? → kein Spielen, kurzes Feedback
+    if (overlay.classList.contains('locked')) {
+      Sound.tap(); Haptic.warning();
+      const reason = overlay.dataset.lock;
+      const msgs = {
+        'not-today': 'Tippen nur am heutigen Tag',
+        'before-7': 'Tippen ab 7 Uhr freigeschaltet',
+        'already-started': 'Stunde hat bereits begonnen'
+      };
+      showToast(msgs[reason] || 'Nicht verfügbar');
+      return;
+    }
     const id = overlay.dataset.lessonId;
     const lesson = (lastLessons || []).find(l => lessonId(l) === id);
     if (lesson) openSlot(lesson);
