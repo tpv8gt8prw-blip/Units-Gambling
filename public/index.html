@@ -347,23 +347,23 @@
 
   /* Stats meta row */
   .meta-row {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
-    margin-bottom: 20px;
+    display: flex; flex-wrap: wrap; gap: 7px;
+    margin-bottom: 12px;
   }
   .meta {
-    background: var(--glass-strong); padding: 15px 16px;
+    display: flex; align-items: baseline; gap: 6px;
+    background: var(--glass-strong); padding: 8px 10px;
     border: 1px solid var(--glass-border);
-    border-radius: var(--r-lg); box-shadow: var(--shadow-soft);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-radius: 12px; box-shadow: none;
     min-width: 0;
   }
   .meta b {
-    display: block; font-family: var(--ff-r); font-size: 26px; font-weight: 700;
-    line-height: 1; letter-spacing: 0; margin-bottom: 5px;
+    display: block; font-family: var(--ff-r); font-size: 15px; font-weight: 750;
+    line-height: 1; letter-spacing: 0;
     font-variant-numeric: tabular-nums;
   }
   .meta span {
-    font-size: 12px; color: var(--ink-3); font-weight: 500;
+    font-size: 11px; color: var(--ink-3); font-weight: 600;
     white-space: nowrap;
   }
   .meta.warn b { color: var(--warn); }
@@ -501,6 +501,11 @@
     font-size: 10px; font-weight: 750; color: var(--ink-2);
     text-transform: uppercase; letter-spacing: 0.05em;
   }
+  .bet-overlay.locked {
+    opacity: 0.72; cursor: not-allowed;
+  }
+  .bet-overlay.locked .icon { font-size: 19px; }
+  .bet-overlay.locked .lbl { color: var(--ink-3); }
   .lesson-card.played::after {
     content: attr(data-result);
     position: absolute; top: 4px; right: 4px;
@@ -618,7 +623,7 @@
     transition: transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
   }
   .reels.spinning {
-    animation: reelFramePulse .28s var(--ease-out) infinite alternate;
+    animation: reelFramePulse .34s var(--ease-out) infinite alternate;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 30px color-mix(in srgb, var(--accent) 16%, transparent);
   }
   .reels::before, .reels::after {
@@ -632,10 +637,11 @@
     background: var(--glass-strong); border-radius: var(--r-md);
     border: 1px solid var(--glass-border);
   }
-  .reels.spinning .reel { animation: reelCabinetShake .12s ease-in-out infinite alternate; }
+  .reels.spinning .reel { animation: reelCabinetShake .18s ease-in-out infinite alternate; }
   .reel-strip {
     position: absolute; left: 0; right: 0; top: 0;
     display: flex; flex-direction: column; will-change: transform;
+    backface-visibility: hidden; transform: translate3d(0,0,0);
   }
   .reel-symbol {
     height: 130px; display: flex; flex-direction: column;
@@ -678,7 +684,7 @@
   .pick-btn.active {
     background: var(--accent); border-color: var(--accent); color: white;
     box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 24%, transparent), inset 0 1px 0 rgba(255,255,255,0.24);
-    animation: pickPop .22s var(--ease-pop);
+    animation: pickPop .18s var(--ease-out);
   }
   .pick-btn.active .mult { color: rgba(255,255,255,0.8); }
   .pick-btn:disabled { opacity: 0.4; }
@@ -704,7 +710,7 @@
   .result {
     text-align: center; padding: 16px 0;
     transform: scale(0.85); opacity: 0;
-    transition: transform .45s var(--ease-pop), opacity .3s var(--ease-out);
+    transition: transform .28s var(--ease-out), opacity .22s var(--ease-out);
   }
   .result.show { transform: scale(1); opacity: 1; }
   .result .badge {
@@ -749,12 +755,12 @@
     100% { transform: scale(1); }
   }
   @keyframes reelFramePulse {
-    from { transform: translateY(0) scale(1); }
-    to { transform: translateY(-1px) scale(1.006); }
+    from { transform: translate3d(0,0,0) scale(1); }
+    to { transform: translate3d(0,-1px,0) scale(1.003); }
   }
   @keyframes reelCabinetShake {
-    from { transform: translateX(-1px); }
-    to { transform: translateX(1px); }
+    from { transform: translate3d(-0.5px,0,0); }
+    to { transform: translate3d(0.5px,0,0); }
   }
   @keyframes confetti-fall {
     0% { opacity: 0; transform: translateY(0) rotate(0); }
@@ -814,6 +820,21 @@
   .reset-btn:active { background: var(--cancel-bg); }
 
   /* Details modal */
+  .detail-tabs {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px;
+    background: var(--fill); padding: 3px; border-radius: 12px;
+    border: 1px solid var(--glass-border); margin: -6px 0 12px;
+  }
+  .detail-tabs button {
+    border: none; background: transparent; color: var(--ink-3);
+    min-height: 34px; border-radius: 9px;
+    font-size: 13px; font-weight: 700;
+    transition: color .16s var(--ease-out), background .16s var(--ease-out);
+  }
+  .detail-tabs button.active {
+    color: var(--ink); background: var(--glass-strong);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  }
   .details-list { display: flex; flex-direction: column; }
   .detail-row {
     display: flex; justify-content: space-between; align-items: flex-start;
@@ -846,6 +867,10 @@
     font-size: 11px; color: var(--ink-3); margin-top: 4px; font-weight: 500;
   }
   .detail-hw.completed .hw-text { text-decoration: line-through; opacity: 0.5; }
+  .detail-empty {
+    padding: 18px 0; color: var(--ink-3);
+    font-size: 14px; font-weight: 600;
+  }
 
   /* ============================================================
      RESPONSIVE
@@ -878,6 +903,10 @@
     .modal-card {
       backdrop-filter: none; -webkit-backdrop-filter: none;
       box-shadow: 0 -12px 34px rgba(0,0,0,0.30);
+    }
+    .reels.spinning,
+    .reels.spinning .reel {
+      animation: none;
     }
     .logo { font-size: 26px; }
     .reel { height: 110px; }
@@ -1000,8 +1029,8 @@
     <div class="meta-row">
       <div class="meta"><b id="weekLabel">—</b><span id="weekRange">—</span></div>
       <div class="meta"><b id="lessonCount">0</b><span>Stunden</span></div>
-      <div class="meta warn"><b id="supplCount">0</b><span>Suppliert</span></div>
-      <div class="meta cancel"><b id="cancelCount">0</b><span>Entfällt</span></div>
+      <div class="meta"><b id="supplCount">07:00</b><span>Start</span></div>
+      <div class="meta"><b id="cancelCount">Heute</b><span>Wetten</span></div>
     </div>
 
     <div class="week-grid" id="weekGrid"></div>
@@ -1109,6 +1138,10 @@
     <button class="modal-close" id="detailClose">✕</button>
     <div class="sub" id="detailDate">—</div>
     <h2 id="detailTitle">—</h2>
+    <div class="detail-tabs" id="detailTabs">
+      <button data-detail-tab="info" class="active">Info</button>
+      <button data-detail-tab="homework">Hausübungen</button>
+    </div>
     <div class="details-list" id="detailContent"></div>
   </div>
 </div>
@@ -1189,6 +1222,46 @@ function renderEntry(e) {
   return escapeHtml(name);
 }
 function lessonId(l) { return `${l.date}-${l.startTime}-${(l.su?.[0]?.id) || 0}`; }
+const GAMBLE_UNLOCK_HOUR = 7;
+function lessonDateObj(l) {
+  const ds = String(l?.date || '');
+  if (ds.length !== 8) return null;
+  return new Date(parseInt(ds.slice(0,4)), parseInt(ds.slice(4,6))-1, parseInt(ds.slice(6,8)));
+}
+function isTodayLesson(l) {
+  const d = lessonDateObj(l);
+  return !!d && sameDay(d, new Date());
+}
+function isGambleUnlockedNow() {
+  return new Date().getHours() >= GAMBLE_UNLOCK_HOUR;
+}
+function playedFor(l) {
+  return state.playedLessons[lessonId(l)];
+}
+function shouldRevealOutcome(l) {
+  return !!playedFor(l);
+}
+function canGambleLesson(l) {
+  return isTodayLesson(l) && isGambleUnlockedNow();
+}
+function betLockLabel(l) {
+  if (!isTodayLesson(l)) return 'Nur heute';
+  if (!isGambleUnlockedNow()) return 'Ab 07:00';
+  return 'Tipp ab';
+}
+function baseEntryName(e) {
+  if (!e) return '';
+  return e.orgname || e.longname || e.name || '';
+}
+function renderPlanEntry(e) {
+  return escapeHtml(baseEntryName(e));
+}
+function lessonSubject(l, reveal = false) {
+  const s = l.su?.[0];
+  if (!s) return '—';
+  if (!reveal && s.orgname) return s.orgname;
+  return s.longname || s.name || s.orgname || '—';
+}
 
 /* ============================================================
    STATE
@@ -1232,13 +1305,23 @@ function bumpStreak() {
 let audioCtx = null;
 const SOUND_MASTER_GAIN = 1.75;
 function initAudio() {
-  if (audioCtx || !state.soundEnabled) return;
+  if (!state.soundEnabled) return;
   try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx && audioCtx.state === 'closed') audioCtx = null;
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   } catch (_) {}
 }
+function ensureAudio() {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') {
+    try { audioCtx.resume(); } catch (_) {}
+  }
+}
 function tone({ freq, dur, type = 'sine', vol = 0.08, attack = 0.005, slide }) {
-  if (!audioCtx || !state.soundEnabled) return;
+  if (!state.soundEnabled) return;
+  ensureAudio();
+  if (!audioCtx) return;
   const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const g = audioCtx.createGain();
@@ -1304,10 +1387,11 @@ let rollingHapticTimer = null;
 function startRollingHaptic() {
   if (!state.hapticEnabled || !navigator.vibrate || rollingHapticTimer) return;
   let tick = 0;
+  Haptic.v([30, 20, 18]);
   rollingHapticTimer = setInterval(() => {
-    Haptic.v(tick % 3 === 0 ? [18, 22, 12] : 13);
+    Haptic.v(tick % 3 === 0 ? 28 : 14);
     tick += 1;
-  }, 118);
+  }, 140);
 }
 function stopRollingHaptic() {
   if (rollingHapticTimer) {
@@ -1488,10 +1572,10 @@ function spinReel(reelEl, finalKey, duration) {
     const total = reelEl.children.length;
     const targetY = -(total - 3) * h;
     reelEl.style.transition = 'none';
-    reelEl.style.transform = `translateY(0px)`;
+    reelEl.style.transform = 'translate3d(0,0,0)';
     void reelEl.offsetHeight;
     reelEl.style.transition = `transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1)`;
-    reelEl.style.transform = `translateY(${targetY}px)`;
+    reelEl.style.transform = `translate3d(0,${targetY}px,0)`;
     setTimeout(() => { Sound.reelStop(); Haptic.light(); resolve(); }, duration);
   });
 }
@@ -1517,7 +1601,7 @@ function openSlot(lesson) {
 
   $$('.reel-strip').forEach(r => {
     r.style.transition = 'none';
-    r.style.transform = 'translateY(0px)';
+    r.style.transform = 'translate3d(0,0,0)';
     r.innerHTML = `<div class="reel-symbol normal"><div class="glyph">?</div><div class="lbl">prophezeie</div></div>`;
   });
 
@@ -1668,58 +1752,101 @@ $('#resetBtn').addEventListener('click', () => {
 /* ============================================================
    DETAILS MODAL
 ============================================================ */
+let currentDetailPanels = { info: '', homework: '' };
+function setDetailTab(tab) {
+  const next = tab === 'homework' ? 'homework' : 'info';
+  $$('#detailTabs button').forEach(btn => btn.classList.toggle('active', btn.dataset.detailTab === next));
+  $('#detailContent').innerHTML = currentDetailPanels[next] || '<div class="detail-empty">Keine Einträge.</div>';
+}
+function detailRowsHtml(rows) {
+  if (!rows.length) return '';
+  return rows.map(r => `
+    <div class="detail-row${r.stacked ? ' stacked' : ''}">
+      <div class="detail-label">${escapeHtml(r.label)}</div>
+      <div class="detail-value ${r.accent || ''}">${r.html != null ? r.html : escapeHtml(r.value)}</div>
+    </div>
+  `).join('');
+}
+function homeworkMatchesLesson(hw, lesson) {
+  const ids = [hw.lessonId, hw.lesson?.id, hw.lesson?.lessonId, hw.lessons?.[0]?.id, hw.lessons?.[0]?.lessonId]
+    .filter(v => v != null)
+    .map(v => Number(v));
+  if (ids.includes(Number(lesson.id))) return true;
+  const date = Number(hw.date || hw.dueDate || hw.lessonDate || 0);
+  if (date && date !== Number(lesson.date)) return false;
+  const subject = (lesson.su?.[0]?.name || lesson.su?.[0]?.longname || '').toLowerCase();
+  const text = `${hw.text || ''} ${hw.remark || ''} ${hw.subject || ''}`.toLowerCase();
+  return !!subject && text.includes(subject);
+}
+function homeworkText(hw) {
+  return hw.text || hw.remark || hw.title || hw.task || '—';
+}
+function homeworkMeta(hw) {
+  const parts = [];
+  if (hw.dueDate || hw.date) parts.push(`Fällig: ${formatUntisDateLabel(hw.dueDate || hw.date)}`);
+  if (hw.remark && hw.remark !== hw.text) parts.push(hw.remark);
+  return parts.join(' · ');
+}
 function openDetails(lesson) {
   Sound.tap(); Haptic.select();
   const ds = String(lesson.date);
   const dt = new Date();
   dt.setFullYear(parseInt(ds.slice(0,4)), parseInt(ds.slice(4,6))-1, parseInt(ds.slice(6,8)));
-  const subj = lesson.su?.[0]?.longname || lesson.su?.[0]?.name || '—';
+  const reveal = shouldRevealOutcome(lesson);
+  const subj = lessonSubject(lesson, reveal);
   $('#detailTitle').innerHTML = `${escapeHtml(subj)}<em>.</em>`;
   $('#detailDate').textContent = `${dt.toLocaleDateString('de-AT', { weekday:'long', day:'2-digit', month:'long' })} · ${formatTime(lesson.startTime)} – ${formatTime(lesson.endTime)}`;
 
   const status = getLessonStatus(lesson);
   const rows = [];
-  if (status === 'cancelled') rows.push({ label:'Status', value:'Entfällt', accent:'cancel' });
-  else if (status === 'irregular') rows.push({ label:'Status', value:'Suppliert', accent:'warn' });
-  else rows.push({ label:'Status', value:'Normal' });
+  if (reveal) {
+    if (status === 'cancelled') rows.push({ label:'Status', value:'Entfällt', accent:'cancel' });
+    else if (status === 'irregular') rows.push({ label:'Status', value:'Suppliert', accent:'warn' });
+    else rows.push({ label:'Status', value:'Normal' });
+  } else {
+    rows.push({ label:'Plan', value:'Reguläre Stunde' });
+  }
 
   const te = lesson.te?.[0];
   if (te) {
     let html = '';
-    if (te.orgname && te.orgname !== te.name) {
+    if (reveal && te.orgname && te.orgname !== te.name) {
       html = `<span class="strike">${escapeHtml(te.orgname)}</span>${te.name ? ' → ' + escapeHtml(te.name) : ''}`;
-    } else html = escapeHtml(te.longname || te.name || '—');
+    } else html = renderPlanEntry(te);
     rows.push({ label:'Lehrer', html });
   }
   const ro = lesson.ro?.[0];
   if (ro) {
     let html = '';
-    if (ro.orgname && ro.orgname !== ro.name) html = `<span class="strike">${escapeHtml(ro.orgname)}</span> → ${escapeHtml(ro.name)}`;
-    else html = escapeHtml(ro.name || '—');
+    if (reveal && ro.orgname && ro.orgname !== ro.name) html = `<span class="strike">${escapeHtml(ro.orgname)}</span> → ${escapeHtml(ro.name)}`;
+    else html = renderPlanEntry(ro);
     rows.push({ label:'Raum', html });
   }
   const kl = lesson.kl?.[0];
   if (kl) rows.push({ label:'Klasse', value: kl.longname || kl.name });
-  if (lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
-  if (lesson.info) rows.push({ label:'Info', value: lesson.info, stacked: true });
+  if (reveal && lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
+  if (lesson.info) rows.push({ label:'Notiz', value: lesson.info, stacked: true });
   if (lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true });
   if (lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
   if (lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
-  if (lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
+  if (reveal && lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
     rows.push({ label:'Typ', value: lesson.activityType, accent:'warn' });
   }
 
-  const hwForLesson = (lastHomeworks || []).filter(hw => hw.lessonId === lesson.id);
+  const hwForLesson = (lastHomeworks || []).filter(hw => homeworkMatchesLesson(hw, lesson));
+  const homeworkRows = [];
   if (hwForLesson.length > 0) {
     const html = hwForLesson.map(hw => {
-      const due = hw.date ? formatUntisDateLabel(hw.date) : '';
       const done = hw.completed || hw.done;
+      const meta = homeworkMeta(hw);
       return `<div class="detail-hw${done ? ' completed' : ''}">
-        <div class="hw-text">${escapeHtml(hw.text || '—')}</div>
-        ${due ? `<div class="hw-meta">Fällig: ${due}</div>` : ''}
+        <div class="hw-text">${escapeHtml(homeworkText(hw))}</div>
+        ${meta ? `<div class="hw-meta">${escapeHtml(meta)}</div>` : ''}
       </div>`;
     }).join('');
-    rows.push({ label:'Hausaufgaben', html, stacked: true });
+    homeworkRows.push({ label:'Hausübungen', html, stacked: true });
+  } else {
+    homeworkRows.push({ label:'Hausübungen', html:'<div class="detail-empty">Keine Hausübungen für diese Stunde gefunden.</div>', stacked: true });
   }
 
   const lid = lessonId(lesson);
@@ -1733,12 +1860,11 @@ function openDetails(lesson) {
     });
   }
 
-  $('#detailContent').innerHTML = rows.map(r => `
-    <div class="detail-row${r.stacked ? ' stacked' : ''}">
-      <div class="detail-label">${escapeHtml(r.label)}</div>
-      <div class="detail-value ${r.accent || ''}">${r.html != null ? r.html : escapeHtml(r.value)}</div>
-    </div>
-  `).join('');
+  currentDetailPanels = {
+    info: detailRowsHtml(rows),
+    homework: detailRowsHtml(homeworkRows)
+  };
+  setDetailTab('info');
   $('#detailModal').classList.add('open');
 }
 function formatUntisDateLabel(u) {
@@ -1748,6 +1874,9 @@ function formatUntisDateLabel(u) {
 }
 $('#detailClose').addEventListener('click', () => { Sound.tap(); $('#detailModal').classList.remove('open'); });
 $('#detailModal').addEventListener('click', (e) => { if (e.target === $('#detailModal')) $('#detailModal').classList.remove('open'); });
+$$('#detailTabs button').forEach(btn => {
+  btn.addEventListener('click', () => { Sound.select(); Haptic.select(); setDetailTab(btn.dataset.detailTab); });
+});
 
 /* ============================================================
    TIMETABLE
@@ -1841,8 +1970,8 @@ function renderWeek(lessons, monday) {
   const visibleLessons = allLessons.filter(l => visibleDates.has(Number(l.date)));
 
   $('#lessonCount').textContent = visibleLessons.length;
-  $('#supplCount').textContent = visibleLessons.filter(l => l._status === 'irregular').length;
-  $('#cancelCount').textContent = visibleLessons.filter(l => l._status === 'cancelled').length;
+  $('#supplCount').textContent = '07:00';
+  $('#cancelCount').textContent = 'Heute';
 
   const rangeEnd = days[days.length - 1];
   $('#weekLabel').textContent = viewMode === 'day'
@@ -1894,18 +2023,22 @@ function renderWeek(lessons, monday) {
 }
 
 function renderCard(l) {
-  const status = l._status || getLessonStatus(l);
-  const subj = l.su?.[0]?.name || '—';
+  const realStatus = l._status || getLessonStatus(l);
+  const reveal = shouldRevealOutcome(l);
+  const status = reveal ? realStatus : 'normal';
+  const subj = lessonSubject(l, reveal);
   const longName = l.su?.[0]?.longname || '';
-  const teacher = renderEntry(l.te?.[0]);
-  const room = renderEntry(l.ro?.[0]);
-  const statText = status === 'cancelled' ? 'entfällt' : status === 'irregular' ? 'suppliert' : '';
+  const teacher = reveal ? renderEntry(l.te?.[0]) : renderPlanEntry(l.te?.[0]);
+  const room = reveal ? renderEntry(l.ro?.[0]) : renderPlanEntry(l.ro?.[0]);
+  const statText = reveal ? (status === 'cancelled' ? 'entfällt' : status === 'irregular' ? 'suppliert' : '') : '';
   const lid = lessonId(l);
-  const played = state.playedLessons[lid];
+  const played = playedFor(l);
+  const betOpen = !played && canGambleLesson(l);
+  const betLabel = betOpen ? 'Tipp ab' : betLockLabel(l);
   const tt = [longName];
-  if (l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
-  if (l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
-  if (l.substText) tt.push(l.substText);
+  if (reveal && l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
+  if (reveal && l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
+  if (reveal && l.substText) tt.push(l.substText);
   return `
     <div class="lesson-card ${status} ${played?'played':''}" data-lesson-id="${escapeHtml(lid)}" ${played?`data-result="${played.result}"`:''} title="${escapeHtml(tt.filter(Boolean).join(' · '))}">
       <div class="subj">${escapeHtml(subj)}</div>
@@ -1914,9 +2047,9 @@ function renderCard(l) {
         ${room ? `<span>${room}</span>` : ''}
       </div>
       ${statText ? `<div class="stat">${statText}</div>` : ''}
-      <div class="bet-overlay" data-lesson-id="${escapeHtml(lid)}">
-        <div class="icon">🎰</div>
-        <div class="lbl">Tipp ab</div>
+      <div class="bet-overlay ${betOpen ? 'open' : 'locked'}" data-lesson-id="${escapeHtml(lid)}" data-bet-open="${betOpen ? 'true' : 'false'}">
+        <div class="icon">${betOpen ? '🎰' : '🔒'}</div>
+        <div class="lbl">${escapeHtml(betLabel)}</div>
       </div>
     </div>
   `;
@@ -1928,6 +2061,15 @@ $('#weekGrid').addEventListener('click', (e) => {
     e.stopPropagation();
     const id = overlay.dataset.lessonId;
     const lesson = (lastLessons || []).find(l => lessonId(l) === id);
+    if (overlay.dataset.betOpen !== 'true') {
+      Haptic.warning();
+      Sound.tap();
+      const msg = !lesson || isTodayLesson(lesson)
+        ? `Wetten sind erst ab ${String(GAMBLE_UNLOCK_HOUR).padStart(2, '0')}:00 Uhr offen.`
+        : 'Wetten gehen nur für den heutigen Stundenplan.';
+      setStatus(ttMsg, msg, true);
+      return;
+    }
     if (lesson) openSlot(lesson);
     return;
   }
@@ -1987,8 +2129,14 @@ if (window.location.protocol === 'file:') {
 }
 
 // Unlock audio on first interaction for mobile browsers
-document.addEventListener('touchstart', initAudio, { once: true });
-document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('touchstart', ensureAudio, { once: true });
+document.addEventListener('pointerdown', ensureAudio, { once: true });
+document.addEventListener('click', ensureAudio, { once: true });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') ensureAudio();
+  else stopRollingHaptic();
+});
+window.addEventListener('pageshow', ensureAudio);
 </script>
 </body>
 </html>
