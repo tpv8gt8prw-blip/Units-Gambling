@@ -2009,8 +2009,12 @@ async function fetchWeek(monday) {
   currentMonday = monday;
   const first = loginView.style.display !== 'none';
   const rangeEnd = getRangeEnd(monday);
-  if (first) { setStatus(msg, `<span class="spinner"></span>verbinde mit ${escapeHtml(creds.server)}…`); $('#loginBtn').disabled = true; }
-  else { setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`); setNavDisabled(true); }
+  if (first) {
+    // Update existing spinner text (loginBtn already disabled by caller)
+    setStatus(msg, `<span class="spinner"></span>Lade Stundenplan von ${escapeHtml(creds.server)}…`);
+  } else {
+    setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`); setNavDisabled(true);
+  }
   try {
     const res = await apiPost('/api/timetable-week', { ...creds, rangeStart: isoDate(monday), rangeEnd: isoDate(rangeEnd) });
     const data = await res.json();
@@ -2193,12 +2197,21 @@ $('#loginBtn').addEventListener('click', async () => {
   const username = $('#user').value.trim();
   const password = $('#pass').value;
   if (!server || !school || !username || !password) { setStatus(msg, 'Bitte alle Felder ausfüllen.', true); Haptic.warning(); return; }
+  // Show spinner IMMEDIATELY — Render free tier cold start can take 30–60s
+  setStatus(msg, `<span class="spinner"></span>Verbinde mit ${escapeHtml(server)}…`);
+  $('#loginBtn').disabled = true;
   LS.set('server', server); LS.set('school', school); LS.set('user', username);
   creds = { server, school, username, password };
   currentMonday = normalizeRangeStart(new Date());
-  const cloudResult = await loadFromCloud();
-  if (cloudResult === 'empty') saveToCloud();
-  fetchWeek(currentMonday);
+  try {
+    const cloudResult = await loadFromCloud();
+    if (cloudResult === 'empty') saveToCloud();
+    await fetchWeek(currentMonday);
+  } catch (e) {
+    setStatus(msg, `Fehler: ${escapeHtml(e.message)}`, true);
+  } finally {
+    $('#loginBtn').disabled = false;
+  }
 });
 $('#logoutBtn').addEventListener('click', () => {
   Sound.tap(); Haptic.light();
