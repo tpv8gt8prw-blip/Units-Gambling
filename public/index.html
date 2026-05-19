@@ -666,7 +666,12 @@
   .reels.spinning .reel { animation: reelCabinetShake .12s ease-in-out infinite alternate; }
   .reel-strip {
     position: absolute; left: 0; right: 0; top: 0;
-    display: flex; flex-direction: column; will-change: transform;
+    display: flex; flex-direction: column;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    contain: layout style;
   }
   .reel-symbol {
     height: 130px; display: flex; flex-direction: column;
@@ -862,6 +867,20 @@
     word-wrap: break-word; max-width: 70%;
   }
   .detail-row.stacked .detail-value { text-align: left; max-width: 100%; }
+  .detail-row.highlight {
+    background: var(--warn-bg);
+    border-left: 3px solid var(--warn);
+    border-radius: var(--r-sm);
+    padding: 12px 14px;
+    margin: 4px 0;
+    border-bottom: none;
+  }
+  .detail-row.highlight + .detail-row { border-top: none; }
+  .detail-row.highlight .detail-label { color: var(--warn); font-weight: 600; }
+  .detail-row.highlight .detail-value {
+    font-family: var(--ff); font-size: 15px; font-weight: 500;
+    line-height: 1.4; letter-spacing: 0;
+  }
   .detail-value.warn { color: var(--warn); }
   .detail-value.cancel { color: var(--cancel); }
   .detail-value.win { color: var(--win); }
@@ -910,18 +929,31 @@
       backdrop-filter: none; -webkit-backdrop-filter: none;
       box-shadow: 0 -12px 34px rgba(0,0,0,0.30);
     }
-    /* Performance: reduce/disable heavy filters on mobile */
+    /* Performance: reduce/disable heavy filters + animations on mobile */
     [data-casino="on"] .lesson-card:not(.played) .subj,
     [data-casino="on"] .lesson-card:not(.played) .detail,
     [data-casino="on"] .lesson-card:not(.played) .stat {
       filter: blur(3px);
     }
+    /* Disable the frame pulse on mobile entirely (expensive) and slow shake to be smoother */
     .reels.spinning { animation: none; }
-    .reels.spinning .reel { animation: reelCabinetShake .18s ease-in-out infinite alternate; }
+    .reels.spinning .reel { animation: none; }
+    /* Subtle scale-only shake on the whole reels box — single transform, GPU-cheap */
+    .reels.spinning { animation: reelGentleShake .22s ease-in-out infinite alternate; }
+    @keyframes reelGentleShake {
+      0%   { transform: translate3d(0,0,0); }
+      100% { transform: translate3d(0,1px,0); }
+    }
     .logo { font-size: 26px; }
     .reel { height: 110px; }
     .reel-symbol { height: 110px; }
     .reel-symbol .glyph { font-size: 40px; }
+    /* Smaller, fewer confetti pieces — fewer DOM nodes to animate */
+    .confetti { width: 7px; height: 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reels.spinning, .reels.spinning .reel { animation: none !important; }
+    .confetti { display: none !important; }
   }
   @media (max-width: 480px) {
     .picker.amounts { grid-template-columns: repeat(4, 1fr); }
@@ -1316,8 +1348,20 @@ function initAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   } catch (_) {}
 }
+function resumeAudio() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+}
+// iOS pauses AudioContext when app goes to background → resume on return
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) resumeAudio();
+});
+window.addEventListener('focus', resumeAudio);
+window.addEventListener('pageshow', resumeAudio);
 function tone({ freq, dur, type = 'sine', vol = 0.08, attack = 0.005, slide }) {
   if (!audioCtx || !state.soundEnabled) return;
+  if (audioCtx.state === 'suspended') { audioCtx.resume().catch(() => {}); return; }
   const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const g = audioCtx.createGain();
@@ -1425,6 +1469,10 @@ function animateCoins(delta) {
 }
 function spawnConfetti(count, colors) {
   colors = colors || ['#e96f00','#ff9d26','#ffd60a','#30d158','#ff453a'];
+  // Reduce particle count on mobile for smoother frame rate
+  const isMobile = window.matchMedia('(max-width: 760px)').matches;
+  if (isMobile) count = Math.min(count, Math.ceil(count * 0.55));
+  const frag = document.createDocumentFragment();
   for (let i = 0; i < count; i++) {
     const c = document.createElement('div');
     c.className = 'confetti';
@@ -1433,9 +1481,10 @@ function spawnConfetti(count, colors) {
     c.style.setProperty('--dur', (2 + Math.random() * 2) + 's');
     c.style.animationDelay = (Math.random() * 0.4) + 's';
     c.style.transform = `rotate(${Math.random() * 360}deg)`;
-    document.body.appendChild(c);
+    frag.appendChild(c);
     setTimeout(() => c.remove(), 5000);
   }
+  document.body.appendChild(frag);
 }
 
 /* ============================================================
@@ -1454,6 +1503,8 @@ function setCasino(m) {
   document.documentElement.dataset.casino = m;
   LS.set('casino', m);
   $$('#casinoToggle button').forEach(b => b.classList.toggle('active', b.dataset.casino === m));
+  // Re-render so counts + lesson cards update for plan/casino mode
+  if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
 }
 $$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino); }));
 setCasino(LS.get('casino') || 'off');
@@ -1609,7 +1660,10 @@ function openSlot(lesson) {
   $('#slotModal').classList.add('open');
 }
 function closeSlot() {
-  stopRollingHaptic();
+  // Cancel any in-flight vibration pattern if user closes the modal mid-spin
+  if (state.hapticEnabled && navigator.vibrate) {
+    try { navigator.vibrate(0); } catch (_) {}
+  }
   $('.reels')?.classList.remove('spinning');
   $('#slotModal').classList.remove('open');
   currentLesson = null;
@@ -1652,7 +1706,20 @@ $('#spinBtn').addEventListener('click', async () => {
   $('#spinBtn').disabled = true;
   $('#spinBtn').textContent = 'Spinning…';
 
-  Sound.spin(); Haptic.heavy(); startRollingHaptic();
+  // Vibration: send the FULL spin pattern in one call so it survives in a user-gesture context.
+  // (Android supports navigator.vibrate; iOS Safari does not — there it stays silent.)
+  if (state.hapticEnabled && navigator.vibrate) {
+    try {
+      // ~3.2s pattern: ramp from quick rolling pulses to bigger thumps as reels land
+      navigator.vibrate([
+        20, 70, 18, 70, 18, 70, 18, 70, 18, 70,   // reel 0 spinning
+        25, 75, 22, 75, 22, 75, 22, 75,            // reel 1
+        35, 100, 30, 100, 35, 110, 45, 130,        // reel 2 — heavier
+        80                                          // final landing thump
+      ]);
+    } catch (_) {}
+  }
+  Sound.spin(); Haptic.heavy();
   $('.reels')?.classList.add('spinning');
   state.coins -= pickedAmount;
   state.totalSpins += 1;
@@ -1664,7 +1731,6 @@ $('#spinBtn').addEventListener('click', async () => {
   try {
     await Promise.all(reels.map((sel, i) => spinReel($(sel), real, durations[i])));
   } finally {
-    stopRollingHaptic();
     $('.reels')?.classList.remove('spinning');
   }
 
@@ -1757,37 +1823,67 @@ function openDetails(lesson) {
   $('#detailDate').textContent = `${dt.toLocaleDateString('de-AT', { weekday:'long', day:'2-digit', month:'long' })} · ${formatTime(lesson.startTime)} – ${formatTime(lesson.endTime)}`;
 
   const status = getLessonStatus(lesson);
-  const rows = [];
-  if (status === 'cancelled') rows.push({ label:'Status', value:'Entfällt', accent:'cancel' });
-  else if (status === 'irregular') rows.push({ label:'Status', value:'Suppliert', accent:'warn' });
-  else rows.push({ label:'Status', value:'Normal' });
+  const lid = lessonId(lesson);
+  const played = state.playedLessons[lid];
+  const casinoOn = document.documentElement.dataset.casino === 'on';
+  // showReal = casino mode OR already played → user is allowed to see real status & substitution data
+  const showReal = casinoOn || !!played;
 
+  const rows = [];
+
+  // Status (only when showReal — in plan mode hide entirely so user can't infer)
+  if (showReal) {
+    if (status === 'cancelled') rows.push({ label:'Status', value:'Entfällt', accent:'cancel' });
+    else if (status === 'irregular') rows.push({ label:'Status', value:'Suppliert', accent:'warn' });
+    else rows.push({ label:'Status', value:'Normal' });
+  }
+
+  // Teacher
   const te = lesson.te?.[0];
   if (te) {
     let html = '';
-    if (te.orgname && te.orgname !== te.name) {
+    if (showReal && te.orgname && te.orgname !== te.name) {
       html = `<span class="strike">${escapeHtml(te.orgname)}</span>${te.name ? ' → ' + escapeHtml(te.name) : ''}`;
-    } else html = escapeHtml(te.longname || te.name || '—');
+    } else {
+      // Plan mode: always show the planned (original) teacher
+      const planned = (te.orgname && te.orgname.trim()) ? te.orgname : (te.longname || te.name || '—');
+      html = escapeHtml(planned);
+    }
     rows.push({ label:'Lehrer', html });
   }
+
+  // Room
   const ro = lesson.ro?.[0];
   if (ro) {
     let html = '';
-    if (ro.orgname && ro.orgname !== ro.name) html = `<span class="strike">${escapeHtml(ro.orgname)}</span> → ${escapeHtml(ro.name)}`;
-    else html = escapeHtml(ro.name || '—');
+    if (showReal && ro.orgname && ro.orgname !== ro.name) {
+      html = `<span class="strike">${escapeHtml(ro.orgname)}</span> → ${escapeHtml(ro.name)}`;
+    } else {
+      const planned = (ro.orgname && ro.orgname.trim()) ? ro.orgname : (ro.name || '—');
+      html = escapeHtml(planned);
+    }
     rows.push({ label:'Raum', html });
   }
+
+  // Klasse — always show
   const kl = lesson.kl?.[0];
   if (kl) rows.push({ label:'Klasse', value: kl.longname || kl.name });
-  if (lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
-  if (lesson.info) rows.push({ label:'Info', value: lesson.info, stacked: true });
-  if (lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true });
-  if (lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
-  if (lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
-  if (lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
-    rows.push({ label:'Typ', value: lesson.activityType, accent:'warn' });
+
+  // Substitution / Vertretung info — only when showReal
+  if (showReal) {
+    if (lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
+    if (lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
+      rows.push({ label:'Typ', value: lesson.activityType, accent:'warn' });
+    }
   }
 
+  // Lehrer-Notiz (lstext) + Info — these are general lesson notes from teacher, always useful
+  if (lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true, highlight: true });
+  if (lesson.info && (showReal || !lesson.substText)) rows.push({ label:'Info', value: lesson.info, stacked: true });
+  if (showReal && lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
+  if (showReal && lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
+
+  // Hausaufgaben — always show, they're not spoiler
   const hwForLesson = (lastHomeworks || []).filter(hw => hw.lessonId === lesson.id);
   if (hwForLesson.length > 0) {
     const html = hwForLesson.map(hw => {
@@ -1798,22 +1894,21 @@ function openDetails(lesson) {
         ${due ? `<div class="hw-meta">Fällig: ${due}</div>` : ''}
       </div>`;
     }).join('');
-    rows.push({ label:'Hausaufgaben', html, stacked: true });
+    rows.push({ label: hwForLesson.length === 1 ? 'Hausaufgabe' : 'Hausaufgaben', html, stacked: true });
   }
 
-  const lid = lessonId(lesson);
-  const p = state.playedLessons[lid];
-  if (p) {
+  // Bereits gespielt — Ergebnis anzeigen
+  if (played) {
     const names = { normal:'Normal', irregular:'Suppliert', cancelled:'Entfällt' };
     rows.push({
-      label:'Deine Wette',
-      value: `${names[p.outcome]} · ${p.bet}c → ${p.result === 'win' ? '+' + p.payout : '−' + p.bet}c`,
-      accent: p.result === 'win' ? 'win' : 'cancel'
+      label:'Dein Tipp',
+      value: `${names[played.outcome]} · ${played.bet}c → ${played.result === 'win' ? '+' + played.payout : '−' + played.bet}c`,
+      accent: played.result === 'win' ? 'win' : 'cancel'
     });
   }
 
   $('#detailContent').innerHTML = rows.map(r => `
-    <div class="detail-row${r.stacked ? ' stacked' : ''}">
+    <div class="detail-row${r.stacked ? ' stacked' : ''}${r.highlight ? ' highlight' : ''}">
       <div class="detail-label">${escapeHtml(r.label)}</div>
       <div class="detail-value ${r.accent || ''}">${r.html != null ? r.html : escapeHtml(r.value)}</div>
     </div>
@@ -1919,9 +2014,19 @@ function renderWeek(lessons, monday) {
   const visibleDates = new Set(days.map(untisDateInt));
   const visibleLessons = allLessons.filter(l => visibleDates.has(Number(l.date)));
 
+  const suppCount = visibleLessons.filter(l => l._status === 'irregular').length;
+  const cancCount = visibleLessons.filter(l => l._status === 'cancelled').length;
+  const casinoOn = document.documentElement.dataset.casino === 'on';
   $('#lessonCount').textContent = visibleLessons.length;
-  $('#supplCount').textContent = visibleLessons.filter(l => l._status === 'irregular').length;
-  $('#cancelCount').textContent = visibleLessons.filter(l => l._status === 'cancelled').length;
+  $('#supplCount').textContent = suppCount;
+  $('#cancelCount').textContent = cancCount;
+  // Show supp/cancel counts always when > 0; hide in plan-mode (to prevent spoiling)
+  const showSupp = suppCount > 0 && casinoOn;
+  const showCanc = cancCount > 0 && casinoOn;
+  $('#metaSupp').hidden = !showSupp;
+  $('#metaSepSupp').hidden = !showSupp;
+  $('#metaCancel').hidden = !showCanc;
+  $('#metaSepCancel').hidden = !showCanc;
 
   const rangeEnd = days[days.length - 1];
   $('#weekLabel').textContent = viewMode === 'day'
