@@ -506,14 +506,21 @@
   }
   .bet-overlay.locked .icon { font-size: 19px; }
   .bet-overlay.locked .lbl { color: var(--ink-3); }
-  .lesson-card.played::after {
+  [data-casino="on"] .lesson-card.played::after {
     content: attr(data-result);
     position: absolute; top: 4px; right: 4px;
     font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
     padding: 2px 6px; border-radius: 999px;
   }
-  .lesson-card.played[data-result="win"]::after { color: var(--win); background: var(--win-bg); }
-  .lesson-card.played[data-result="lose"]::after { color: var(--cancel); background: var(--cancel-bg); }
+  [data-casino="on"] .lesson-card.played[data-result="win"]::after { color: var(--win); background: var(--win-bg); }
+  [data-casino="on"] .lesson-card.played[data-result="lose"]::after { color: var(--cancel); background: var(--cancel-bg); }
+  .homework-pill {
+    width: fit-content; margin-top: 4px;
+    padding: 2px 7px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
 
   .empty {
     text-align: center; padding: 60px 20px; color: var(--ink-3);
@@ -1238,8 +1245,11 @@ function isGambleUnlockedNow() {
 function playedFor(l) {
   return state.playedLessons[lessonId(l)];
 }
+function isCasinoMode() {
+  return document.documentElement.dataset.casino === 'on';
+}
 function shouldRevealOutcome(l) {
-  return !!playedFor(l);
+  return isCasinoMode() && !!playedFor(l);
 }
 function canGambleLesson(l) {
   return isTodayLesson(l) && isGambleUnlockedNow();
@@ -1778,6 +1788,9 @@ function homeworkMatchesLesson(hw, lesson) {
   const text = `${hw.text || ''} ${hw.remark || ''} ${hw.subject || ''}`.toLowerCase();
   return !!subject && text.includes(subject);
 }
+function homeworksForLesson(lesson) {
+  return (lastHomeworks || []).filter(hw => homeworkMatchesLesson(hw, lesson));
+}
 function homeworkText(hw) {
   return hw.text || hw.remark || hw.title || hw.task || '—';
 }
@@ -1825,15 +1838,15 @@ function openDetails(lesson) {
   const kl = lesson.kl?.[0];
   if (kl) rows.push({ label:'Klasse', value: kl.longname || kl.name });
   if (reveal && lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
-  if (lesson.info) rows.push({ label:'Notiz', value: lesson.info, stacked: true });
-  if (lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true });
-  if (lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
-  if (lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
+  if (reveal && lesson.info) rows.push({ label:'Notiz', value: lesson.info, stacked: true });
+  if (reveal && lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true });
+  if (reveal && lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
+  if (reveal && lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
   if (reveal && lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
     rows.push({ label:'Typ', value: lesson.activityType, accent:'warn' });
   }
 
-  const hwForLesson = (lastHomeworks || []).filter(hw => homeworkMatchesLesson(hw, lesson));
+  const hwForLesson = homeworksForLesson(lesson);
   const homeworkRows = [];
   if (hwForLesson.length > 0) {
     const html = hwForLesson.map(hw => {
@@ -1851,7 +1864,7 @@ function openDetails(lesson) {
 
   const lid = lessonId(lesson);
   const p = state.playedLessons[lid];
-  if (p) {
+  if (p && isCasinoMode()) {
     const names = { normal:'Normal', irregular:'Suppliert', cancelled:'Entfällt' };
     rows.push({
       label:'Deine Wette',
@@ -2035,6 +2048,7 @@ function renderCard(l) {
   const played = playedFor(l);
   const betOpen = !played && canGambleLesson(l);
   const betLabel = betOpen ? 'Tipp ab' : betLockLabel(l);
+  const homeworkCount = homeworksForLesson(l).length;
   const tt = [longName];
   if (reveal && l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
   if (reveal && l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
@@ -2047,6 +2061,7 @@ function renderCard(l) {
         ${room ? `<span>${room}</span>` : ''}
       </div>
       ${statText ? `<div class="stat">${statText}</div>` : ''}
+      ${homeworkCount ? `<div class="homework-pill">Hausübung${homeworkCount > 1 ? ` · ${homeworkCount}` : ''}</div>` : ''}
       <div class="bet-overlay ${betOpen ? 'open' : 'locked'}" data-lesson-id="${escapeHtml(lid)}" data-bet-open="${betOpen ? 'true' : 'false'}">
         <div class="icon">${betOpen ? '🎰' : '🔒'}</div>
         <div class="lbl">${escapeHtml(betLabel)}</div>
