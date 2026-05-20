@@ -152,6 +152,22 @@
     text-wrap: balance;
   }
   .logo em { color: var(--accent); font-style: normal; }
+  .logo-i {
+    position: relative;
+    display: inline-block;
+  }
+  .logo-i::after {
+    content: '';
+    position: absolute;
+    width: 0.18em;
+    height: 0.18em;
+    border-radius: 999px;
+    background: var(--accent);
+    top: 0.04em;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
   .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
   /* App segmented control */
@@ -948,7 +964,7 @@
 <div class="wrap">
 
   <header>
-    <div class="logo">Substi</div>
+    <div class="logo">Subst<span class="logo-i">i</span></div>
     <div class="header-actions">
       <div class="toggle" id="themeToggle">
         <button data-theme="dark">Dark</button>
@@ -1053,7 +1069,7 @@
 
   <footer>
     <span>Substi</span>
-    <span>v1.5 · Sitebuilt</span>
+    <span>v1.5 · powered by WebUntis</span>
   </footer>
 </div>
 
