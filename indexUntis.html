@@ -329,13 +329,6 @@
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
   }
-  .head-left {
-    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
-  }
-  .smbtn.icon-only {
-    width: 38px; padding: 0; font-size: 16px;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
   .nav { display: flex; gap: 6px; }
   .view-toggle {
     display: inline-flex; gap: 0; padding: 3px;
@@ -774,17 +767,10 @@
     border-radius: 2px;
   }
   @keyframes sheetRiseJiggle {
-    0%   { opacity: 0; transform: translate3d(0, 44px, 0) scale(0.97); }
-    55%  { opacity: 1; transform: translate3d(0, -6px, 0) scale(1.008); }
-    78%  { transform: translate3d(0, 2px, 0) scale(0.998); }
+    0% { opacity: 0; transform: translate3d(0, 38px, 0) scale(0.98); }
+    58% { opacity: 1; transform: translate3d(0, -5px, 0) scale(1.006); }
+    82% { transform: translate3d(0, 2px, 0) scale(0.998); }
     100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-  }
-  @keyframes tabFadeIn {
-    from { opacity: 0; transform: translate3d(0, 4px, 0); }
-    to   { opacity: 1; transform: translate3d(0, 0, 0); }
-  }
-  .details-list, .info-list {
-    animation: tabFadeIn .22s var(--ease-out);
   }
   @keyframes pickPop {
     0% { transform: scale(0.96); }
@@ -796,9 +782,8 @@
     to { transform: translate3d(0,-1px,0) scale(1.003); }
   }
   @keyframes reelCabinetShake {
-    0%   { transform: translate3d(-0.5px, 0, 0); }
-    50%  { transform: translate3d(0, -0.5px, 0); }
-    100% { transform: translate3d(0.5px, 0, 0); }
+    from { transform: translate3d(-0.5px,0,0); }
+    to { transform: translate3d(0.5px,0,0); }
   }
   @keyframes confetti-fall {
     0% { opacity: 0; transform: translateY(0) rotate(0); }
@@ -908,63 +893,6 @@
   .detail-empty {
     padding: 18px 0; color: var(--ink-3);
     font-size: 14px; font-weight: 600;
-  }
-
-  /* ============================================================
-     INFO LIST — used in Absences / Office Hours / Exams modals
-  ============================================================ */
-  .info-list { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
-  .info-item {
-    display: flex; flex-direction: column; gap: 4px;
-    padding: 14px 16px;
-    background: var(--fill-2); border-radius: var(--r-md);
-    border-left: 3px solid var(--accent);
-    transition: background .15s var(--ease-out);
-  }
-  .info-item.warn { border-color: var(--warn); }
-  .info-item.cancel { border-color: var(--cancel); }
-  .info-item.win { border-color: var(--win); }
-  .info-item .ii-title {
-    font-family: var(--ff-r); font-size: 16px; font-weight: 700;
-    letter-spacing: -0.01em; line-height: 1.2;
-  }
-  .info-item .ii-meta {
-    font-size: 13px; color: var(--ink-3); font-weight: 500;
-    display: flex; gap: 8px; flex-wrap: wrap;
-  }
-  .info-item .ii-meta b { color: var(--ink-2); font-weight: 600; }
-  .info-item .ii-body {
-    font-size: 14px; color: var(--ink-2); font-weight: 500;
-    line-height: 1.4; margin-top: 2px;
-  }
-  .info-item .ii-tag {
-    display: inline-block;
-    padding: 2px 8px; border-radius: 999px;
-    font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background: var(--fill); color: var(--ink-3);
-  }
-  .info-item.warn .ii-tag { background: var(--warn-bg); color: var(--warn); }
-  .info-item.cancel .ii-tag { background: var(--cancel-bg); color: var(--cancel); }
-  .info-item.win .ii-tag { background: var(--win-bg); color: var(--win); }
-
-  /* Group header inside info list (e.g. "Montag 18.05.") */
-  .info-group-header {
-    font-size: 11px; font-weight: 700; color: var(--ink-3);
-    text-transform: uppercase; letter-spacing: 0.06em;
-    padding: 16px 4px 4px; margin-top: 4px;
-  }
-  .info-group-header:first-child { padding-top: 4px; margin-top: 0; }
-
-  /* Exam badge on lesson card */
-  .lesson-card .exam-badge {
-    position: absolute; top: 4px; left: 4px;
-    font-size: 11px; line-height: 1;
-    padding: 2px 4px;
-    border-radius: 6px;
-    background: var(--accent); color: white;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-    z-index: 1;
   }
 
   /* ============================================================
@@ -1109,12 +1037,7 @@
   <!-- WEEK VIEW -->
   <section id="weekView" style="display:none;">
     <div class="tt-head">
-      <div class="head-left">
-        <button class="smbtn" id="logoutBtn">Logout</button>
-        <button class="smbtn icon-only" id="openAbsences" title="Abwesenheit">🏖️</button>
-        <button class="smbtn icon-only" id="openOfficeHours" title="Sprechzeiten">📞</button>
-        <button class="smbtn icon-only" id="openExams" title="Prüfungen">📝</button>
-      </div>
+      <button class="smbtn" id="logoutBtn">Logout</button>
       <div class="nav">
         <button class="smbtn" id="prevBtn">← Prev</button>
         <button class="smbtn primary" id="todayBtn">Heute</button>
@@ -1239,48 +1162,10 @@
     <div class="sub" id="detailDate">—</div>
     <h2 id="detailTitle">—</h2>
     <div class="detail-tabs" id="detailTabs">
-      <button data-detail-tab="info" class="active">Übersicht</button>
+      <button data-detail-tab="info" class="active">Info</button>
       <button data-detail-tab="homework">Hausübungen</button>
-      <button data-detail-tab="notes">Notizen</button>
-      <button data-detail-tab="exams">Prüfungen</button>
     </div>
     <div class="details-list" id="detailContent"></div>
-  </div>
-</div>
-
-<!-- ===================== ABSENCES MODAL ===================== -->
-<div class="modal-bg" id="absencesModal">
-  <div class="modal-card">
-    <button class="modal-close" id="absencesClose">✕</button>
-    <h2>Abwesenheit<em>.</em></h2>
-    <div class="sub" id="absencesSub">Diese Woche</div>
-    <div class="info-list" id="absencesContent">
-      <div class="detail-empty">Keine Daten geladen.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ===================== OFFICE HOURS MODAL ===================== -->
-<div class="modal-bg" id="officeHoursModal">
-  <div class="modal-card">
-    <button class="modal-close" id="officeHoursClose">✕</button>
-    <h2>Sprechzeiten<em>.</em></h2>
-    <div class="sub">Alle Lehrer & ihre Sprechstunden</div>
-    <div class="info-list" id="officeHoursContent">
-      <div class="detail-empty">Lade Sprechzeiten…</div>
-    </div>
-  </div>
-</div>
-
-<!-- ===================== EXAMS MODAL ===================== -->
-<div class="modal-bg" id="examsModal">
-  <div class="modal-card">
-    <button class="modal-close" id="examsClose">✕</button>
-    <h2>Prüfungen<em>.</em></h2>
-    <div class="sub" id="examsSub">Diese Woche</div>
-    <div class="info-list" id="examsContent">
-      <div class="detail-empty">Keine Prüfungen.</div>
-    </div>
   </div>
 </div>
 
@@ -1897,10 +1782,9 @@ $('#resetBtn').addEventListener('click', () => {
 /* ============================================================
    DETAILS MODAL
 ============================================================ */
-let currentDetailPanels = { info: '', homework: '', notes: '', exams: '' };
+let currentDetailPanels = { info: '', homework: '' };
 function setDetailTab(tab) {
-  const valid = ['info', 'homework', 'notes', 'exams'];
-  const next = valid.includes(tab) ? tab : 'info';
+  const next = tab === 'homework' ? 'homework' : 'info';
   $$('#detailTabs button').forEach(btn => btn.classList.toggle('active', btn.dataset.detailTab === next));
   $('#detailContent').innerHTML = currentDetailPanels[next] || '<div class="detail-empty">Keine Einträge.</div>';
 }
@@ -1914,59 +1798,18 @@ function detailRowsHtml(rows) {
   `).join('');
 }
 function homeworkMatchesLesson(hw, lesson) {
-  const lessonDate = Number(lesson.date);
-  const lessonId_ = Number(lesson.id);
-  const lessonSubjName = (lesson.su?.[0]?.name || lesson.su?.[0]?.longname || '').toLowerCase().trim();
-
-  // PRIMARY 1: homework was entered IN this lesson (lessonId match)
   const ids = [hw.lessonId, hw.lesson?.id, hw.lesson?.lessonId, hw.lessons?.[0]?.id, hw.lessons?.[0]?.lessonId]
-    .filter(v => v != null).map(Number);
-  if (ids.includes(lessonId_)) return true;
-
-  // PRIMARY 2: homework is DUE on this lesson's day AND same subject
-  const dueDate = Number(hw.dueDate || hw.lessonDate || 0);
-  if (dueDate && dueDate === lessonDate && lessonSubjName) {
-    // Try to look up the original homework lesson's subject via lastHomeworkLessons
-    const refLessonId = ids[0];
-    if (refLessonId != null) {
-      const ref = lastHomeworkLessons.find(l => Number(l.id) === refLessonId);
-      if (ref) {
-        const refSubj = (ref.subject || ref.su?.[0]?.name || ref.name || '').toLowerCase().trim();
-        if (refSubj && refSubj === lessonSubjName) return true;
-      }
-    }
-    // Fallback: subject name appears in homework text
-    const text = `${hw.text || ''} ${hw.remark || ''} ${hw.subject || ''}`.toLowerCase();
-    if (text.includes(lessonSubjName)) return true;
-  }
-
-  // FALLBACK: same date AND subject mentioned in text (no lessonId info at all)
-  const hwDate = Number(hw.date || 0);
-  if (hwDate && hwDate === lessonDate && lessonSubjName) {
-    const text = `${hw.text || ''} ${hw.remark || ''}`.toLowerCase();
-    if (text.includes(lessonSubjName)) return true;
-  }
-
-  return false;
+    .filter(v => v != null)
+    .map(v => Number(v));
+  if (ids.includes(Number(lesson.id))) return true;
+  const date = Number(hw.date || hw.dueDate || hw.lessonDate || 0);
+  if (date && date !== Number(lesson.date)) return false;
+  const subject = (lesson.su?.[0]?.name || lesson.su?.[0]?.longname || '').toLowerCase();
+  const text = `${hw.text || ''} ${hw.remark || ''} ${hw.subject || ''}`.toLowerCase();
+  return !!subject && text.includes(subject);
 }
 function homeworksForLesson(lesson) {
   return (lastHomeworks || []).filter(hw => homeworkMatchesLesson(hw, lesson));
-}
-function examsForLessonFn(lesson) {
-  const lessonDate = Number(lesson.date);
-  const lessonStart = Number(lesson.startTime);
-  const lessonEnd = Number(lesson.endTime);
-  const lessonSubjName = (lesson.su?.[0]?.name || lesson.su?.[0]?.longname || '').toLowerCase().trim();
-  return (lastExams || []).filter(ex => {
-    if (Number(ex.examDate || ex.date) !== lessonDate) return false;
-    // Match by subject name OR overlapping time
-    const examSubj = (ex.subject || ex.su?.[0]?.name || ex.name || '').toLowerCase();
-    if (lessonSubjName && examSubj.includes(lessonSubjName)) return true;
-    // Match by time window
-    const exStart = Number(ex.startTime || 0);
-    if (exStart && lessonStart && lessonEnd && exStart >= lessonStart && exStart < lessonEnd) return true;
-    return false;
-  });
 }
 function homeworkText(hw) {
   return hw.text || hw.remark || hw.title || hw.task || '—';
@@ -2014,21 +1857,15 @@ function openDetails(lesson) {
   }
   const kl = lesson.kl?.[0];
   if (kl) rows.push({ label:'Klasse', value: kl.longname || kl.name });
-  // INFO tab: basic only (status, teacher, room, class, type, bet result)
-  // Move all text-heavy notes to NOTES tab
+  if (reveal && lesson.substText) rows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
+  if (reveal && lesson.info) rows.push({ label:'Notiz', value: lesson.info, stacked: true });
+  if (reveal && lesson.lstext) rows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true });
+  if (reveal && lesson.bkText) rows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
+  if (reveal && lesson.bkRemark) rows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
   if (reveal && lesson.activityType && lesson.activityType !== 'Unterricht' && lesson.activityType !== 'Lesson') {
     rows.push({ label:'Typ', value: lesson.activityType, accent:'warn' });
   }
 
-  // NOTES tab — all teacher notes, substitution info, booking remarks
-  const notesRows = [];
-  if (reveal && lesson.substText) notesRows.push({ label:'Vertretung', value: lesson.substText, accent:'warn', stacked: true });
-  if (reveal && lesson.info) notesRows.push({ label:'Notiz', value: lesson.info, stacked: true });
-  if (reveal && lesson.lstext) notesRows.push({ label:'Lehrer-Notiz', value: lesson.lstext, stacked: true });
-  if (reveal && lesson.bkText) notesRows.push({ label:'Buchung', value: lesson.bkText, stacked: true });
-  if (reveal && lesson.bkRemark) notesRows.push({ label:'Anmerkung', value: lesson.bkRemark, stacked: true });
-
-  // HOMEWORK tab
   const hwForLesson = homeworksForLesson(lesson);
   const homeworkRows = [];
   if (hwForLesson.length > 0) {
@@ -2041,22 +1878,8 @@ function openDetails(lesson) {
       </div>`;
     }).join('');
     homeworkRows.push({ label:'Hausübungen', html, stacked: true });
-  }
-
-  // EXAMS tab
-  const examsForLesson = examsForLessonFn(lesson);
-  const examRows = [];
-  if (examsForLesson.length > 0) {
-    const html = examsForLesson.map(ex => {
-      const t = ex.startTime ? formatTime(ex.startTime) : '';
-      const dur = ex.startTime && ex.endTime ? `${formatTime(ex.startTime)} – ${formatTime(ex.endTime)}` : t;
-      const meta = [dur, ex.examType, ex.text || ex.name].filter(Boolean).join(' · ');
-      return `<div class="detail-hw" style="border-left-color: var(--cancel);">
-        <div class="hw-text">${escapeHtml(ex.name || ex.text || 'Prüfung')}</div>
-        ${meta ? `<div class="hw-meta">${escapeHtml(meta)}</div>` : ''}
-      </div>`;
-    }).join('');
-    examRows.push({ label:'Prüfungen', html, stacked: true });
+  } else {
+    homeworkRows.push({ label:'Hausübungen', html:'<div class="detail-empty">Keine Hausübungen für diese Stunde gefunden.</div>', stacked: true });
   }
 
   const lid = lessonId(lesson);
@@ -2072,9 +1895,7 @@ function openDetails(lesson) {
 
   currentDetailPanels = {
     info: detailRowsHtml(rows),
-    homework: homeworkRows.length ? detailRowsHtml(homeworkRows) : '<div class="detail-empty">Keine Hausübungen für diese Stunde gefunden.</div>',
-    notes: notesRows.length ? detailRowsHtml(notesRows) : (reveal ? '<div class="detail-empty">Keine Notizen für diese Stunde.</div>' : '<div class="detail-empty">Notizen sind im Plan-Modus versteckt.</div>'),
-    exams: examRows.length ? detailRowsHtml(examRows) : '<div class="detail-empty">Keine Prüfungen in dieser Stunde.</div>'
+    homework: detailRowsHtml(homeworkRows)
   };
   setDetailTab('info');
   $('#detailModal').classList.add('open');
@@ -2091,157 +1912,6 @@ $$('#detailTabs button').forEach(btn => {
 });
 
 /* ============================================================
-   ABSENCES / OFFICE HOURS / EXAMS MODALS
-============================================================ */
-function formatTimeRange(s, e) {
-  const a = s != null ? formatTime(s) : '';
-  const b = e != null ? formatTime(e) : '';
-  return a && b ? `${a} – ${b}` : (a || b || '');
-}
-function groupByDay(items, dateFn) {
-  const map = new Map();
-  for (const it of items) {
-    const d = dateFn(it);
-    if (!d) continue;
-    if (!map.has(d)) map.set(d, []);
-    map.get(d).push(it);
-  }
-  return Array.from(map.entries()).sort(([a],[b]) => a - b);
-}
-
-function renderAbsences() {
-  const el = $('#absencesContent');
-  if (!lastAbsences || lastAbsences.length === 0) {
-    el.innerHTML = '<div class="detail-empty">Keine Abwesenheiten diese Woche. 🎉</div>';
-    return;
-  }
-  const grouped = groupByDay(lastAbsences, a => Number(a.startDate || a.date || 0));
-  let html = '';
-  for (const [date, items] of grouped) {
-    html += `<div class="info-group-header">${escapeHtml(formatUntisDateLabel(date))}</div>`;
-    for (const ab of items) {
-      const time = formatTimeRange(ab.startTime, ab.endTime);
-      const excused = ab.excused === true || ab.excuseStatus === 'excused' || (ab.excuse && ab.excuse.id);
-      const reason = ab.reason || ab.absenceReason || ab.text || '';
-      const tag = excused ? 'Entschuldigt' : 'Offen';
-      const cls = excused ? 'win' : 'warn';
-      html += `<div class="info-item ${cls}">
-        <div class="ii-title">${escapeHtml(time || 'Ganztags')} <span class="ii-tag">${escapeHtml(tag)}</span></div>
-        ${reason ? `<div class="ii-body">${escapeHtml(reason)}</div>` : ''}
-      </div>`;
-    }
-  }
-  el.innerHTML = html;
-}
-
-function renderExams() {
-  const el = $('#examsContent');
-  if (!lastExams || lastExams.length === 0) {
-    el.innerHTML = '<div class="detail-empty">Keine Prüfungen diese Woche. 😎</div>';
-    return;
-  }
-  const grouped = groupByDay(lastExams, ex => Number(ex.examDate || ex.date || 0));
-  let html = '';
-  for (const [date, items] of grouped) {
-    html += `<div class="info-group-header">${escapeHtml(formatUntisDateLabel(date))}</div>`;
-    for (const ex of items) {
-      const time = formatTimeRange(ex.startTime, ex.endTime);
-      const subject = ex.subject || ex.su?.[0]?.longname || ex.su?.[0]?.name || '';
-      const teacher = (ex.teachers || ex.te || []).map(t => t.name || t).join(', ');
-      const room = (ex.rooms || ex.ro || []).map(r => r.name || r).join(', ');
-      const metaParts = [time, ex.examType, teacher && `Lehrer: ${teacher}`, room && `Raum: ${room}`].filter(Boolean);
-      html += `<div class="info-item cancel">
-        <div class="ii-title">${escapeHtml(ex.name || subject || 'Prüfung')} <span class="ii-tag">${escapeHtml(ex.examType || 'Prüfung')}</span></div>
-        ${metaParts.length ? `<div class="ii-meta">${metaParts.map(m => `<span>${escapeHtml(m)}</span>`).join(' · ')}</div>` : ''}
-        ${ex.text ? `<div class="ii-body">${escapeHtml(ex.text)}</div>` : ''}
-      </div>`;
-    }
-  }
-  el.innerHTML = html;
-}
-
-function renderOfficeHours() {
-  const el = $('#officeHoursContent');
-  if (!officeHoursData) {
-    el.innerHTML = '<div class="detail-empty">Lade Sprechzeiten…</div>';
-    return;
-  }
-  if (officeHoursData.length === 0) {
-    el.innerHTML = '<div class="detail-empty">Keine Sprechzeiten verfügbar (oder von der Schule nicht freigegeben).</div>';
-    return;
-  }
-  // Sort by teacher name
-  const sorted = officeHoursData.slice().sort((a, b) => {
-    const aN = (a.displayNameTeacher || a.teacherName || a.teacher || '').toString();
-    const bN = (b.displayNameTeacher || b.teacherName || b.teacher || '').toString();
-    return aN.localeCompare(bN);
-  });
-  let html = '';
-  for (const oh of sorted) {
-    const teacher = oh.displayNameTeacher || oh.teacherName || oh.teacher || '?';
-    const subject = oh.subjectShort || oh.subject || '';
-    const room = oh.displayNameRoom || oh.roomName || oh.room || '';
-    const day = oh.weekDay || oh.day || '';
-    const dateStr = oh.weekDay || (oh.date ? formatUntisDateLabel(oh.date) : '');
-    const time = formatTimeRange(oh.startTime, oh.endTime);
-    const note = oh.message || oh.note || oh.text || '';
-    const metaParts = [dateStr, time, room && `Raum ${room}`, subject].filter(Boolean);
-    html += `<div class="info-item">
-      <div class="ii-title">${escapeHtml(teacher)}${subject ? ` <span class="ii-tag">${escapeHtml(subject)}</span>` : ''}</div>
-      ${metaParts.length ? `<div class="ii-meta">${metaParts.map(m => `<span>${escapeHtml(m)}</span>`).join(' · ')}</div>` : ''}
-      ${note ? `<div class="ii-body">${escapeHtml(note)}</div>` : ''}
-    </div>`;
-  }
-  el.innerHTML = html;
-}
-
-async function loadOfficeHours(force = false) {
-  if (officeHoursLoading) return;
-  if (officeHoursData && !force) return;
-  if (!creds) return;
-  officeHoursLoading = true;
-  $('#officeHoursContent').innerHTML = '<div class="detail-empty"><span class="spinner"></span>Lade Sprechzeiten…</div>';
-  try {
-    const r = await apiPost('/api/office-hours', creds);
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Fehler beim Laden');
-    officeHoursData = Array.isArray(d.officeHours) ? d.officeHours : [];
-    renderOfficeHours();
-  } catch (e) {
-    $('#officeHoursContent').innerHTML = `<div class="detail-empty">Fehler: ${escapeHtml(e.message)}</div>`;
-  } finally {
-    officeHoursLoading = false;
-  }
-}
-
-function openAbsencesModal() {
-  Sound.tap(); Haptic.select();
-  renderAbsences();
-  $('#absencesModal').classList.add('open');
-}
-function openExamsModal() {
-  Sound.tap(); Haptic.select();
-  renderExams();
-  $('#examsModal').classList.add('open');
-}
-function openOfficeHoursModal() {
-  Sound.tap(); Haptic.select();
-  renderOfficeHours();
-  $('#officeHoursModal').classList.add('open');
-  loadOfficeHours();
-}
-
-$('#openAbsences').addEventListener('click', openAbsencesModal);
-$('#openExams').addEventListener('click', openExamsModal);
-$('#openOfficeHours').addEventListener('click', openOfficeHoursModal);
-$('#absencesClose').addEventListener('click', () => { Sound.tap(); $('#absencesModal').classList.remove('open'); });
-$('#absencesModal').addEventListener('click', (e) => { if (e.target === $('#absencesModal')) $('#absencesModal').classList.remove('open'); });
-$('#examsClose').addEventListener('click', () => { Sound.tap(); $('#examsModal').classList.remove('open'); });
-$('#examsModal').addEventListener('click', (e) => { if (e.target === $('#examsModal')) $('#examsModal').classList.remove('open'); });
-$('#officeHoursClose').addEventListener('click', () => { Sound.tap(); $('#officeHoursModal').classList.remove('open'); });
-$('#officeHoursModal').addEventListener('click', (e) => { if (e.target === $('#officeHoursModal')) $('#officeHoursModal').classList.remove('open'); });
-
-/* ============================================================
    TIMETABLE
 ============================================================ */
 const loginView = $('#loginView');
@@ -2252,8 +1922,7 @@ const ttMsg = $('#ttMsg');
 let creds = null;
 let viewMode = LS.get('viewMode') === 'week' ? 'week' : 'day';
 let currentMonday = normalizeRangeStart(new Date(), viewMode);
-let lastLessons = null, lastMonday = null, lastHomeworks = [], lastHomeworkLessons = [], lastAbsences = [], lastExams = [];
-let officeHoursData = null, officeHoursLoading = false;
+let lastLessons = null, lastMonday = null, lastHomeworks = [];
 
 ['server','school','user'].forEach(id => { const v = LS.get(id); if (v) $('#' + id).value = v; });
 
@@ -2311,18 +1980,6 @@ async function fetchWeek(monday) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'unbekannter fehler');
     lastHomeworks = data.homeworks || [];
-    lastHomeworkLessons = data.homeworkLessons || [];
-    lastAbsences = data.absences || [];
-    lastExams = data.exams || [];
-    console.log('[Substi] Loaded:', {
-      lessons: (data.timetable || []).length,
-      homeworks: lastHomeworks.length,
-      homeworkLessons: lastHomeworkLessons.length,
-      absences: lastAbsences.length,
-      exams: lastExams.length,
-    });
-    if (lastHomeworks.length > 0) console.log('[Substi] First homework:', lastHomeworks[0]);
-    if (lastAbsences.length > 0) console.log('[Substi] First absence:', lastAbsences[0]);
     renderWeek(data.timetable || [], monday);
     loginView.style.display = 'none'; weekView.style.display = 'block';
     setStatus(msg, ''); setStatus(ttMsg, '');
@@ -2412,14 +2069,12 @@ function renderCard(l) {
   const betOpen = !played && canGambleLesson(l);
   const betLabel = betOpen ? 'Tipp ab' : betLockLabel(l);
   const homeworkCount = homeworksForLesson(l).length;
-  const examCount = examsForLessonFn(l).length;
   const tt = [longName];
   if (reveal && l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
   if (reveal && l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
   if (reveal && l.substText) tt.push(l.substText);
   return `
     <div class="lesson-card ${status} ${played?'played':''}" data-lesson-id="${escapeHtml(lid)}" ${played?`data-result="${played.result}"`:''} title="${escapeHtml(tt.filter(Boolean).join(' · '))}">
-      ${examCount ? `<div class="exam-badge" title="Prüfung">📝</div>` : ''}
       <div class="subj">${escapeHtml(subj)}</div>
       <div class="detail">
         ${teacher ? `<b>${teacher}</b>` : ''}

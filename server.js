@@ -108,26 +108,127 @@ app.post('/api/timetable-week', async (req, res) => {
 
     const result = await withUntis(creds, async (u) => {
       const timetable = await u.getOwnTimetableForRange(start, end);
-      // Homework is optional, swallow errors if not supported
+
+      // Homework (primary endpoint)
       let hwResp = null;
-      try { hwResp = await u.getHomeWorksFor(start, end); } catch (_) {}
-      return { timetable, hwResp };
+      try { hwResp = await u.getHomeWorksFor(start, end); }
+      catch (err) { console.log('[Homework getHomeWorksFor]', err.message); }
+
+      // Homework fallback (different endpoint shape on some schools)
+      let hwAltResp = null;
+      if (!hwResp || (Array.isArray(hwResp?.homeworks) && hwResp.homeworks.length === 0)) {
+        try { hwAltResp = await u.getHomeWorkAndLessons(start, end); }
+        catch (err) { console.log('[Homework getHomeWorkAndLessons]', err.message); }
+      }
+
+      // Absences / Anwesenheit
+      let absResp = null;
+      try { absResp = await u.getAbsentLesson(start, end); }
+      catch (err) { console.log('[Absences]', err.message); }
+
+      // Exams / Prüfungen
+      let examsResp = null;
+      try { examsResp = await u.getExamsForRange(start, end); }
+      catch (err) { console.log('[Exams]', err.message); }
+
+      return { timetable, hwResp, hwAltResp, absResp, examsResp };
     });
 
     result.timetable.sort((a, b) => (a.date - b.date) || (a.startTime - b.startTime));
 
-    // Extract homeworks (API shape varies between versions)
+    // Extract homeworks robustly (API shape varies between school configs / library versions)
     let homeworks = [];
-    const h = result.hwResp;
-    if (h) {
-      if (Array.isArray(h)) homeworks = h;
-      else if (Array.isArray(h.homeworks)) homeworks = h.homeworks;
-      else if (h.data && Array.isArray(h.data.homeworks)) homeworks = h.data.homeworks;
+    let homeworkLessons = [];
+    const extractHw = (h) => {
+      if (!h) return;
+      if (Array.isArray(h)) { homeworks = homeworks.concat(h); return; }
+      if (Array.isArray(h.homeworks)) homeworks = homeworks.concat(h.homeworks);
+      if (Array.isArray(h.lessons)) homeworkLessons = homeworkLessons.concat(h.lessons);
+      if (h.data && Array.isArray(h.data.homeworks)) homeworks = homeworks.concat(h.data.homeworks);
+      if (h.data && Array.isArray(h.data.lessons)) homeworkLessons = homeworkLessons.concat(h.data.lessons);
+      if (h.records && Array.isArray(h.records)) homeworks = homeworks.concat(h.records);
+    };
+    extractHw(result.hwResp);
+    extractHw(result.hwAltResp);
+    // Deduplicate homeworks by id
+    const seenHwIds = new Set();
+    homeworks = homeworks.filter(hw => {
+      const id = hw.id || hw.homeworkId;
+      if (id == null) return true;
+      if (seenHwIds.has(id)) return false;
+      seenHwIds.add(id);
+      return true;
+    });
+
+    // Extract absences
+    let absences = [];
+    const a = result.absResp;
+    if (a) {
+      if (Array.isArray(a)) absences = a;
+      else if (Array.isArray(a.absences)) absences = a.absences;
+      else if (a.data && Array.isArray(a.data.absences)) absences = a.data.absences;
     }
 
-    res.json({ ok: true, rangeStart, rangeEnd, timetable: result.timetable, homeworks });
+    // Extract exams
+    let exams = [];
+    const e = result.examsResp;
+    if (e) {
+      if (Array.isArray(e)) exams = e;
+      else if (Array.isArray(e.exams)) exams = e.exams;
+      else if (e.data && Array.isArray(e.data.exams)) exams = e.data.exams;
+    }
+
+    console.log(`[Week ${rangeStart}→${rangeEnd}] lessons=${result.timetable.length} hw=${homeworks.length} abs=${absences.length} exams=${exams.length}`);
+    if (homeworks.length > 0) {
+      console.log('[Homework sample]', JSON.stringify(homeworks[0]));
+    }
+
+    res.json({
+      ok: true,
+      rangeStart, rangeEnd,
+      timetable: result.timetable,
+      homeworks,
+      homeworkLessons,
+      absences,
+      exams,
+    });
   } catch (err) {
     console.error('[Untis Week Error]', err.message);
+    res.status(401).json({ error: err.message || 'Login fehlgeschlagen' });
+  }
+});
+
+/* ============================================================
+   OFFICE HOURS (Sprechzeiten) — uses raw JSON-RPC since the
+   webuntis library doesn't expose this method directly
+============================================================ */
+app.post('/api/office-hours', async (req, res) => {
+  const creds = req.body || {};
+  if (!validCreds(creds)) return res.status(400).json({ error: 'Fehlende Felder.' });
+  try {
+    const officeHours = await withUntis(creds, async (u) => {
+      // Try the internal JSON-RPC method — works on most modern WebUntis installs
+      try {
+        const r = await u._request('getOfficeHours2017', {});
+        if (Array.isArray(r)) return r;
+        if (r && Array.isArray(r.officeHours)) return r.officeHours;
+        if (r && Array.isArray(r.entries)) return r.entries;
+        return r || [];
+      } catch (err) {
+        console.log('[OfficeHours raw call failed]', err.message);
+        // Fallback: try the old endpoint
+        try {
+          const r2 = await u._request('getOfficeHours', {});
+          return r2 || [];
+        } catch (err2) {
+          console.log('[OfficeHours old endpoint also failed]', err2.message);
+          return [];
+        }
+      }
+    });
+    res.json({ ok: true, officeHours: Array.isArray(officeHours) ? officeHours : [] });
+  } catch (err) {
+    console.error('[OfficeHours Error]', err.message);
     res.status(401).json({ error: err.message || 'Login fehlgeschlagen' });
   }
 });
