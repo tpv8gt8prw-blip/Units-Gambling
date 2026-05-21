@@ -198,6 +198,19 @@
   }
   .icon-btn:hover { background: var(--fill-2); }
   .icon-btn:active { transform: scale(0.92); opacity: 0.7; }
+  /* Custom SVG icons (replace emoji) */
+  .icon-svg {
+    display: inline-block; vertical-align: middle;
+    width: 18px; height: 18px;
+    flex-shrink: 0;
+    color: var(--ink);
+  }
+  .icon-svg.sm { width: 14px; height: 14px; stroke-width: 2; }
+  .icon-svg.md { width: 18px; height: 18px; }
+  .icon-svg.lg { width: 22px; height: 22px; stroke-width: 1.65; }
+  .icon-svg.xl { width: 32px; height: 32px; stroke-width: 1.5; }
+  .icon-btn .icon-svg { width: 20px; height: 20px; }
+  .smbtn.icon-only .icon-svg { width: 18px; height: 18px; }
 
   /* ============================================================
      WALLET (Casino on)
@@ -519,7 +532,13 @@
   }
   [data-casino="on"] .lesson-card:not(.played) .bet-overlay { display: flex; }
   [data-casino="on"] .lesson-card.played .bet-overlay { display: none; }
-  .bet-overlay .icon { font-size: 22px; }
+  .bet-overlay .icon {
+    font-size: 22px; line-height: 0;
+    color: var(--ink); opacity: 0.92;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bet-overlay .icon .icon-svg { width: 22px; height: 22px; }
+  .bet-overlay.locked .icon { opacity: 0.6; }
   .bet-overlay .lbl {
     font-size: 10px; font-weight: 750; color: var(--ink-2);
     text-transform: uppercase; letter-spacing: 0.05em;
@@ -959,12 +978,16 @@
   /* Exam badge on lesson card */
   .lesson-card .exam-badge {
     position: absolute; top: 4px; left: 4px;
-    font-size: 11px; line-height: 1;
-    padding: 2px 4px;
+    line-height: 0;
+    padding: 3px;
     border-radius: 6px;
     background: var(--accent); color: white;
     box-shadow: 0 1px 4px rgba(0,0,0,0.15);
     z-index: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .lesson-card .exam-badge .icon-svg {
+    width: 12px; height: 12px; stroke-width: 2.2;
   }
 
   /* ============================================================
@@ -1046,7 +1069,7 @@
         <button data-casino="off" class="active">Plan</button>
         <button data-casino="on">Casino</button>
       </div>
-      <button class="icon-btn" id="soundToggle" title="Sound">🔊</button>
+      <button class="icon-btn" id="soundToggle" title="Sound" aria-label="Sound umschalten"></button>
     </div>
   </header>
 
@@ -1111,9 +1134,9 @@
     <div class="tt-head">
       <div class="head-left">
         <button class="smbtn" id="logoutBtn">Logout</button>
-        <button class="smbtn icon-only" id="openAbsences" title="Abwesenheit">🏖️</button>
-        <button class="smbtn icon-only" id="openOfficeHours" title="Sprechzeiten">📞</button>
-        <button class="smbtn icon-only" id="openExams" title="Prüfungen">📝</button>
+        <button class="smbtn icon-only" id="openAbsences" title="Abwesenheit" aria-label="Abwesenheit"></button>
+        <button class="smbtn icon-only" id="openOfficeHours" title="Sprechzeiten" aria-label="Sprechzeiten"></button>
+        <button class="smbtn icon-only" id="openExams" title="Prüfungen" aria-label="Prüfungen"></button>
       </div>
       <div class="nav">
         <button class="smbtn" id="prevBtn">← Prev</button>
@@ -1286,6 +1309,27 @@
 
 <script>
 'use strict';
+
+/* ============================================================
+   ICONS — custom minimal monoline SVGs (replace emojis)
+============================================================ */
+const Icons = (() => {
+  const wrap = (path, sz = 'md') => `<svg class="icon-svg ${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+  return {
+    soundOn: (sz) => wrap('<path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a4.5 4.5 0 0 1 0 7"/><path d="M18.5 5.5a8.5 8.5 0 0 1 0 13"/>', sz),
+    soundOff: (sz) => wrap('<path d="M11 5L6 9H3v6h3l5 4V5z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>', sz),
+    // Calendar w/ X marked day (Abwesenheit / absent)
+    absent: (sz) => wrap('<rect x="3.5" y="5" width="17" height="15" rx="2"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/><line x1="8" y1="3" x2="8" y2="6.5"/><line x1="16" y1="3" x2="16" y2="6.5"/><line x1="9.5" y1="13.5" x2="14.5" y2="17.5"/><line x1="14.5" y1="13.5" x2="9.5" y2="17.5"/>', sz),
+    // Phone (Sprechzeiten)
+    phone: (sz) => wrap('<path d="M21 16.4v2.7a2 2 0 0 1-2.2 2A18 18 0 0 1 3 5.2 2 2 0 0 1 5 3h2.7a2 2 0 0 1 2 1.7 12 12 0 0 0 .6 2.5 2 2 0 0 1-.4 2L8.6 10.5a14 14 0 0 0 5 5l1.3-1.3a2 2 0 0 1 2-.4c.8.3 1.6.5 2.5.6a2 2 0 0 1 1.6 2z"/>', sz),
+    // Document with lines (Prüfungen)
+    exam: (sz) => wrap('<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><polyline points="14 3 14 8 19 8"/><line x1="8.5" y1="12.5" x2="15" y2="12.5"/><line x1="8.5" y1="16" x2="15" y2="16"/>', sz),
+    // 3 slot reels (gambling)
+    slot: (sz) => wrap('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><line x1="9" y1="4.5" x2="9" y2="19.5"/><line x1="15" y1="4.5" x2="15" y2="19.5"/><circle cx="6.25" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="17.75" cy="12" r="1"/>', sz),
+    // Padlock (locked)
+    lock: (sz) => wrap('<rect x="4.5" y="11" width="15" height="9.5" rx="2"/><path d="M7.5 11V7.5a4.5 4.5 0 0 1 9 0V11"/>', sz),
+  };
+})();
 
 /* ============================================================
    UTILS
@@ -1608,7 +1652,7 @@ function setCasino(m, rerender = false) {
 $$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino, true); }));
 setCasino(LS.get('casino') || 'off');
 
-function updateSoundIcon() { $('#soundToggle').textContent = state.soundEnabled ? '🔊' : '🔇'; }
+function updateSoundIcon() { $('#soundToggle').innerHTML = state.soundEnabled ? Icons.soundOn() : Icons.soundOff(); }
 $('#soundToggle').addEventListener('click', () => {
   state.soundEnabled = !state.soundEnabled;
   if (state.soundEnabled) initAudio();
@@ -1618,6 +1662,10 @@ $('#soundToggle').addEventListener('click', () => {
   saveState();
 });
 updateSoundIcon();
+// Inject custom SVG icons into header buttons (replaces emoji)
+$('#openAbsences').innerHTML = Icons.absent();
+$('#openOfficeHours').innerHTML = Icons.phone();
+$('#openExams').innerHTML = Icons.exam();
 
 function updateSwitches() {
   $('#soundSwitch').classList.toggle('on', state.soundEnabled);
@@ -2112,7 +2160,7 @@ function groupByDay(items, dateFn) {
 function renderAbsences() {
   const el = $('#absencesContent');
   if (!lastAbsences || lastAbsences.length === 0) {
-    el.innerHTML = '<div class="detail-empty">Keine Abwesenheiten diese Woche. 🎉</div>';
+    el.innerHTML = '<div class="detail-empty">Keine Abwesenheiten diese Woche.</div>';
     return;
   }
   const grouped = groupByDay(lastAbsences, a => Number(a.startDate || a.date || 0));
@@ -2137,7 +2185,7 @@ function renderAbsences() {
 function renderExams() {
   const el = $('#examsContent');
   if (!lastExams || lastExams.length === 0) {
-    el.innerHTML = '<div class="detail-empty">Keine Prüfungen diese Woche. 😎</div>';
+    el.innerHTML = '<div class="detail-empty">Keine Prüfungen diese Woche.</div>';
     return;
   }
   const grouped = groupByDay(lastExams, ex => Number(ex.examDate || ex.date || 0));
@@ -2419,7 +2467,7 @@ function renderCard(l) {
   if (reveal && l.substText) tt.push(l.substText);
   return `
     <div class="lesson-card ${status} ${played?'played':''}" data-lesson-id="${escapeHtml(lid)}" ${played?`data-result="${played.result}"`:''} title="${escapeHtml(tt.filter(Boolean).join(' · '))}">
-      ${examCount ? `<div class="exam-badge" title="Prüfung">📝</div>` : ''}
+      ${examCount ? `<div class="exam-badge" title="Prüfung">${Icons.exam('sm')}</div>` : ''}
       <div class="subj">${escapeHtml(subj)}</div>
       <div class="detail">
         ${teacher ? `<b>${teacher}</b>` : ''}
@@ -2428,7 +2476,7 @@ function renderCard(l) {
       ${statText ? `<div class="stat">${statText}</div>` : ''}
       ${homeworkCount ? `<div class="homework-pill">Hausübung${homeworkCount > 1 ? ` · ${homeworkCount}` : ''}</div>` : ''}
       <div class="bet-overlay ${betOpen ? 'open' : 'locked'}" data-lesson-id="${escapeHtml(lid)}" data-bet-open="${betOpen ? 'true' : 'false'}">
-        <div class="icon">${betOpen ? '🎰' : '🔒'}</div>
+        <div class="icon">${betOpen ? Icons.slot('lg') : Icons.lock('lg')}</div>
         <div class="lbl">${escapeHtml(betLabel)}</div>
       </div>
     </div>
