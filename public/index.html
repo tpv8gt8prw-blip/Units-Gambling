@@ -1107,14 +1107,7 @@
       0 10px 36px rgba(0, 0, 0, 0.14),
       0 2px 8px rgba(0, 0, 0, 0.08);
     z-index: 50;
-    overflow: hidden;
     touch-action: pan-y;
-    scroll-snap-type: x mandatory;
-    transition:
-      backdrop-filter .42s cubic-bezier(0.34, 1.36, 0.64, 1),
-      -webkit-backdrop-filter .42s cubic-bezier(0.34, 1.36, 0.64, 1),
-      box-shadow .42s cubic-bezier(0.34, 1.36, 0.64, 1),
-      border-color .42s var(--ease-out);
     contain: layout style;
   }
   .dock.visible { display: flex; }
@@ -1134,6 +1127,10 @@
     pointer-events: none;
     mix-blend-mode: overlay;
   }
+  /* Desktop / non-touch: free up native horizontal interaction */
+  @media (hover: hover) and (pointer: fine) {
+    .dock { touch-action: auto; }
+  }
 
   .dock-btn {
     flex: 1 1 0; min-width: 0; height: 50px;
@@ -1144,31 +1141,38 @@
     font-size: 10.5px; font-weight: 650; letter-spacing: 0.01em;
     border-radius: 18px;
     transition:
-      color .24s var(--ease-out),
-      background .24s var(--ease-out),
+      color .2s var(--ease-out),
       transform .15s var(--ease-out);
     position: relative;
     -webkit-tap-highlight-color: transparent;
   }
   .dock-btn .icon-svg {
     width: 22px; height: 22px;
-    transition: transform .3s var(--ease-pop);
+    transition: transform .22s var(--ease-pop);
   }
   .dock-btn .lbl { line-height: 1; pointer-events: none; }
-  .dock-btn.active { color: var(--accent); }
-  .dock-btn.active .icon-svg { transform: scale(1.08) translateY(-1px); }
-  .dock-btn.active::before {
+
+  /* Standing pill + soft glow — visible only on the active tab.
+     No animation, no pulsing — just a quiet halo around the current section. */
+  .dock-btn::before {
     content: '';
     position: absolute; inset: 4px;
     background: var(--accent-soft);
     border-radius: 14px;
     z-index: -1;
-    animation: dockPop .32s var(--ease-pop);
+    opacity: 0;
+    transform: scale(0.82);
+    box-shadow:
+      0 0 22px color-mix(in srgb, var(--accent) 28%, transparent),
+      0 0 8px  color-mix(in srgb, var(--accent) 18%, transparent);
+    transition:
+      opacity .2s var(--ease-out),
+      transform .2s var(--ease-pop);
+    pointer-events: none;
   }
-  @keyframes dockPop {
-    from { opacity: 0; transform: scale(0.6); }
-    to   { opacity: 1; transform: scale(1); }
-  }
+  .dock-btn.active { color: var(--accent); }
+  .dock-btn.active::before { opacity: 1; transform: scale(1); }
+  .dock-btn.active .icon-svg { transform: scale(1.08) translateY(-1px); }
   .dock-btn:active { transform: scale(0.92); }
   .dock-btn .badge {
     position: absolute; top: 4px; right: 22%;
@@ -1179,84 +1183,6 @@
     border-radius: 999px; text-align: center;
     box-shadow: 0 0 0 2px var(--glass);
     pointer-events: none;
-  }
-  .dock-btn { scroll-snap-align: center; scroll-snap-stop: always; }
-
-  /* ---------- Liquid Glass Swipe State (mobile) ---------- */
-  .dock.swiping {
-    backdrop-filter: blur(42px) saturate(1.95);
-    -webkit-backdrop-filter: blur(42px) saturate(1.95);
-    border-color: color-mix(in srgb, var(--accent) 22%, var(--glass-border));
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.30) inset,
-      0 -1px 0 rgba(0, 0, 0, 0.05) inset,
-      0 16px 46px rgba(0, 0, 0, 0.18),
-      0 4px 14px rgba(0, 0, 0, 0.10),
-      0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
-      0 0 32px color-mix(in srgb, var(--accent) 14%, transparent);
-  }
-  :root[data-theme="dark"] .dock.swiping {
-    backdrop-filter: blur(46px) saturate(2.1);
-    -webkit-backdrop-filter: blur(46px) saturate(2.1);
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.16) inset,
-      0 -1px 0 rgba(255, 255, 255, 0.02) inset,
-      0 16px 50px rgba(0, 0, 0, 0.60),
-      0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent),
-      0 0 36px color-mix(in srgb, var(--accent) 18%, transparent);
-  }
-
-  /* Subtle gloss/shimmer on icons + labels while swiping */
-  .dock.swiping .dock-btn .icon-svg {
-    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 38%, transparent))
-            drop-shadow(0 0 1px rgba(255,255,255,0.5));
-    transition: filter .3s var(--ease-out), transform .35s var(--ease-pop);
-  }
-  .dock.swiping .dock-btn .lbl {
-    text-shadow: 0 0 6px rgba(255,255,255,0.35);
-    transition: text-shadow .3s var(--ease-out);
-  }
-
-  /* Brilliant sweeping shine — Apple Control Center style */
-  .dock::after {
-    content: '';
-    position: absolute; inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(105deg,
-      transparent 22%,
-      rgba(255, 255, 255, 0.10) 38%,
-      rgba(255, 255, 255, 0.65) 50%,
-      rgba(255, 255, 255, 0.10) 62%,
-      transparent 78%);
-    transform: translateX(-115%);
-    pointer-events: none;
-    opacity: 0;
-    z-index: 3;
-    mix-blend-mode: screen;
-    will-change: transform, opacity;
-  }
-  :root[data-theme="dark"] .dock::after {
-    background: linear-gradient(105deg,
-      transparent 22%,
-      rgba(255, 255, 255, 0.06) 38%,
-      rgba(255, 255, 255, 0.42) 50%,
-      rgba(255, 255, 255, 0.06) 62%,
-      transparent 78%);
-  }
-  .dock.shine::after {
-    animation: dockShine .62s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  @keyframes dockShine {
-    0%   { transform: translateX(-115%); opacity: 0; }
-    18%  { opacity: 1; }
-    82%  { opacity: 1; }
-    100% { transform: translateX(115%); opacity: 0; }
-  }
-
-  /* Desktop / non-touch: no swipe styling needed */
-  @media (hover: hover) and (pointer: fine) {
-    .dock { touch-action: auto; }
-    .dock::after { display: none; }
   }
 
   /* ============================================================
@@ -3168,20 +3094,6 @@ let currentTab = (() => {
   const saved = LS.get('tab');
   return TAB_NAMES.includes(saved) ? saved : 'plan';
 })();
-const isTouchDevice = () =>
-  window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches;
-let dockShineTimer = null;
-function triggerDockShine() {
-  if (!dockEl) return;
-  dockEl.classList.remove('shine');
-  // force reflow so the animation restarts cleanly
-  void dockEl.offsetWidth;
-  dockEl.classList.add('shine');
-  clearTimeout(dockShineTimer);
-  dockShineTimer = setTimeout(() => {
-    if (dockEl) dockEl.classList.remove('shine');
-  }, 700);
-}
 function setTab(name, opts) {
   const opts2 = opts || {};
   if (!TAB_NAMES.includes(name)) name = 'plan';
@@ -3191,13 +3103,10 @@ function setTab(name, opts) {
     if (pane) pane.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  const changed = name !== currentTab;
   currentTab = name;
   LS.set('tab', name);
   $$('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.tab === name));
   $$('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  // Brilliant shine on tab change (mobile / touch only)
-  if (changed && isTouchDevice()) triggerDockShine();
   // Per-tab on-show refresh
   if (name === 'homework') renderHomeworkTab();
   if (name === 'absences') renderAbsencesTab();
@@ -3238,7 +3147,8 @@ appView.addEventListener('touchend', (e) => {
 }, { passive: true });
 
 // ===== Dock swipe-to-switch (mobile) =====
-// Drag horizontally on the dock to switch tabs with momentum/snap feel + glossy shine.
+// Horizontal drag on the dock → snap to next/previous tab.
+// Triggered by distance (≥36px) or fast flick (≥0.45 px/ms momentum).
 (function setupDockSwipe(){
   if (!dockEl) return;
   const state = { x: 0, y: 0, t: 0, dragging: false, locked: false };
@@ -3255,7 +3165,6 @@ appView.addEventListener('touchend', (e) => {
     const dy = t.clientY - state.y;
     if (!state.dragging && Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) {
       state.dragging = true;
-      dockEl.classList.add('swiping');
     } else if (!state.dragging && Math.abs(dy) > 10) {
       state.locked = true;
     }
@@ -3263,7 +3172,6 @@ appView.addEventListener('touchend', (e) => {
   const onEnd = (e) => {
     const wasDragging = state.dragging;
     state.dragging = false;
-    dockEl.classList.remove('swiping');
     if (!wasDragging) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - state.x;
@@ -3271,7 +3179,6 @@ appView.addEventListener('touchend', (e) => {
     const dt = Math.max(1, Date.now() - state.t);
     const v = Math.abs(dx) / dt; // px/ms
     if (Math.abs(dy) > 60) return;
-    // Trigger snap on distance OR fast flick (momentum)
     if (Math.abs(dx) < 36 && v < 0.45) return;
     const idx = TAB_NAMES.indexOf(currentTab);
     const nextIdx = dx < 0 ? idx + 1 : idx - 1;
@@ -3279,13 +3186,10 @@ appView.addEventListener('touchend', (e) => {
     Haptic.light();
     setTab(TAB_NAMES[nextIdx]);
   };
-  const onCancel = () => {
-    state.dragging = false;
-    dockEl.classList.remove('swiping');
-  };
-  dockEl.addEventListener('touchstart', onStart, { passive: true });
-  dockEl.addEventListener('touchmove',  onMove,  { passive: true });
-  dockEl.addEventListener('touchend',   onEnd,   { passive: true });
+  const onCancel = () => { state.dragging = false; };
+  dockEl.addEventListener('touchstart',  onStart,  { passive: true });
+  dockEl.addEventListener('touchmove',   onMove,   { passive: true });
+  dockEl.addEventListener('touchend',    onEnd,    { passive: true });
   dockEl.addEventListener('touchcancel', onCancel, { passive: true });
 })();
 
