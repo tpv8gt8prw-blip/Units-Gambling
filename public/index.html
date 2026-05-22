@@ -1052,6 +1052,373 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+  /* ============================================================
+     APP VIEW + TAB PANES (iOS-style)
+  ============================================================ */
+  .app-view { display: none; }
+  .app-view.visible { display: block; padding-bottom: calc(var(--safe-bottom) + 110px); }
+
+  .tab-pane { display: none; }
+  .tab-pane.active {
+    display: block;
+    animation: tabSlideIn .34s cubic-bezier(0.34, 1.36, 0.64, 1);
+  }
+  @keyframes tabSlideIn {
+    from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.992); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
+
+  .tab-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 14px; margin: 4px 0 18px; flex-wrap: wrap;
+  }
+  .tab-header > .tab-title-wrap { min-width: 0; flex: 1 1 220px; }
+  .tab-title {
+    font-family: var(--ff-r); font-size: clamp(28px, 4.4vw, 38px);
+    font-weight: 800; letter-spacing: -0.01em; line-height: 1.02;
+  }
+  .tab-title em { color: var(--accent); font-style: normal; }
+  .tab-sub {
+    font-size: 13px; color: var(--ink-3); font-weight: 550;
+    margin-top: 4px;
+  }
+
+  /* ============================================================
+     LIQUID GLASS BOTTOM DOCK
+  ============================================================ */
+  .dock {
+    position: fixed;
+    left: 50%; bottom: calc(var(--safe-bottom) + 14px);
+    transform: translateX(-50%);
+    width: min(94%, 460px);
+    display: none;
+    align-items: center; justify-content: space-around;
+    gap: 4px; padding: 7px;
+    background: var(--glass);
+    border-radius: 26px;
+    border: 0.5px solid var(--glass-border);
+    backdrop-filter: blur(28px) saturate(1.6);
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.20) inset,
+      0 -1px 0 rgba(0, 0, 0, 0.05) inset,
+      0 10px 36px rgba(0, 0, 0, 0.14),
+      0 2px 8px rgba(0, 0, 0, 0.08);
+    z-index: 50;
+    contain: layout style;
+  }
+  .dock.visible { display: flex; }
+  :root[data-theme="dark"] .dock {
+    background: rgba(28, 28, 30, 0.58);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.10) inset,
+      0 -1px 0 rgba(255, 255, 255, 0.02) inset,
+      0 14px 40px rgba(0, 0, 0, 0.52),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  .dock::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255,255,255,0.18), transparent 60%);
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  .dock-btn {
+    flex: 1 1 0; min-width: 0; height: 50px;
+    background: transparent; border: none;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    color: var(--ink-3);
+    font-size: 10.5px; font-weight: 650; letter-spacing: 0.01em;
+    border-radius: 18px;
+    transition:
+      color .24s var(--ease-out),
+      background .24s var(--ease-out),
+      transform .15s var(--ease-out);
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dock-btn .icon-svg {
+    width: 22px; height: 22px;
+    transition: transform .3s var(--ease-pop);
+  }
+  .dock-btn .lbl { line-height: 1; pointer-events: none; }
+  .dock-btn.active { color: var(--accent); }
+  .dock-btn.active .icon-svg { transform: scale(1.08) translateY(-1px); }
+  .dock-btn.active::before {
+    content: '';
+    position: absolute; inset: 4px;
+    background: var(--accent-soft);
+    border-radius: 14px;
+    z-index: -1;
+    animation: dockPop .32s var(--ease-pop);
+  }
+  @keyframes dockPop {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .dock-btn:active { transform: scale(0.92); }
+  .dock-btn .badge {
+    position: absolute; top: 4px; right: 22%;
+    min-width: 16px; height: 16px;
+    padding: 0 4px;
+    background: var(--cancel); color: white;
+    font-size: 10px; font-weight: 700; line-height: 16px;
+    border-radius: 999px; text-align: center;
+    box-shadow: 0 0 0 2px var(--glass);
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     ACCOUNT TAB
+  ============================================================ */
+  .wallet-hero {
+    position: relative;
+    text-align: center;
+    padding: 26px 18px 22px;
+    background:
+      radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+      var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+    overflow: hidden;
+  }
+  .wallet-hero::before {
+    content: ''; position: absolute; inset: 0 0 auto; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.34), transparent);
+  }
+  .wallet-hero-label {
+    font-size: 11px; color: var(--ink-3); font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .wallet-hero-coins {
+    font-family: var(--ff-r);
+    font-size: clamp(54px, 11vw, 78px);
+    font-weight: 800; color: var(--gold);
+    line-height: 0.94; letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 6px 28px color-mix(in srgb, var(--gold) 32%, transparent);
+  }
+  .wallet-hero-meta {
+    display: flex; justify-content: center; gap: 28px;
+    margin-top: 20px; flex-wrap: wrap;
+  }
+  .wallet-hero-meta .item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .wallet-hero-meta .v {
+    font-family: var(--ff-r); font-size: 24px; font-weight: 750;
+    line-height: 1; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .wallet-hero-meta .v.streak { color: var(--accent); }
+  .wallet-hero-meta .v.level { color: var(--ink); }
+  .wallet-hero-meta .k {
+    font-size: 10px; color: var(--ink-3); font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .wallet-hero .xp-bar {
+    height: 6px; margin: 20px auto 0; max-width: 260px;
+    background: var(--fill-2); border-radius: 999px; overflow: hidden;
+  }
+  .wallet-hero .xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    border-radius: 999px;
+    transition: width .55s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  .wallet-hero .xp-label {
+    margin-top: 7px; font-size: 11px; color: var(--ink-3); font-weight: 600;
+  }
+
+  .account-section { margin-top: 22px; }
+  .account-section-title {
+    font-size: 11px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin: 0 4px 9px;
+  }
+  .account-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .account-stats .stat-box {
+    padding: 14px 12px; text-align: center;
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .account-stats .stat-box b {
+    font-family: var(--ff-r); font-size: 22px; font-weight: 750;
+    line-height: 1; display: block; margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .account-stats .stat-box span {
+    font-size: 10px; color: var(--ink-3); font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+
+  .account-list {
+    display: flex; flex-direction: column;
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg); overflow: hidden;
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  }
+  .account-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; gap: 12px;
+    background: transparent; border: none;
+    width: 100%; text-align: left; color: var(--ink);
+    font: inherit; font-size: 15px;
+    transition: background .15s var(--ease-out);
+  }
+  .account-row + .account-row { border-top: 1px solid var(--sep-2); }
+  .account-row:active { background: var(--fill-3); }
+  .account-row .lbl { font-size: 15px; font-weight: 650; line-height: 1.2; }
+  .account-row .sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; font-weight: 500; }
+  .account-row .end {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink-3); font-size: 13px; font-weight: 600;
+  }
+  .account-row.danger .lbl { color: var(--cancel); }
+  .account-row .chev { color: var(--ink-4); font-size: 16px; line-height: 1; }
+  #syncDot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ink-4); transition: all .25s; flex-shrink: 0;
+  }
+  #syncDot[data-state="loading"], #syncDot[data-state="saving"] {
+    background: var(--blue); animation: syncPulse 1s ease-in-out infinite;
+  }
+  #syncDot[data-state="synced"] { background: var(--win); box-shadow: 0 0 8px var(--win); }
+  #syncDot[data-state="error"] { background: var(--cancel); }
+  #syncDot[data-state="off"] { background: var(--ink-4); }
+
+  /* ============================================================
+     HOMEWORK / ALERTS LIST CARDS
+  ============================================================ */
+  .day-section { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .day-section-label {
+    font-size: 11px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 8px 4px 4px;
+  }
+  .day-section-label.today { color: var(--accent); }
+
+  .hw-card, .alert-card {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 16px;
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    border-left: 3px solid var(--accent);
+    text-align: left; width: 100%;
+    font: inherit; color: var(--ink);
+    cursor: pointer;
+    transition: transform .15s var(--ease-out), background .15s var(--ease-out), box-shadow .2s var(--ease-out);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hw-card:hover, .alert-card:hover {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+  }
+  .hw-card:active, .alert-card:active { transform: scale(0.985); background: var(--fill-3); }
+  .alert-card.warn { border-left-color: var(--warn); }
+  .alert-card.cancel { border-left-color: var(--cancel); }
+  .alert-card.blue { border-left-color: var(--blue); }
+
+  .hw-card .icon-circle, .alert-card .icon-circle {
+    width: 36px; height: 36px; border-radius: 12px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .alert-card.warn .icon-circle { background: var(--warn-bg); color: var(--warn); }
+  .alert-card.cancel .icon-circle { background: var(--cancel-bg); color: var(--cancel); }
+  .alert-card.blue .icon-circle { background: rgba(0,122,255,0.14); color: var(--blue); }
+  .hw-card .icon-circle .icon-svg,
+  .alert-card .icon-circle .icon-svg { width: 18px; height: 18px; }
+
+  .hw-card .body, .alert-card .body { flex: 1; min-width: 0; }
+  .hw-card .ttl, .alert-card .ttl {
+    font-family: var(--ff-r); font-size: 15px; font-weight: 700;
+    letter-spacing: -0.005em; line-height: 1.25; margin-bottom: 3px;
+    overflow-wrap: anywhere;
+  }
+  .hw-card .meta, .alert-card .meta {
+    font-size: 12px; color: var(--ink-3); font-weight: 500;
+    display: flex; gap: 8px; flex-wrap: wrap; line-height: 1.3;
+  }
+  .hw-card .meta b, .alert-card .meta b { color: var(--ink-2); font-weight: 600; }
+  .hw-card.completed .ttl { text-decoration: line-through; opacity: 0.5; }
+
+  .hw-card .check {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--ink-4); flex-shrink: 0; margin-top: 2px;
+    position: relative;
+    background: transparent;
+  }
+  .hw-card.completed .check {
+    background: var(--win); border-color: var(--win);
+  }
+  .hw-card.completed .check::after {
+    content: '';
+    position: absolute; left: 5px; top: 2px;
+    width: 5px; height: 10px;
+    border: solid white; border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .alert-card .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    background: var(--fill); color: var(--ink-3);
+  }
+  .alert-card.warn .tag { background: var(--warn-bg); color: var(--warn); }
+  .alert-card.cancel .tag { background: var(--cancel-bg); color: var(--cancel); }
+  .alert-card.blue .tag { background: rgba(0,122,255,0.14); color: var(--blue); }
+
+  .list-empty {
+    padding: 60px 24px;
+    text-align: center;
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-xl);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  }
+  .list-empty .ico {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--fill-2); margin-bottom: 14px;
+  }
+  .list-empty .ico .icon-svg { width: 28px; height: 28px; color: var(--ink-3); }
+  .list-empty .ttl {
+    font-family: var(--ff-r); font-size: 19px; font-weight: 750;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  .list-empty .sub { font-size: 13px; color: var(--ink-3); line-height: 1.4; }
+
+  /* Plan-tab adjustments */
+  .plan-toggle-row {
+    display: flex; justify-content: flex-end;
+    gap: 8px; margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 480px) {
+    .dock { width: calc(100% - 18px); border-radius: 22px; }
+    .dock-btn { font-size: 10px; height: 48px; }
+    .dock-btn .icon-svg { width: 20px; height: 20px; }
+    .account-stats { grid-template-columns: repeat(2, 1fr); }
+    .wallet-hero-meta { gap: 18px; }
+    .wallet-hero { padding: 22px 14px 18px; }
+    .tab-header { gap: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -1065,31 +1432,8 @@
         <button data-theme="dark">Dark</button>
         <button data-theme="light" class="active">Light</button>
       </div>
-      <div class="toggle" id="casinoToggle">
-        <button data-casino="off" class="active">Plan</button>
-        <button data-casino="on">Casino</button>
-      </div>
-      <button class="icon-btn" id="soundToggle" title="Sound" aria-label="Sound umschalten"></button>
     </div>
   </header>
-
-  <!-- WALLET -->
-  <div class="wallet-bar">
-    <div class="wallet-item">
-      <div class="wallet-label">Coins</div>
-      <div class="wallet-val coins" id="wCoins">1.000</div>
-    </div>
-    <div class="wallet-item xp">
-      <div class="wallet-label">Level <strong id="wLevel" style="color:var(--ink);">1</strong> <small id="wXp">0 / 100 XP</small></div>
-      <div class="xp-bar"><div class="xp-fill" id="wXpFill" style="width:0%;"></div></div>
-    </div>
-    <div class="wallet-item">
-      <div class="wallet-label">Streak</div>
-      <div class="wallet-val streak" id="wStreak">0</div>
-    </div>
-    <button class="stat-btn" id="openStats">Stats</button>
-    <div id="syncDot" data-state="idle" title="Cloud Sync"></div>
-  </div>
 
   <!-- LOGIN -->
   <section id="loginView">
@@ -1129,49 +1473,191 @@
     </p>
   </section>
 
-  <!-- WEEK VIEW -->
-  <section id="weekView" style="display:none;">
-    <div class="tt-head">
-      <div class="head-left">
-        <button class="smbtn" id="logoutBtn">Logout</button>
-        <button class="smbtn icon-only" id="openAbsences" title="Abwesenheit" aria-label="Abwesenheit"></button>
-        <button class="smbtn icon-only" id="openOfficeHours" title="Sprechzeiten" aria-label="Sprechzeiten"></button>
-        <button class="smbtn icon-only" id="openExams" title="Prüfungen" aria-label="Prüfungen"></button>
+  <!-- APP VIEW (tabs) -->
+  <div id="appView" class="app-view">
+
+    <!-- ===== PLAN TAB ===== -->
+    <section class="tab-pane active" data-tab="plan">
+      <div class="tab-header">
+        <div class="tab-title-wrap">
+          <h1 class="tab-title">Stundenplan<em>.</em></h1>
+          <div class="tab-sub" id="planSub">—</div>
+        </div>
+        <div class="toggle" id="casinoToggle">
+          <button data-casino="off" class="active">Plan</button>
+          <button data-casino="on">Casino</button>
+        </div>
       </div>
-      <div class="nav">
-        <button class="smbtn" id="prevBtn">← Prev</button>
-        <button class="smbtn primary" id="todayBtn">Heute</button>
-        <button class="smbtn" id="nextBtn">Next →</button>
+
+      <div class="tt-head">
+        <div class="nav">
+          <button class="smbtn" id="prevBtn">← Prev</button>
+          <button class="smbtn primary" id="todayBtn">Heute</button>
+          <button class="smbtn" id="nextBtn">Next →</button>
+        </div>
+        <div class="view-toggle" id="viewToggle" aria-label="Ansicht">
+          <button data-view="day" class="active">Tag</button>
+          <button data-view="week">Woche</button>
+        </div>
       </div>
-      <div class="view-toggle" id="viewToggle" aria-label="Ansicht">
-        <button data-view="day" class="active">Tag</button>
-        <button data-view="week">Woche</button>
+
+      <div class="meta-row">
+        <div class="meta"><b id="weekLabel">—</b><span id="weekRange">—</span></div>
+        <div class="meta"><b id="lessonCount">0</b><span>Stunden</span></div>
+        <div class="meta"><b id="supplCount">07:00</b><span>Start</span></div>
+        <div class="meta"><b id="cancelCount">Heute</b><span>Wetten</span></div>
       </div>
-    </div>
 
-    <div class="meta-row">
-      <div class="meta"><b id="weekLabel">—</b><span id="weekRange">—</span></div>
-      <div class="meta"><b id="lessonCount">0</b><span>Stunden</span></div>
-      <div class="meta"><b id="supplCount">07:00</b><span>Start</span></div>
-      <div class="meta"><b id="cancelCount">Heute</b><span>Wetten</span></div>
-    </div>
+      <div class="week-grid" id="weekGrid"></div>
 
-    <div class="week-grid" id="weekGrid"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-swatch normal"></div>Normal</div>
+        <div class="legend-item"><div class="legend-swatch irregular"></div>Suppliert</div>
+        <div class="legend-item"><div class="legend-swatch cancelled"></div>Entfällt</div>
+      </div>
 
-    <div class="legend">
-      <div class="legend-item"><div class="legend-swatch normal"></div>Normal</div>
-      <div class="legend-item"><div class="legend-swatch irregular"></div>Suppliert</div>
-      <div class="legend-item"><div class="legend-swatch cancelled"></div>Entfällt</div>
-    </div>
+      <div id="ttMsg"></div>
+    </section>
 
-    <div id="ttMsg"></div>
-  </section>
+    <!-- ===== HOMEWORK TAB ===== -->
+    <section class="tab-pane" data-tab="homework">
+      <div class="tab-header">
+        <div class="tab-title-wrap">
+          <h1 class="tab-title">Hausübungen<em>.</em></h1>
+          <div class="tab-sub" id="homeworkSub">Diese Woche</div>
+        </div>
+      </div>
+      <div id="homeworkList" class="hw-list"></div>
+    </section>
+
+    <!-- ===== ALERTS TAB ===== -->
+    <section class="tab-pane" data-tab="alerts">
+      <div class="tab-header">
+        <div class="tab-title-wrap">
+          <h1 class="tab-title">Hinweise<em>.</em></h1>
+          <div class="tab-sub" id="alertsSub">Absenzen, Prüfungen & Vertretungen</div>
+        </div>
+      </div>
+      <div id="alertsList" class="alerts-list"></div>
+    </section>
+
+    <!-- ===== ACCOUNT TAB ===== -->
+    <section class="tab-pane" data-tab="account">
+      <div class="tab-header">
+        <div class="tab-title-wrap">
+          <h1 class="tab-title">Account<em>.</em></h1>
+          <div class="tab-sub">Stats & Einstellungen</div>
+        </div>
+      </div>
+
+      <div class="wallet-hero">
+        <div class="wallet-hero-label">Coins</div>
+        <div class="wallet-hero-coins" id="wCoins">1.000</div>
+        <div class="wallet-hero-meta">
+          <div class="item"><div class="v level" id="wLevel">1</div><div class="k">Level</div></div>
+          <div class="item"><div class="v streak" id="wStreak">0</div><div class="k">Streak</div></div>
+        </div>
+        <div class="xp-bar"><div class="xp-fill" id="wXpFill" style="width:0%;"></div></div>
+        <div class="xp-label" id="wXp">0 / 100 XP</div>
+      </div>
+
+      <div class="account-section">
+        <div class="account-section-title">Statistik</div>
+        <div class="account-stats">
+          <div class="stat-box"><b id="sTotal">0</b><span>Spins</span></div>
+          <div class="stat-box"><b id="sWins">0</b><span>Wins</span></div>
+          <div class="stat-box"><b id="sRate">—</b><span>Win Rate</span></div>
+          <div class="stat-box"><b id="sBest">0</b><span>Biggest Win</span></div>
+          <div class="stat-box"><b id="sNet">0</b><span>Net Coins</span></div>
+          <div class="stat-box"><b id="sStreakBest">0</b><span>Best Streak</span></div>
+        </div>
+      </div>
+
+      <div class="account-section">
+        <div class="account-section-title">Einstellungen</div>
+        <div class="account-list">
+          <div class="account-row">
+            <div>
+              <div class="lbl">Sound</div>
+              <div class="sub">Slot Machine Sounds & Effekte</div>
+            </div>
+            <button class="app-switch" id="soundSwitch" aria-label="Sound"></button>
+          </div>
+          <div class="account-row">
+            <div>
+              <div class="lbl">Haptic</div>
+              <div class="sub">Vibration beim Spin</div>
+            </div>
+            <button class="app-switch" id="hapticSwitch" aria-label="Haptic"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="account-section">
+        <div class="account-section-title">Daten</div>
+        <div class="account-list">
+          <button class="account-row" id="openOfficeHours">
+            <div>
+              <div class="lbl">Sprechzeiten</div>
+              <div class="sub">Alle Lehrer & ihre Sprechstunden</div>
+            </div>
+            <div class="end"><span class="chev">›</span></div>
+          </button>
+          <div class="account-row">
+            <div>
+              <div class="lbl">Cloud Sync</div>
+              <div class="sub" id="syncStatusLabel">Bereit</div>
+            </div>
+            <div class="end"><div id="syncDot" data-state="idle"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="account-section">
+        <div class="account-list">
+          <button class="account-row danger" id="resetBtn">
+            <div>
+              <div class="lbl">Fortschritt zurücksetzen</div>
+              <div class="sub">Coins, XP, Streak und Wetten löschen</div>
+            </div>
+          </button>
+          <button class="account-row danger" id="logoutBtn">
+            <div>
+              <div class="lbl">Abmelden</div>
+              <div class="sub">Untis-Verbindung trennen</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </div>
 
   <footer>
     <span>Substi</span>
-    <span>v1.7 · powered by SiteBuilt</span>
+    <span>v2.0 · powered by SiteBuilt</span>
   </footer>
 </div>
+
+<!-- ===================== BOTTOM DOCK ===================== -->
+<nav class="dock" id="bottomDock" aria-label="Navigation">
+  <button class="dock-btn active" data-tab="plan" aria-label="Stundenplan">
+    <span class="ico" id="dockIcoPlan"></span>
+    <span class="lbl">Plan</span>
+  </button>
+  <button class="dock-btn" data-tab="homework" aria-label="Hausübungen">
+    <span class="ico" id="dockIcoHw"></span>
+    <span class="lbl">HÜ</span>
+  </button>
+  <button class="dock-btn" data-tab="alerts" aria-label="Hinweise">
+    <span class="ico" id="dockIcoAlerts"></span>
+    <span class="lbl">Hinweise</span>
+  </button>
+  <button class="dock-btn" data-tab="account" aria-label="Account">
+    <span class="ico" id="dockIcoAccount"></span>
+    <span class="lbl">Account</span>
+  </button>
+</nav>
 
 <!-- ===================== SLOT MODAL ===================== -->
 <div class="modal-bg" id="slotModal">
@@ -1219,41 +1705,6 @@
   </div>
 </div>
 
-<!-- ===================== STATS MODAL ===================== -->
-<div class="modal-bg" id="statsModal">
-  <div class="modal-card">
-    <button class="modal-close" id="statsClose">✕</button>
-    <h2>Stats<em>.</em></h2>
-    <div class="sub">Deine Prophezeiungen</div>
-
-    <div class="stats-grid">
-      <div class="stat-box"><b id="sTotal">0</b><span>Spins gesamt</span></div>
-      <div class="stat-box"><b id="sWins">0</b><span>Wins</span></div>
-      <div class="stat-box"><b id="sRate">—</b><span>Win Rate</span></div>
-      <div class="stat-box"><b id="sBest">0</b><span>Biggest Win</span></div>
-      <div class="stat-box"><b id="sNet">0</b><span>Net Coins</span></div>
-      <div class="stat-box"><b id="sStreakBest">0</b><span>Best Streak</span></div>
-    </div>
-
-    <div class="picker-label" style="margin-top: 18px;">Einstellungen</div>
-    <div class="settings-row">
-      <div>
-        <div class="lbl">Sound</div>
-        <div class="sub">Slot Machine Sounds & Effekte</div>
-      </div>
-      <button class="app-switch" id="soundSwitch" aria-label="Sound"></button>
-    </div>
-    <div class="settings-row">
-      <div>
-        <div class="lbl">Haptic</div>
-        <div class="sub">Vibration beim Spin, wenn unterstützt</div>
-      </div>
-      <button class="app-switch" id="hapticSwitch" aria-label="Haptic"></button>
-    </div>
-
-    <button class="reset-btn" id="resetBtn">Fortschritt zurücksetzen</button>
-  </div>
-</div>
 
 <!-- ===================== DETAILS MODAL ===================== -->
 <div class="modal-bg" id="detailModal">
@@ -1271,18 +1722,6 @@
   </div>
 </div>
 
-<!-- ===================== ABSENCES MODAL ===================== -->
-<div class="modal-bg" id="absencesModal">
-  <div class="modal-card">
-    <button class="modal-close" id="absencesClose">✕</button>
-    <h2>Abwesenheit<em>.</em></h2>
-    <div class="sub" id="absencesSub">Diese Woche</div>
-    <div class="info-list" id="absencesContent">
-      <div class="detail-empty">Keine Daten geladen.</div>
-    </div>
-  </div>
-</div>
-
 <!-- ===================== OFFICE HOURS MODAL ===================== -->
 <div class="modal-bg" id="officeHoursModal">
   <div class="modal-card">
@@ -1291,18 +1730,6 @@
     <div class="sub">Alle Lehrer & ihre Sprechstunden</div>
     <div class="info-list" id="officeHoursContent">
       <div class="detail-empty">Lade Sprechzeiten…</div>
-    </div>
-  </div>
-</div>
-
-<!-- ===================== EXAMS MODAL ===================== -->
-<div class="modal-bg" id="examsModal">
-  <div class="modal-card">
-    <button class="modal-close" id="examsClose">✕</button>
-    <h2>Prüfungen<em>.</em></h2>
-    <div class="sub" id="examsSub">Diese Woche</div>
-    <div class="info-list" id="examsContent">
-      <div class="detail-empty">Keine Prüfungen.</div>
     </div>
   </div>
 </div>
@@ -1328,6 +1755,18 @@ const Icons = (() => {
     slot: (sz) => wrap('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><line x1="9" y1="4.5" x2="9" y2="19.5"/><line x1="15" y1="4.5" x2="15" y2="19.5"/><circle cx="6.25" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="17.75" cy="12" r="1"/>', sz),
     // Padlock (locked)
     lock: (sz) => wrap('<rect x="4.5" y="11" width="15" height="9.5" rx="2"/><path d="M7.5 11V7.5a4.5 4.5 0 0 1 9 0V11"/>', sz),
+    // Plan (calendar)
+    plan: (sz) => wrap('<rect x="3.5" y="5" width="17" height="15" rx="2.4"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/><line x1="8" y1="3" x2="8" y2="6.5"/><line x1="16" y1="3" x2="16" y2="6.5"/>', sz),
+    // Homework (clipboard with check)
+    homework: (sz) => wrap('<rect x="5.5" y="4.5" width="13" height="16" rx="2"/><rect x="9" y="2.5" width="6" height="3.5" rx="1"/><polyline points="8.5 13 11 15.5 15.5 11"/>', sz),
+    // Alerts (bell)
+    bell: (sz) => wrap('<path d="M6 16h12l-1.5-2.2V11a4.5 4.5 0 0 0-9 0v2.8L6 16z"/><path d="M9.8 19a2.2 2.2 0 0 0 4.4 0"/>', sz),
+    // Account (user)
+    account: (sz) => wrap('<circle cx="12" cy="8.5" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>', sz),
+    // Book (homework alt)
+    book: (sz) => wrap('<path d="M5 4.5h11a2 2 0 0 1 2 2v13H7a2 2 0 0 1-2-2V4.5z"/><line x1="5" y1="17.5" x2="18" y2="17.5"/>', sz),
+    // Check
+    check: (sz) => wrap('<polyline points="5 12.5 10 17 19 7.5"/>', sz),
   };
 })();
 
@@ -1652,20 +2091,13 @@ function setCasino(m, rerender = false) {
 $$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino, true); }));
 setCasino(LS.get('casino') || 'off');
 
-function updateSoundIcon() { $('#soundToggle').innerHTML = state.soundEnabled ? Icons.soundOn() : Icons.soundOff(); }
-$('#soundToggle').addEventListener('click', () => {
-  state.soundEnabled = !state.soundEnabled;
-  if (state.soundEnabled) initAudio();
-  Haptic.select();
-  if (state.soundEnabled) Sound.select();
-  updateSoundIcon();
-  saveState();
-});
-updateSoundIcon();
-// Inject custom SVG icons into header buttons (replaces emoji)
-$('#openAbsences').innerHTML = Icons.absent();
-$('#openOfficeHours').innerHTML = Icons.phone();
-$('#openExams').innerHTML = Icons.exam();
+// Header sound icon was moved into the Account tab as a switch — keep as no-op so legacy call sites stay safe.
+function updateSoundIcon() { /* no-op */ }
+// Inject dock icons (replaces header buttons)
+$('#dockIcoPlan').innerHTML = Icons.plan('lg');
+$('#dockIcoHw').innerHTML = Icons.homework('lg');
+$('#dockIcoAlerts').innerHTML = Icons.bell('lg');
+$('#dockIcoAccount').innerHTML = Icons.account('lg');
 
 function updateSwitches() {
   $('#soundSwitch').classList.toggle('on', state.soundEnabled);
@@ -1721,6 +2153,7 @@ async function loadFromCloud() {
       state.playedLessons = state.playedLessons || {};
       LS.setJSON('game', state);
       updateWalletUI(); updateSwitches(); updateSoundIcon();
+      refreshAccountTab();
       if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
       setSync('synced');
       return 'loaded';
@@ -1733,7 +2166,14 @@ async function loadFromCloud() {
     return 'error';
   }
 }
-function setSync(s) { const el = $('#syncDot'); if (el) el.dataset.state = s; }
+const SYNC_LABELS = {
+  idle: 'Bereit', loading: 'Lade…', saving: 'Speichere…',
+  synced: 'Synchronisiert', error: 'Fehler', off: 'Lokal'
+};
+function setSync(s) {
+  const el = $('#syncDot'); if (el) el.dataset.state = s;
+  const lbl = $('#syncStatusLabel'); if (lbl) lbl.textContent = SYNC_LABELS[s] || s;
+}
 
 /* ============================================================
    SLOT MACHINE
@@ -1918,8 +2358,7 @@ $('#slotModal').addEventListener('click', (e) => { if (e.target === $('#slotModa
 /* ============================================================
    STATS MODAL
 ============================================================ */
-function openStats() {
-  Sound.tap(); Haptic.select();
+function refreshAccountTab() {
   const rate = state.totalSpins > 0 ? Math.round((state.wins / state.totalSpins) * 100) : 0;
   $('#sTotal').textContent = state.totalSpins;
   $('#sWins').textContent = state.wins;
@@ -1928,17 +2367,13 @@ function openStats() {
   $('#sNet').textContent = (state.netCoins >= 0 ? '+' : '') + fmt(state.netCoins);
   $('#sStreakBest').textContent = state.bestStreak;
   updateSwitches();
-  $('#statsModal').classList.add('open');
 }
-$('#openStats').addEventListener('click', openStats);
-$('#statsClose').addEventListener('click', () => { Sound.tap(); $('#statsModal').classList.remove('open'); });
-$('#statsModal').addEventListener('click', (e) => { if (e.target === $('#statsModal')) $('#statsModal').classList.remove('open'); });
 $('#resetBtn').addEventListener('click', () => {
   if (!confirm('Wirklich allen Fortschritt resetten?')) return;
   Haptic.error();
   state = Object.assign({}, DEFAULT_STATE, { playedLessons: {} });
-  saveState(); updateSwitches(); updateSoundIcon();
-  $('#statsModal').classList.remove('open');
+  saveState(); updateSwitches();
+  refreshAccountTab();
   if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
 });
 
@@ -2157,53 +2592,195 @@ function groupByDay(items, dateFn) {
   return Array.from(map.entries()).sort(([a],[b]) => a - b);
 }
 
-function renderAbsences() {
-  const el = $('#absencesContent');
-  if (!lastAbsences || lastAbsences.length === 0) {
-    el.innerHTML = '<div class="detail-empty">Keine Abwesenheiten diese Woche.</div>';
+/* ============================================================
+   HOMEWORK TAB
+============================================================ */
+function homeworkDueDate(hw) {
+  return Number(hw.dueDate || hw.date || 0);
+}
+function homeworkSubject(hw) {
+  if (hw.subject) return hw.subject;
+  if (hw.su?.[0]?.longname) return hw.su[0].longname;
+  if (hw.su?.[0]?.name) return hw.su[0].name;
+  const refId = hw.lessonId || hw.lesson?.id || hw.lesson?.lessonId || hw.lessons?.[0]?.id;
+  if (refId != null) {
+    const ref = lastHomeworkLessons.find(l => Number(l.id) === Number(refId));
+    if (ref) return ref.subject || ref.su?.[0]?.longname || ref.su?.[0]?.name || '';
+  }
+  return '';
+}
+function homeworkTeacher(hw) {
+  if (hw.teacher) return hw.teacher;
+  if (hw.te?.[0]) return hw.te[0].longname || hw.te[0].name;
+  const refId = hw.lessonId || hw.lesson?.id || hw.lessons?.[0]?.id;
+  if (refId != null) {
+    const ref = lastHomeworkLessons.find(l => Number(l.id) === Number(refId));
+    if (ref) return ref.teacher || ref.te?.[0]?.name || ref.te?.[0]?.longname || '';
+  }
+  return '';
+}
+function renderHomeworkTab() {
+  const el = $('#homeworkList');
+  if (!el) return;
+  const sub = $('#homeworkSub');
+  if (!lastHomeworks || lastHomeworks.length === 0) {
+    if (sub) sub.textContent = 'Keine Hausübungen diese Woche';
+    el.innerHTML = `<div class="list-empty">
+      <div class="ico">${Icons.homework('xl')}</div>
+      <div class="ttl">Alles erledigt</div>
+      <div class="sub">Keine offenen Hausübungen für diese Woche.</div>
+    </div>`;
     return;
   }
-  const grouped = groupByDay(lastAbsences, a => Number(a.startDate || a.date || 0));
+  const todayInt = untisDateInt(new Date());
+  const openCount = lastHomeworks.filter(h => !(h.completed || h.done)).length;
+  if (sub) sub.textContent = `${openCount} offen · ${lastHomeworks.length} gesamt`;
+  const grouped = groupByDay(lastHomeworks, hw => homeworkDueDate(hw));
   let html = '';
   for (const [date, items] of grouped) {
-    html += `<div class="info-group-header">${escapeHtml(formatUntisDateLabel(date))}</div>`;
-    for (const ab of items) {
-      const time = formatTimeRange(ab.startTime, ab.endTime);
-      const excused = ab.excused === true || ab.excuseStatus === 'excused' || (ab.excuse && ab.excuse.id);
-      const reason = ab.reason || ab.absenceReason || ab.text || '';
-      const tag = excused ? 'Entschuldigt' : 'Offen';
-      const cls = excused ? 'win' : 'warn';
-      html += `<div class="info-item ${cls}">
-        <div class="ii-title">${escapeHtml(time || 'Ganztags')} <span class="ii-tag">${escapeHtml(tag)}</span></div>
-        ${reason ? `<div class="ii-body">${escapeHtml(reason)}</div>` : ''}
-      </div>`;
+    const isToday = Number(date) === todayInt;
+    html += `<div class="day-section">
+      <div class="day-section-label ${isToday ? 'today' : ''}">${escapeHtml(formatUntisDateLabel(date))}${isToday ? ' · Heute' : ''}</div>`;
+    for (const hw of items) {
+      const done = !!(hw.completed || hw.done);
+      const subj = homeworkSubject(hw) || 'Hausübung';
+      const teacher = homeworkTeacher(hw);
+      const text = homeworkText(hw);
+      const metaParts = [];
+      if (subj) metaParts.push(`<b>${escapeHtml(subj)}</b>`);
+      if (teacher) metaParts.push(escapeHtml(teacher));
+      const remark = hw.remark && hw.remark !== text ? hw.remark : '';
+      if (remark) metaParts.push(escapeHtml(remark));
+      html += `<button class="hw-card ${done ? 'completed' : ''}" data-hw-id="${escapeHtml(String(hw.id || ''))}">
+        <div class="icon-circle">${Icons.book('md')}</div>
+        <div class="body">
+          <div class="ttl">${escapeHtml(text)}</div>
+          ${metaParts.length ? `<div class="meta">${metaParts.join(' · ')}</div>` : ''}
+        </div>
+        <div class="check"></div>
+      </button>`;
     }
+    html += `</div>`;
   }
   el.innerHTML = html;
 }
 
-function renderExams() {
-  const el = $('#examsContent');
-  if (!lastExams || lastExams.length === 0) {
-    el.innerHTML = '<div class="detail-empty">Keine Prüfungen diese Woche.</div>';
+/* ============================================================
+   ALERTS TAB (Absences + Exams + Substitutions combined)
+============================================================ */
+function collectAlerts() {
+  const items = [];
+  // Absences
+  for (const ab of (lastAbsences || [])) {
+    const date = Number(ab.startDate || ab.date || 0);
+    if (!date) continue;
+    const excused = ab.excused === true || ab.excuseStatus === 'excused' || (ab.excuse && ab.excuse.id);
+    const time = formatTimeRange(ab.startTime, ab.endTime);
+    const reason = ab.reason || ab.absenceReason || ab.text || '';
+    items.push({
+      kind: 'absence',
+      date,
+      time: ab.startTime || 0,
+      title: reason || (time ? `Abwesenheit ${time}` : 'Abwesenheit'),
+      meta: [time, excused ? 'Entschuldigt' : 'Offen'].filter(Boolean),
+      tag: excused ? 'Entschuldigt' : 'Offen',
+      cls: excused ? 'warn' : 'warn',
+      icon: Icons.absent('md'),
+    });
+  }
+  // Exams
+  for (const ex of (lastExams || [])) {
+    const date = Number(ex.examDate || ex.date || 0);
+    if (!date) continue;
+    const time = formatTimeRange(ex.startTime, ex.endTime);
+    const subject = ex.subject || ex.su?.[0]?.longname || ex.su?.[0]?.name || '';
+    const teacher = (ex.teachers || ex.te || []).map(t => t.name || t).join(', ');
+    const room = (ex.rooms || ex.ro || []).map(r => r.name || r).join(', ');
+    items.push({
+      kind: 'exam',
+      date,
+      time: ex.startTime || 0,
+      title: ex.name || subject || 'Prüfung',
+      meta: [time, ex.examType, teacher && `Lehrer ${teacher}`, room && `Raum ${room}`].filter(Boolean),
+      tag: ex.examType || 'Prüfung',
+      cls: 'cancel',
+      icon: Icons.exam('md'),
+      body: ex.text || '',
+    });
+  }
+  // Substitutions / cancellations from lessons
+  for (const l of (lastLessons || [])) {
+    const status = getLessonStatus(l);
+    if (status === 'normal') continue;
+    const date = Number(l.date);
+    if (!date) continue;
+    const subj = l.su?.[0]?.longname || l.su?.[0]?.name || '—';
+    const time = formatTimeRange(l.startTime, l.endTime);
+    const teacher = l.te?.[0] ? (l.te[0].name || '') : '';
+    const room = l.ro?.[0] ? (l.ro[0].name || '') : '';
+    const isCancel = status === 'cancelled';
+    items.push({
+      kind: 'lesson',
+      date,
+      time: l.startTime || 0,
+      title: subj,
+      meta: [time, teacher && `Lehrer ${teacher}`, room && `Raum ${room}`, l.substText].filter(Boolean),
+      tag: isCancel ? 'Entfällt' : 'Suppliert',
+      cls: isCancel ? 'cancel' : 'warn',
+      icon: isCancel ? Icons.absent('md') : Icons.bell('md'),
+      lessonRef: l,
+    });
+  }
+  return items.sort((a, b) => (a.date - b.date) || (a.time - b.time));
+}
+function renderAlertsTab() {
+  const el = $('#alertsList');
+  if (!el) return;
+  const sub = $('#alertsSub');
+  const items = collectAlerts();
+  if (items.length === 0) {
+    if (sub) sub.textContent = 'Diese Woche';
+    el.innerHTML = `<div class="list-empty">
+      <div class="ico">${Icons.bell('xl')}</div>
+      <div class="ttl">Keine Hinweise</div>
+      <div class="sub">Keine Absenzen, Prüfungen oder Vertretungen diese Woche.</div>
+    </div>`;
     return;
   }
-  const grouped = groupByDay(lastExams, ex => Number(ex.examDate || ex.date || 0));
+  const counts = items.reduce((acc, it) => (acc[it.kind] = (acc[it.kind] || 0) + 1, acc), {});
+  const summaryParts = [];
+  if (counts.absence) summaryParts.push(`${counts.absence} Absenz${counts.absence === 1 ? '' : 'en'}`);
+  if (counts.exam) summaryParts.push(`${counts.exam} Prüfung${counts.exam === 1 ? '' : 'en'}`);
+  if (counts.lesson) summaryParts.push(`${counts.lesson} Vertretung${counts.lesson === 1 ? '' : 'en'}`);
+  if (sub) sub.textContent = summaryParts.join(' · ');
+  const todayInt = untisDateInt(new Date());
+  // Group by date
+  const byDate = new Map();
+  for (const it of items) {
+    if (!byDate.has(it.date)) byDate.set(it.date, []);
+    byDate.get(it.date).push(it);
+  }
   let html = '';
-  for (const [date, items] of grouped) {
-    html += `<div class="info-group-header">${escapeHtml(formatUntisDateLabel(date))}</div>`;
-    for (const ex of items) {
-      const time = formatTimeRange(ex.startTime, ex.endTime);
-      const subject = ex.subject || ex.su?.[0]?.longname || ex.su?.[0]?.name || '';
-      const teacher = (ex.teachers || ex.te || []).map(t => t.name || t).join(', ');
-      const room = (ex.rooms || ex.ro || []).map(r => r.name || r).join(', ');
-      const metaParts = [time, ex.examType, teacher && `Lehrer: ${teacher}`, room && `Raum: ${room}`].filter(Boolean);
-      html += `<div class="info-item cancel">
-        <div class="ii-title">${escapeHtml(ex.name || subject || 'Prüfung')} <span class="ii-tag">${escapeHtml(ex.examType || 'Prüfung')}</span></div>
-        ${metaParts.length ? `<div class="ii-meta">${metaParts.map(m => `<span>${escapeHtml(m)}</span>`).join(' · ')}</div>` : ''}
-        ${ex.text ? `<div class="ii-body">${escapeHtml(ex.text)}</div>` : ''}
-      </div>`;
+  for (const [date, group] of byDate) {
+    const isToday = Number(date) === todayInt;
+    html += `<div class="day-section">
+      <div class="day-section-label ${isToday ? 'today' : ''}">${escapeHtml(formatUntisDateLabel(date))}${isToday ? ' · Heute' : ''}</div>`;
+    for (const it of group) {
+      const metaHtml = it.meta && it.meta.length
+        ? `<div class="meta">${it.meta.map(m => `<span>${escapeHtml(m)}</span>`).join(' · ')}</div>`
+        : '';
+      const bodyHtml = it.body ? `<div class="meta" style="margin-top:4px;">${escapeHtml(it.body)}</div>` : '';
+      const lessonAttr = it.lessonRef ? ` data-alert-lesson="${escapeHtml(lessonId(it.lessonRef))}"` : '';
+      html += `<button class="alert-card ${it.cls}"${lessonAttr}>
+        <div class="icon-circle">${it.icon}</div>
+        <div class="body">
+          <div class="ttl">${escapeHtml(it.title)} <span class="tag">${escapeHtml(it.tag)}</span></div>
+          ${metaHtml}
+          ${bodyHtml}
+        </div>
+      </button>`;
     }
+    html += `</div>`;
   }
   el.innerHTML = html;
 }
@@ -2262,16 +2839,6 @@ async function loadOfficeHours(force = false) {
   }
 }
 
-function openAbsencesModal() {
-  Sound.tap(); Haptic.select();
-  renderAbsences();
-  $('#absencesModal').classList.add('open');
-}
-function openExamsModal() {
-  Sound.tap(); Haptic.select();
-  renderExams();
-  $('#examsModal').classList.add('open');
-}
 function openOfficeHoursModal() {
   Sound.tap(); Haptic.select();
   renderOfficeHours();
@@ -2279,23 +2846,39 @@ function openOfficeHoursModal() {
   loadOfficeHours();
 }
 
-$('#openAbsences').addEventListener('click', openAbsencesModal);
-$('#openExams').addEventListener('click', openExamsModal);
 $('#openOfficeHours').addEventListener('click', openOfficeHoursModal);
-$('#absencesClose').addEventListener('click', () => { Sound.tap(); $('#absencesModal').classList.remove('open'); });
-$('#absencesModal').addEventListener('click', (e) => { if (e.target === $('#absencesModal')) $('#absencesModal').classList.remove('open'); });
-$('#examsClose').addEventListener('click', () => { Sound.tap(); $('#examsModal').classList.remove('open'); });
-$('#examsModal').addEventListener('click', (e) => { if (e.target === $('#examsModal')) $('#examsModal').classList.remove('open'); });
 $('#officeHoursClose').addEventListener('click', () => { Sound.tap(); $('#officeHoursModal').classList.remove('open'); });
 $('#officeHoursModal').addEventListener('click', (e) => { if (e.target === $('#officeHoursModal')) $('#officeHoursModal').classList.remove('open'); });
+
+// Tap an alert card → open the underlying lesson detail (if linked)
+$('#alertsList').addEventListener('click', (e) => {
+  const card = e.target.closest('.alert-card');
+  if (!card) return;
+  const id = card.dataset.alertLesson;
+  if (!id) return;
+  const lesson = (lastLessons || []).find(l => lessonId(l) === id);
+  if (lesson) openDetails(lesson);
+});
 
 /* ============================================================
    TIMETABLE
 ============================================================ */
 const loginView = $('#loginView');
-const weekView = $('#weekView');
+const appView = $('#appView');
+const dockEl = $('#bottomDock');
 const msg = $('#msg');
 const ttMsg = $('#ttMsg');
+
+function showApp() {
+  loginView.style.display = 'none';
+  appView.classList.add('visible');
+  dockEl.classList.add('visible');
+}
+function showLogin() {
+  loginView.style.display = 'block';
+  appView.classList.remove('visible');
+  dockEl.classList.remove('visible');
+}
 
 let creds = null;
 let viewMode = LS.get('viewMode') === 'week' ? 'week' : 'day';
@@ -2372,7 +2955,10 @@ async function fetchWeek(monday) {
     if (lastHomeworks.length > 0) console.log('[Substi] First homework:', lastHomeworks[0]);
     if (lastAbsences.length > 0) console.log('[Substi] First absence:', lastAbsences[0]);
     renderWeek(data.timetable || [], monday);
-    loginView.style.display = 'none'; weekView.style.display = 'block';
+    renderHomeworkTab();
+    renderAlertsTab();
+    refreshAccountTab();
+    showApp();
     setStatus(msg, ''); setStatus(ttMsg, '');
   } catch (e) {
     Haptic.error();
@@ -2404,6 +2990,12 @@ function renderWeek(lessons, monday) {
   $('#weekRange').textContent = viewMode === 'day'
     ? `${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} · KW ${isoWeekNumber(days[0])}`
     : `${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} – ${rangeEnd.toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} · KW ${isoWeekNumber(days[0])}`;
+  const planSubEl = $('#planSub');
+  if (planSubEl) {
+    planSubEl.textContent = viewMode === 'day'
+      ? `${days[0].toLocaleDateString('de-AT', { weekday:'long', day:'2-digit', month:'short' })}`
+      : `KW ${isoWeekNumber(days[0])} · ${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} – ${rangeEnd.toLocaleDateString('de-AT', { day:'2-digit', month:'short' })}`;
+  }
 
   const grid = $('#weekGrid');
   grid.style.gridTemplateColumns = viewMode === 'day'
@@ -2529,8 +3121,8 @@ $('#logoutBtn').addEventListener('click', () => {
   Sound.tap(); Haptic.light();
   creds = null;
   $('#pass').value = '';
-  weekView.style.display = 'none';
-  loginView.style.display = 'block';
+  setTab('plan');
+  showLogin();
   setStatus(msg, '');
 });
 $('#prevBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = addDays(currentMonday, -viewStepDays()); fetchWeek(currentMonday); });
@@ -2547,10 +3139,74 @@ $$('#viewToggle button').forEach(btn => {
   $('#'+id).addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#loginBtn').click(); });
 });
 
+/* ============================================================
+   BOTTOM DOCK / TABS
+============================================================ */
+const TAB_NAMES = ['plan', 'homework', 'alerts', 'account'];
+let currentTab = (() => {
+  const saved = LS.get('tab');
+  return TAB_NAMES.includes(saved) ? saved : 'plan';
+})();
+function setTab(name, opts) {
+  const opts2 = opts || {};
+  if (!TAB_NAMES.includes(name)) name = 'plan';
+  if (name === currentTab && !opts2.force) {
+    // double-tap dock: scroll to top of pane
+    const pane = document.querySelector(`.tab-pane.active`);
+    if (pane) pane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  currentTab = name;
+  LS.set('tab', name);
+  $$('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.tab === name));
+  $$('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  // Per-tab on-show refresh
+  if (name === 'homework') renderHomeworkTab();
+  if (name === 'alerts') renderAlertsTab();
+  if (name === 'account') refreshAccountTab();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+$$('.dock-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    Sound.tap(); Haptic.select();
+    setTab(btn.dataset.tab);
+  });
+});
+
+// Swipe horizontally on content area to switch tabs
+let swipeStart = null;
+appView.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) { swipeStart = null; return; }
+  // Ignore swipes that originate inside scrollable / interactive regions
+  if (e.target.closest('.week-grid, .modal-card, .dock, .reels, .reel, input, button.app-switch')) { swipeStart = null; return; }
+  const t = e.touches[0];
+  swipeStart = { x: t.clientX, y: t.clientY, t: Date.now() };
+}, { passive: true });
+appView.addEventListener('touchend', (e) => {
+  if (!swipeStart) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - swipeStart.x;
+  const dy = t.clientY - swipeStart.y;
+  const dt = Date.now() - swipeStart.t;
+  swipeStart = null;
+  if (dt > 600) return;
+  if (Math.abs(dy) > 50) return;
+  if (Math.abs(dx) < 80) return;
+  const idx = TAB_NAMES.indexOf(currentTab);
+  const nextIdx = dx < 0 ? idx + 1 : idx - 1;
+  if (nextIdx < 0 || nextIdx >= TAB_NAMES.length) return;
+  Haptic.light();
+  setTab(TAB_NAMES[nextIdx]);
+}, { passive: true });
+
+// Restore last tab on init (will only matter once appView is visible)
+setTab(currentTab, { force: true });
+
 // Init
 updateWalletUI();
 updateSwitches();
 updateViewToggle();
+refreshAccountTab();
 if (window.location.protocol === 'file:') {
   setStatus(msg, 'Du öffnest gerade die HTML-Datei direkt. Login und Cloud-Sync funktionieren nur über deine Render-URL oder lokal mit http://localhost:3000.', true);
   setSync('error');
