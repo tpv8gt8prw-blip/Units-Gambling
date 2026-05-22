@@ -1494,6 +1494,177 @@
     flex-wrap: wrap;
   }
 
+  /* ============================================================
+     HOMEWORK SUB-TABS + STUDENT PLANNER
+  ============================================================ */
+  .hw-pane[hidden] { display: none; }
+
+  .planner-form {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 14px;
+    padding: 12px;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .planner-row {
+    display: grid; gap: 8px;
+    grid-template-columns: 1fr;
+  }
+  .planner-row-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .planner-input {
+    height: 38px;
+    min-width: 0;
+    background: var(--fill-2);
+    border: 1px solid var(--sep-2);
+    border-radius: var(--r-md);
+    color: var(--ink);
+    font: inherit; font-size: 13px; font-weight: 550;
+    padding: 0 12px;
+    outline: none;
+    transition: border-color .15s var(--ease-out), background .15s var(--ease-out), box-shadow .15s var(--ease-out);
+  }
+  .planner-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus);
+    background: var(--fill);
+  }
+  .planner-input::placeholder { color: var(--ink-4); }
+  .planner-subject {
+    appearance: none; -webkit-appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+      linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position:
+      calc(100% - 14px) calc(50% - 2px),
+      calc(100% - 9px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 26px;
+  }
+  .planner-date {
+    font-variant-numeric: tabular-nums;
+  }
+  .planner-text { width: 100%; }
+  .planner-add {
+    height: 40px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent));
+    color: white; border: none;
+    font: inherit; font-size: 14px; font-weight: 700;
+    border-radius: var(--r-md);
+    transition: transform .15s var(--ease-out), filter .15s var(--ease-out);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 24%, transparent), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  .planner-add:hover { filter: saturate(1.08) brightness(1.02); }
+  .planner-add:active { transform: scale(0.97); }
+  .planner-add:disabled { opacity: 0.5; box-shadow: none; }
+
+  .planner-status {
+    margin: -6px 0 12px;
+    padding: 10px 12px;
+    background: var(--cancel-bg);
+    color: var(--cancel);
+    border-radius: var(--r-md);
+    font-size: 13px; font-weight: 600;
+  }
+  .planner-status[hidden] { display: none; }
+
+  /* Card variant: planner item — looks like .hw-card but with delete control
+     and a per-subject color stripe (the --subject-hue is set inline). */
+  .planner-card {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 16px;
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    border-left: 3px solid hsl(var(--subject-hue, 24) 78% 52%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    transition: transform .15s var(--ease-out), background .15s var(--ease-out);
+    text-align: left;
+  }
+  .planner-card.completed { opacity: 0.55; }
+  .planner-card.completed .ttl { text-decoration: line-through; }
+  .planner-card.overdue { border-left-color: var(--cancel); }
+  .planner-card .check-btn {
+    flex-shrink: 0; margin-top: 2px;
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--ink-4); background: transparent;
+    padding: 0; cursor: pointer; position: relative;
+    transition: background .15s var(--ease-out), border-color .15s var(--ease-out), transform .15s var(--ease-out);
+  }
+  .planner-card .check-btn:active { transform: scale(0.88); }
+  .planner-card.completed .check-btn { background: var(--win); border-color: var(--win); }
+  .planner-card.completed .check-btn::after {
+    content: '';
+    position: absolute; left: 6px; top: 3px;
+    width: 5px; height: 10px;
+    border: solid white; border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .planner-card .body { flex: 1; min-width: 0; }
+  .planner-card .ttl {
+    font-family: var(--ff-r); font-size: 15px; font-weight: 700;
+    letter-spacing: -0.005em; line-height: 1.25;
+    overflow-wrap: anywhere;
+    margin-bottom: 3px;
+  }
+  .planner-card .meta {
+    font-size: 12px; color: var(--ink-3); font-weight: 500;
+    display: flex; gap: 8px; flex-wrap: wrap; line-height: 1.3;
+    align-items: center;
+  }
+  .planner-card .meta b { color: var(--ink-2); font-weight: 650; }
+  .planner-card .subject-tag {
+    display: inline-block;
+    padding: 1px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: hsl(var(--subject-hue, 24) 78% 52% / 0.16);
+    color: hsl(var(--subject-hue, 24) 78% 42%);
+  }
+  :root[data-theme="dark"] .planner-card .subject-tag {
+    color: hsl(var(--subject-hue, 24) 80% 70%);
+  }
+  .planner-card .due-tag {
+    display: inline-block;
+    padding: 1px 7px; border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+    background: var(--fill); color: var(--ink-3);
+  }
+  .planner-card .due-tag.today { background: var(--accent-soft); color: var(--accent); }
+  .planner-card .due-tag.overdue { background: var(--cancel-bg); color: var(--cancel); }
+  .planner-card .delete-btn {
+    flex-shrink: 0; margin-top: 2px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: transparent; border: none; color: var(--ink-4);
+    font-size: 16px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s var(--ease-out), color .15s var(--ease-out);
+  }
+  .planner-card .delete-btn:hover { background: var(--cancel-bg); color: var(--cancel); }
+  .planner-card .delete-btn:active { transform: scale(0.88); }
+
+  .planner-group-label {
+    font-size: 11px; font-weight: 700;
+    color: hsl(var(--subject-hue, 24) 78% 44%);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 12px 4px 6px;
+  }
+  :root[data-theme="dark"] .planner-group-label {
+    color: hsl(var(--subject-hue, 24) 80% 68%);
+  }
+
+  @media (min-width: 640px) {
+    .planner-form {
+      display: grid;
+      grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) minmax(140px, 180px) auto;
+      align-items: center;
+    }
+    .planner-form .planner-row-top { display: contents; }
+    .planner-form .planner-text { grid-column: 2 / 3; }
+    .planner-form .planner-add { grid-column: 4; min-width: 130px; }
+  }
+
   @media (max-width: 480px) {
     .dock { width: calc(100% - 18px); border-radius: 22px; }
     .dock-btn { font-size: 10px; height: 48px; }
@@ -1612,8 +1783,28 @@
           <h1 class="tab-title">Hausübungen<em>.</em></h1>
           <div class="tab-sub" id="homeworkSub">Diese Woche</div>
         </div>
+        <div class="toggle" id="hwSubToggle">
+          <button data-hw-sub="teacher" class="active">Lehrer</button>
+          <button data-hw-sub="planner">Schulplaner</button>
+        </div>
       </div>
-      <div id="homeworkList" class="hw-list"></div>
+      <div class="hw-pane" data-hw-sub="teacher">
+        <div id="homeworkList" class="hw-list"></div>
+      </div>
+      <div class="hw-pane" data-hw-sub="planner" hidden>
+        <form class="planner-form" id="plannerForm" autocomplete="off">
+          <div class="planner-row planner-row-top">
+            <select id="plannerSubject" class="planner-input planner-subject" required>
+              <option value="">Fach wählen…</option>
+            </select>
+            <input id="plannerDate" type="date" class="planner-input planner-date" required>
+          </div>
+          <input id="plannerText" type="text" class="planner-input planner-text" placeholder="Was ist zu tun?" maxlength="200" required>
+          <button type="submit" class="planner-add">+ Hinzufügen</button>
+        </form>
+        <div id="plannerStatus" class="planner-status" hidden></div>
+        <div id="plannerList" class="hw-list"></div>
+      </div>
     </section>
 
     <!-- ===== ABSENCES TAB ===== -->
@@ -2810,6 +3001,212 @@ function renderHomeworkTab() {
 }
 
 /* ============================================================
+   STUDENT HOMEWORK PLANNER (localStorage, per-user, no sync)
+============================================================ */
+const PLANNER_AUTO_DELETE_DAYS = 2; // drop entries this many days past due
+function plannerKey() {
+  const u = (creds && creds.username ? String(creds.username) : 'guest').toLowerCase();
+  return `planner:${u}`;
+}
+function loadOwnHw() {
+  const raw = LS.getJSON(plannerKey(), []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(it => it && typeof it === 'object' && it.id && it.subject && it.text && it.dueDate);
+}
+function saveOwnHw(items) { LS.setJSON(plannerKey(), items); }
+function pruneOwnHw() {
+  const items = loadOwnHw();
+  if (!items.length) return;
+  const cutoffInt = untisDateInt(addDays(startOfDay(new Date()), -PLANNER_AUTO_DELETE_DAYS));
+  const next = items.filter(it => Number(it.dueDate) >= cutoffInt);
+  if (next.length !== items.length) saveOwnHw(next);
+}
+function addOwnHw({ subject, text, dueDate }) {
+  const items = loadOwnHw();
+  const item = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    subject: String(subject).trim(),
+    text: String(text).trim(),
+    dueDate: Number(dueDate),
+    completed: false,
+    createdAt: Date.now(),
+  };
+  items.push(item);
+  saveOwnHw(items);
+  return item;
+}
+function toggleOwnHw(id) {
+  const items = loadOwnHw();
+  const it = items.find(x => x.id === id);
+  if (!it) return;
+  it.completed = !it.completed;
+  saveOwnHw(items);
+}
+function removeOwnHw(id) {
+  saveOwnHw(loadOwnHw().filter(it => it.id !== id));
+}
+function plannerSubjects() {
+  const seen = new Set();
+  const out = [];
+  for (const l of (lastLessons || [])) {
+    const s = l.su && l.su[0];
+    if (!s) continue;
+    const name = s.longname || s.name;
+    if (name && !seen.has(name)) { seen.add(name); out.push(name); }
+  }
+  return out.sort((a, b) => a.localeCompare(b, 'de'));
+}
+function refreshPlannerSubjects() {
+  const sel = $('#plannerSubject');
+  if (!sel) return;
+  const current = sel.value;
+  const subjects = plannerSubjects();
+  const options = ['<option value="">Fach wählen…</option>']
+    .concat(subjects.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`));
+  if (current && !subjects.includes(current)) {
+    options.push(`<option value="${escapeHtml(current)}">${escapeHtml(current)}</option>`);
+  }
+  sel.innerHTML = options.join('');
+  if (current) sel.value = current;
+}
+function subjectHue(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+function dateInputToInt(s) {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  return parseInt(s.replace(/-/g, ''), 10);
+}
+function plannerDueInfo(dueInt) {
+  const s = String(dueInt);
+  if (s.length !== 8) return { label: '—', cls: '' };
+  const due = new Date(parseInt(s.slice(0,4)), parseInt(s.slice(4,6))-1, parseInt(s.slice(6,8)));
+  const today = startOfDay(new Date());
+  const diffDays = Math.round((due - today) / 86400000);
+  if (diffDays === 0) return { label: 'Heute', cls: 'today' };
+  if (diffDays === 1) return { label: 'Morgen', cls: '' };
+  if (diffDays < 0) return {
+    label: `Überfällig · ${due.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}`,
+    cls: 'overdue'
+  };
+  if (diffDays < 7) return { label: due.toLocaleDateString('de-AT', { weekday: 'short' }), cls: '' };
+  return { label: due.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' }), cls: '' };
+}
+function renderPlannerTab() {
+  pruneOwnHw();
+  refreshPlannerSubjects();
+  const list = $('#plannerList');
+  if (!list) return;
+  const items = loadOwnHw();
+  if (!items.length) {
+    list.innerHTML = `<div class="list-empty">
+      <div class="ico">${Icons.homework('xl')}</div>
+      <div class="ttl">Dein Schulplaner ist leer</div>
+      <div class="sub">Eigene Hausübungen oben hinzufügen — nur auf diesem Gerät gespeichert.</div>
+    </div>`;
+    return;
+  }
+  const groups = new Map();
+  for (const it of items) {
+    if (!groups.has(it.subject)) groups.set(it.subject, []);
+    groups.get(it.subject).push(it);
+  }
+  // Subject groups: most-urgent (earliest open due date) appears first.
+  const nextDue = arr => {
+    let m = Infinity;
+    for (const x of arr) if (!x.completed) m = Math.min(m, Number(x.dueDate) || Infinity);
+    return m;
+  };
+  const subjOrder = Array.from(groups.keys()).sort((a, b) => nextDue(groups.get(a)) - nextDue(groups.get(b)));
+  let html = '';
+  for (const subj of subjOrder) {
+    const arr = groups.get(subj).slice().sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      return Number(a.dueDate) - Number(b.dueDate);
+    });
+    const hue = subjectHue(subj);
+    html += `<div class="day-section" style="--subject-hue:${hue};">
+      <div class="planner-group-label">${escapeHtml(subj)}</div>`;
+    for (const it of arr) {
+      const due = plannerDueInfo(it.dueDate);
+      html += `<div class="planner-card ${it.completed ? 'completed' : ''} ${due.cls === 'overdue' ? 'overdue' : ''}"
+          data-planner-id="${escapeHtml(it.id)}" style="--subject-hue:${hue};">
+        <button class="check-btn" data-planner-action="toggle" aria-label="Erledigt"></button>
+        <div class="body">
+          <div class="ttl">${escapeHtml(it.text)}</div>
+          <div class="meta">
+            <span class="subject-tag">${escapeHtml(it.subject)}</span>
+            <span class="due-tag ${due.cls}">${escapeHtml(due.label)}</span>
+          </div>
+        </div>
+        <button class="delete-btn" data-planner-action="delete" aria-label="Löschen">✕</button>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  list.innerHTML = html;
+}
+function setPlannerStatus(msg) {
+  const el = $('#plannerStatus');
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.hidden = false; }
+  else { el.hidden = true; el.textContent = ''; }
+}
+let hwSubTab = LS.get('hwSub') === 'planner' ? 'planner' : 'teacher';
+function setHwSubTab(name) {
+  if (name !== 'teacher' && name !== 'planner') name = 'teacher';
+  hwSubTab = name;
+  LS.set('hwSub', name);
+  $$('#hwSubToggle button').forEach(b => b.classList.toggle('active', b.dataset.hwSub === name));
+  $$('.hw-pane').forEach(p => { p.hidden = (p.dataset.hwSub !== name); });
+  if (name === 'planner') renderPlannerTab();
+  else renderHomeworkTab();
+}
+function renderHomeworkAll() { setHwSubTab(hwSubTab); }
+$$('#hwSubToggle button').forEach(btn => {
+  btn.addEventListener('click', () => { Sound.tap(); Haptic.select(); setHwSubTab(btn.dataset.hwSub); });
+});
+const plannerForm = $('#plannerForm');
+if (plannerForm) {
+  plannerForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const subject = ($('#plannerSubject').value || '').trim();
+    const text = ($('#plannerText').value || '').trim();
+    const dueDate = dateInputToInt($('#plannerDate').value);
+    if (!subject) { setPlannerStatus('Fach wählen.'); Haptic.warning(); return; }
+    if (!text) { setPlannerStatus('Beschreibung fehlt.'); Haptic.warning(); return; }
+    if (!dueDate) { setPlannerStatus('Fälligkeitsdatum fehlt.'); Haptic.warning(); return; }
+    setPlannerStatus('');
+    addOwnHw({ subject, text, dueDate });
+    Sound.coin(); Haptic.success();
+    $('#plannerText').value = '';
+    $('#plannerText').focus();
+    renderPlannerTab();
+  });
+}
+const plannerDateInput = $('#plannerDate');
+if (plannerDateInput && !plannerDateInput.value) plannerDateInput.value = isoDate(new Date());
+const plannerListEl = $('#plannerList');
+if (plannerListEl) {
+  plannerListEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-planner-action]');
+    if (!btn) return;
+    const card = btn.closest('[data-planner-id]');
+    if (!card) return;
+    const id = card.dataset.plannerId;
+    if (btn.dataset.plannerAction === 'toggle') {
+      Sound.tap(); Haptic.select();
+      toggleOwnHw(id);
+    } else if (btn.dataset.plannerAction === 'delete') {
+      Sound.tap(); Haptic.warning();
+      removeOwnHw(id);
+    }
+    renderPlannerTab();
+  });
+}
+
+/* ============================================================
    ABSENCES TAB
 ============================================================ */
 function isExcusedAbsence(ab) {
@@ -3255,7 +3652,7 @@ function setTab(name, opts) {
   $$('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.tab === name));
   $$('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   // Per-tab on-show refresh
-  if (name === 'homework') renderHomeworkTab();
+  if (name === 'homework') renderHomeworkAll();
   if (name === 'absences') renderAbsencesTab();
   if (name === 'account') refreshAccountTab();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3383,6 +3780,7 @@ updateWalletUI();
 updateSwitches();
 updateViewToggle();
 refreshAccountTab();
+pruneOwnHw();
 if (window.location.protocol === 'file:') {
   setStatus(msg, 'Du öffnest gerade die HTML-Datei direkt. Login und Cloud-Sync funktionieren nur über deine Render-URL oder lokal mit http://localhost:3000.', true);
   setSync('error');
