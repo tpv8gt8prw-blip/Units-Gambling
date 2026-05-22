@@ -524,6 +524,64 @@
   .lesson-card.ausflug .subj { text-decoration: line-through; opacity: 0.7; }
   .lesson-card.ausflug .stat { color: var(--blue); }
 
+  /* ============================================================
+     WEEK COMPACT MODE — 5 columns, all visible, no horizontal scroll.
+     Activated by JS toggling .compact on #weekGrid when viewMode === 'week'.
+  ============================================================ */
+  .week-grid.compact { overflow-x: hidden; }
+  .week-grid.compact > * { padding: 5px; }
+  .week-grid.compact .day-header { padding: 8px 5px 9px; }
+  .week-grid.compact .day-header .wd { font-size: 10px; letter-spacing: 0.04em; }
+  .week-grid.compact .day-header .dt { font-size: 14px; }
+  .week-grid.compact .time-cell { padding: 8px 2px 4px; font-size: 9px; }
+  .week-grid.compact .time-cell .h { font-size: 11px; }
+  .week-grid.compact .time-cell > div > div:last-child { font-size: 8px !important; }
+  .week-grid.compact .slot {
+    min-height: 56px; padding: 3px; gap: 3px;
+  }
+  .week-grid.compact .lesson-card {
+    padding: 5px 6px;
+    border-radius: 9px;
+    border-left-width: 2px;
+    gap: 1px;
+    min-height: 0;
+  }
+  .week-grid.compact .lesson-card .subj {
+    font-size: 11.5px;
+    line-height: 1.12;
+    letter-spacing: -0.005em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  /* Teacher hidden on compact cards — only room is shown (single line, ellipsis) */
+  .week-grid.compact .lesson-card .detail { gap: 0; font-size: 9.5px; }
+  .week-grid.compact .lesson-card .detail b { display: none; }
+  .week-grid.compact .lesson-card .detail span {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%; line-height: 1.15;
+  }
+  .week-grid.compact .lesson-card .stat {
+    font-size: 8px; margin-top: 1px; letter-spacing: 0.03em;
+  }
+  .week-grid.compact .lesson-card .homework-pill {
+    padding: 1px 5px; font-size: 8px; margin-top: 2px;
+  }
+  .week-grid.compact .lesson-card .exam-badge {
+    top: 2px; left: 2px; padding: 2px; border-radius: 4px;
+  }
+  .week-grid.compact .lesson-card .exam-badge .icon-svg {
+    width: 10px; height: 10px;
+  }
+  .week-grid.compact .bet-overlay .icon .icon-svg { width: 16px; height: 16px; }
+  .week-grid.compact .bet-overlay .lbl { font-size: 8.5px; letter-spacing: 0.03em; }
+  [data-casino="on"] .week-grid.compact .lesson-card.played::after {
+    font-size: 8px; padding: 1px 4px;
+  }
+
   /* Casino mode bet overlay */
   [data-casino="on"] .lesson-card:not(.played) .subj,
   [data-casino="on"] .lesson-card:not(.played) .detail,
@@ -3018,9 +3076,12 @@ function renderWeek(lessons, monday) {
   }
 
   const grid = $('#weekGrid');
+  grid.classList.toggle('compact', viewMode === 'week');
+  // Week mode: 5 equal columns that ALWAYS fit the viewport (minmax(0,1fr)
+  // lets columns shrink below their content width, so no horizontal scroll).
   grid.style.gridTemplateColumns = viewMode === 'day'
-    ? '58px minmax(220px, 1fr)'
-    : '58px repeat(5, minmax(116px, 1fr))';
+    ? '50px minmax(220px, 1fr)'
+    : '32px repeat(5, minmax(0, 1fr))';
   if (visibleLessons.length === 0) {
     grid.innerHTML = `<div style="grid-column: 1 / -1;" class="empty">Keine Stunden in dieser Ansicht<small>Anderen Tag wählen oder weiter navigieren.</small></div>`;
     return;
