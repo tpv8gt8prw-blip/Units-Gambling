@@ -280,6 +280,58 @@ app.post('/api/timetable-week', async (req, res) => {
 });
 
 /* ============================================================
+   PROFILE — student's own foreName / longName.
+   The webuntis lib stores sessionInformation after login (personId,
+   personType, klasseId). getStudents() then lets us look up our own
+   row. Many schools restrict that endpoint to teachers, so we wrap
+   in try/catch and just return empty fields on failure — the
+   frontend falls back to the username.
+============================================================ */
+function formatDisplayName(foreName, longName) {
+  const f = String(foreName || '').trim();
+  const l = String(longName || '').trim();
+  if (f && l) return `${f} ${l.charAt(0).toUpperCase()}.`;
+  if (f) return f;
+  if (l) return l;
+  return '';
+}
+
+app.post('/api/profile', async (req, res) => {
+  const creds = req.body || {};
+  if (!validCreds(creds)) return res.status(400).json({ error: 'Fehlende Felder.' });
+  try {
+    const profile = await withUntis(creds, async (u) => {
+      const sess = u.sessionInformation || {};
+      let foreName = '', longName = '';
+      if (sess.personType === 5 && sess.personId) {
+        try {
+          const students = await u.getStudents();
+          const me = (students || []).find(s => Number(s.id) === Number(sess.personId));
+          if (me) {
+            foreName = me.foreName || me.forename || '';
+            longName = me.longName || me.longname || '';
+          }
+        } catch (err) {
+          console.log('[Profile getStudents]', err.message);
+        }
+      }
+      return {
+        personId: sess.personId || null,
+        personType: sess.personType || null,
+        klasseId: sess.klasseId || null,
+        foreName,
+        longName,
+        displayName: formatDisplayName(foreName, longName),
+      };
+    });
+    res.json({ ok: true, profile });
+  } catch (err) {
+    console.error('[Profile Error]', err.message);
+    res.status(401).json({ error: err.message || 'Login fehlgeschlagen' });
+  }
+});
+
+/* ============================================================
    OFFICE HOURS (Sprechzeiten) — uses raw JSON-RPC since the
    webuntis library doesn't expose this method directly
 ============================================================ */
@@ -346,11 +398,16 @@ app.post('/api/state/save', async (req, res) => {
 });
 
 /* ============================================================
-   LEADERBOARD — Redis sorted set, member id = "username|school|klass"
-   We store the pipe-delimited tuple so the GET endpoint can split it
-   back into displayable fields without needing a second lookup.
+   LEADERBOARD
+     ZSET  leaderboard:all    score=coins, member="username|school|klass"
+     HASH  leaderboard:names  member → displayName ("Enrique A.")
+   Member id stays the stable username|school|klass tuple so ZADD always
+   overwrites the same row even if the user's display name changes.
+   displayName is stored separately so the GET endpoint can return both
+   the stable id and a friendly name.
 ============================================================ */
 const LEADERBOARD_KEY = 'leaderboard:all';
+const LEADERBOARD_NAMES_KEY = 'leaderboard:names';
 
 function leaderboardMember({ username, school, klass }) {
   return [
@@ -361,30 +418,50 @@ function leaderboardMember({ username, school, klass }) {
 }
 
 app.post('/api/leaderboard/update', async (req, res) => {
-  const { server, school, username, password, coins, klass } = req.body || {};
+  const { server, school, username, password, coins, klass, displayName } = req.body || {};
   if (!school || !username || !password || typeof coins !== 'number' || !Number.isFinite(coins)) {
     return res.status(400).json({ error: 'data missing' });
   }
   if (!CLOUD_ENABLED) return res.json({ ok: false, cloudEnabled: false });
   const member = leaderboardMember({ username, school, klass });
-  const out = await upstashCmd(['ZADD', LEADERBOARD_KEY, String(Math.round(coins)), member]);
-  res.json({ ok: !!out, cloudEnabled: true });
+  const zadd = await upstashCmd(['ZADD', LEADERBOARD_KEY, String(Math.round(coins)), member]);
+  if (displayName && String(displayName).trim()) {
+    await upstashCmd(['HSET', LEADERBOARD_NAMES_KEY, member, String(displayName).trim()]);
+  }
+  res.json({ ok: !!zadd, cloudEnabled: true });
 });
 
 app.get('/api/leaderboard/get', async (_req, res) => {
   if (!CLOUD_ENABLED) return res.json({ ok: true, entries: [], cloudEnabled: false });
   const out = await upstashCmd(['ZRANGE', LEADERBOARD_KEY, '0', '99', 'REV', 'WITHSCORES']);
   const raw = (out && Array.isArray(out.result)) ? out.result : [];
-  const entries = [];
+  if (!raw.length) return res.json({ ok: true, entries: [], cloudEnabled: true });
+
+  const members = [];
   for (let i = 0; i < raw.length; i += 2) {
-    const parts = String(raw[i]).split('|');
-    entries.push({
+    members.push({ key: String(raw[i]), coins: Number(raw[i + 1]) || 0 });
+  }
+  // Batch-fetch display names in one HMGET round-trip.
+  const namesByMember = {};
+  try {
+    const namesOut = await upstashCmd(['HMGET', LEADERBOARD_NAMES_KEY, ...members.map(m => m.key)]);
+    if (namesOut && Array.isArray(namesOut.result)) {
+      members.forEach((m, i) => { namesByMember[m.key] = namesOut.result[i] || ''; });
+    }
+  } catch (err) {
+    console.warn('[Leaderboard HMGET]', err.message);
+  }
+
+  const entries = members.map(m => {
+    const parts = m.key.split('|');
+    return {
       username: parts[0] || '',
       school: parts[1] || '',
       klass: parts[2] || '',
-      coins: Number(raw[i + 1]) || 0,
-    });
-  }
+      displayName: namesByMember[m.key] || '',
+      coins: m.coins,
+    };
+  });
   res.json({ ok: true, entries, cloudEnabled: true });
 });
 

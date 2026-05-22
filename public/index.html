@@ -3710,6 +3710,23 @@ function lbIsSelf(e) {
   const s = (creds.school || '').trim().toLowerCase();
   return e.username === u && e.school === s;
 }
+// One-shot profile fetch — populates creds.displayName ("Enrique A.")
+// from Untis. Best-effort: schools that restrict getStudents() leave
+// displayName empty and the leaderboard falls back to the username.
+async function fetchProfile() {
+  if (!creds) return;
+  try {
+    const r = await apiPost('/api/profile', creds);
+    const d = await r.json();
+    if (r.ok && d.ok && d.profile) {
+      if (d.profile.displayName) creds.displayName = d.profile.displayName;
+      if (d.profile.klasseId) creds.klasseId = d.profile.klasseId;
+    }
+  } catch (err) {
+    console.warn('[Profile fetch]', err.message);
+  }
+}
+
 async function pushLeaderboard() {
   if (!creds || cloudEnabled === false) return;
   // creds.klass is set by fetchWeek after login; currentKlass() is the
@@ -3722,6 +3739,7 @@ async function pushLeaderboard() {
       username: creds.username,
       password: creds.password,
       klass,
+      displayName: creds.displayName || '',
       coins: state.coins,
     });
     const d = await r.json().catch(() => ({}));
@@ -3788,11 +3806,12 @@ function renderLeaderboard(data) {
       e.klass ? `<span class="chip">${escapeHtml(e.klass)}</span>` : '',
       e.school ? `<span>${escapeHtml(e.school)}</span>` : ''
     ].filter(Boolean).join('');
+    const displayName = (e.displayName && e.displayName.trim()) || e.username || '—';
     return `<div class="${cls}">
       ${isSelf ? '<div class="you-chip">Das bist du</div>' : ''}
       <div class="rank">${i + 1}</div>
       <div class="who">
-        <div class="name">${escapeHtml(e.username || '—')}</div>
+        <div class="name">${escapeHtml(displayName)}</div>
         ${where ? `<div class="where">${where}</div>` : ''}
       </div>
       <div class="coins">${fmt(e.coins)}</div>
@@ -4099,6 +4118,10 @@ $('#loginBtn').addEventListener('click', async () => {
   LS.set('server', server); LS.set('school', school); LS.set('user', username);
   creds = { server, school, username, password };
   currentMonday = normalizeRangeStart(new Date());
+  // Profile lookup runs in the background — no need to block the timetable
+  // load on it. Once it resolves, creds.displayName is set and the next
+  // leaderboard push carries the friendly name.
+  fetchProfile();
   const cloudResult = await loadFromCloud();
   if (cloudResult === 'empty') saveToCloud();
   fetchWeek(currentMonday);
