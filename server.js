@@ -83,6 +83,85 @@ async function withUntis(creds, fn) {
   }
 }
 
+/* ============================================================
+   LESSON CLASSIFIER
+   Statuses:
+     - normal        : nothing changed
+     - raum_changed  : only the room differs (still held, same teacher/subject)
+     - suppliert     : teacher (or subject) was substituted
+     - cancelled     : lesson is cancelled
+     - ausflug       : excursion / Lehrausgang / Wandertag (effectively no lesson)
+   Returns { status, reason } — reason is the human-readable explanation
+   (teacher note `lstext`, substitution note `substText`, or a derived string).
+============================================================ */
+function entryHasOrgDiff(e) {
+  if (!e) return false;
+  if (e.orgname && e.name && e.orgname !== e.name) return true;
+  if (e.orgid != null && e.id != null && e.orgid !== e.id) return true;
+  return false;
+}
+function containsAusflug(text) {
+  if (!text) return false;
+  return /ausflug|exkursion|wandertag|lehrausgang|schullandwoche|projektwoche/i.test(String(text));
+}
+function classifyLesson(l) {
+  const lstext = (l.lstext || '').trim();
+  const substText = (l.substText || '').trim();
+  const info = (l.info || '').trim();
+  const allText = `${lstext} ${substText} ${info}`;
+
+  // Ausflug overrides everything else — even if Untis marked it irregular/cancelled.
+  if (containsAusflug(allText)) {
+    return { status: 'ausflug', reason: lstext || substText || info || 'Ausflug' };
+  }
+  if (l.code === 'cancelled') {
+    return { status: 'cancelled', reason: lstext || substText || info || '' };
+  }
+
+  const teDiff = entryHasOrgDiff(l.te && l.te[0]);
+  const suDiff = entryHasOrgDiff(l.su && l.su[0]);
+  const roDiff = entryHasOrgDiff(l.ro && l.ro[0]);
+  const irregular = l.code === 'irregular';
+
+  // Real substitution: teacher or subject changed, or there is a substText note.
+  if (teDiff || suDiff || substText) {
+    let reason = substText || lstext;
+    if (!reason && teDiff) {
+      const orig = l.te[0].orgname || '';
+      const next = l.te[0].name || '';
+      reason = `Lehrer: ${orig}${next ? ' → ' + next : ' fehlt'}`;
+    }
+    if (!reason && suDiff) {
+      reason = `Fach: ${l.su[0].orgname || ''} → ${l.su[0].name || ''}`;
+    }
+    return { status: 'suppliert', reason };
+  }
+
+  // Pure room change — teacher/subject still match.
+  if (roDiff) {
+    const orig = l.ro[0].orgname || '';
+    const next = l.ro[0].name || '';
+    const reason = lstext || (orig && next ? `Raum: ${orig} → ${next}` : `Raum: ${next || orig}`);
+    return { status: 'raum_changed', reason };
+  }
+
+  // Untis flagged irregular but no field actually differs — fall back to suppliert
+  // (this is rare, usually a backend quirk) and surface whatever note we have.
+  if (irregular) {
+    return { status: 'suppliert', reason: lstext || info || '' };
+  }
+
+  return { status: 'normal', reason: '' };
+}
+function annotateLessons(lessons) {
+  if (!Array.isArray(lessons)) return;
+  for (const l of lessons) {
+    const c = classifyLesson(l);
+    l.status = c.status;
+    l.statusReason = c.reason;
+  }
+}
+
 app.post('/api/timetable', async (req, res) => {
   const { date, ...creds } = req.body || {};
   if (!validCreds(creds)) return res.status(400).json({ error: 'Fehlende Felder.' });
@@ -90,6 +169,7 @@ app.post('/api/timetable', async (req, res) => {
     const target = date ? new Date(date) : new Date();
     const timetable = await withUntis(creds, u => u.getOwnTimetableFor(target));
     timetable.sort((a, b) => a.startTime - b.startTime);
+    annotateLessons(timetable);
     res.json({ ok: true, date: target.toISOString(), timetable });
   } catch (err) {
     console.error('[Untis Day Error]', err.message);
@@ -135,6 +215,7 @@ app.post('/api/timetable-week', async (req, res) => {
     });
 
     result.timetable.sort((a, b) => (a.date - b.date) || (a.startTime - b.startTime));
+    annotateLessons(result.timetable);
 
     // Extract homeworks robustly (API shape varies between school configs / library versions)
     let homeworks = [];

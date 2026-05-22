@@ -491,13 +491,22 @@
   }
   .strike { text-decoration: line-through; opacity: 0.55; }
 
+  .lesson-card.suppliert,
   .lesson-card.irregular {
     border-left-color: var(--warn);
     background:
       linear-gradient(180deg, rgba(255,255,255,0.05), transparent),
       var(--warn-bg);
   }
+  .lesson-card.suppliert .stat,
   .lesson-card.irregular .stat { color: var(--warn); }
+  .lesson-card.raum_changed {
+    border-left-color: var(--warn);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.04), transparent),
+      color-mix(in srgb, var(--warn-bg) 60%, transparent);
+  }
+  .lesson-card.raum_changed .stat { color: var(--warn); }
   .lesson-card.cancelled {
     border-left-color: var(--cancel);
     background:
@@ -506,6 +515,14 @@
   }
   .lesson-card.cancelled .subj { text-decoration: line-through; opacity: 0.6; }
   .lesson-card.cancelled .stat { color: var(--cancel); }
+  .lesson-card.ausflug {
+    border-left-color: var(--blue);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.05), transparent),
+      rgba(0,122,255,0.12);
+  }
+  .lesson-card.ausflug .subj { text-decoration: line-through; opacity: 0.7; }
+  .lesson-card.ausflug .stat { color: var(--blue); }
 
   /* Casino mode bet overlay */
   [data-casino="on"] .lesson-card:not(.played) .subj,
@@ -582,8 +599,11 @@
     border-left: 3px solid;
   }
   .legend-swatch.normal { border-color: var(--ink-3); background: var(--fill-2); }
+  .legend-swatch.suppliert,
   .legend-swatch.irregular { border-color: var(--warn); background: var(--warn-bg); }
+  .legend-swatch.raum_changed { border-color: var(--warn); background: color-mix(in srgb, var(--warn-bg) 55%, transparent); }
   .legend-swatch.cancelled { border-color: var(--cancel); background: var(--cancel-bg); }
+  .legend-swatch.ausflug { border-color: var(--blue); background: rgba(0,122,255,0.12); }
 
   footer {
     margin-top: 60px; padding-top: 16px; border-top: 1px solid var(--sep-2);
@@ -912,6 +932,7 @@
   .detail-value.warn { color: var(--warn); }
   .detail-value.cancel { color: var(--cancel); }
   .detail-value.win { color: var(--win); }
+  .detail-value.blue { color: var(--blue); }
   .detail-hw {
     background: var(--fill-2); border-left: 3px solid var(--accent);
     padding: 12px 14px; border-radius: var(--r-md);
@@ -1517,8 +1538,10 @@
 
       <div class="legend">
         <div class="legend-item"><div class="legend-swatch normal"></div>Normal</div>
-        <div class="legend-item"><div class="legend-swatch irregular"></div>Suppliert</div>
+        <div class="legend-item"><div class="legend-swatch raum_changed"></div>Raumwechsel</div>
+        <div class="legend-item"><div class="legend-swatch suppliert"></div>Suppliert</div>
         <div class="legend-item"><div class="legend-swatch cancelled"></div>Entfällt</div>
+        <div class="legend-item"><div class="legend-swatch ausflug"></div>Ausflug</div>
       </div>
 
       <div id="ttMsg"></div>
@@ -1824,18 +1847,72 @@ function apiPost(path, payload) {
 
 /* ============================================================
    STATUS DETECTION (Untis API)
+   Server attaches l.status ∈ { normal | raum_changed | suppliert
+   | cancelled | ausflug } plus l.statusReason. We mirror the
+   classifier locally so cached data without the field still works.
 ============================================================ */
 function hasOrgDiff(e) {
   if (!e) return false;
-  if (e.orgname && e.orgname !== e.name) return true;
+  if (e.orgname && e.name && e.orgname !== e.name) return true;
   if (e.orgid != null && e.id != null && e.orgid !== e.id) return true;
   return false;
 }
+function textIsAusflug(t) {
+  return !!t && /ausflug|exkursion|wandertag|lehrausgang|schullandwoche|projektwoche/i.test(String(t));
+}
+function classifyLessonClient(l) {
+  const lstext = (l.lstext || '').trim();
+  const substText = (l.substText || '').trim();
+  const info = (l.info || '').trim();
+  const allText = `${lstext} ${substText} ${info}`;
+  if (textIsAusflug(allText)) return { status: 'ausflug', reason: lstext || substText || info || 'Ausflug' };
+  if (l.code === 'cancelled') return { status: 'cancelled', reason: lstext || substText || info || '' };
+  const teDiff = hasOrgDiff(l.te?.[0]);
+  const suDiff = hasOrgDiff(l.su?.[0]);
+  const roDiff = hasOrgDiff(l.ro?.[0]);
+  if (teDiff || suDiff || substText) {
+    let reason = substText || lstext;
+    if (!reason && teDiff) reason = `Lehrer: ${l.te[0].orgname || ''}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`;
+    if (!reason && suDiff) reason = `Fach: ${l.su[0].orgname || ''} → ${l.su[0].name || ''}`;
+    return { status: 'suppliert', reason };
+  }
+  if (roDiff) {
+    const orig = l.ro[0].orgname || '', next = l.ro[0].name || '';
+    return { status: 'raum_changed', reason: lstext || (orig && next ? `Raum: ${orig} → ${next}` : `Raum: ${next || orig}`) };
+  }
+  if (l.code === 'irregular') return { status: 'suppliert', reason: lstext || info || '' };
+  return { status: 'normal', reason: '' };
+}
 function getLessonStatus(l) {
-  if (l.code === 'cancelled') return 'cancelled';
-  if (l.code === 'irregular') return 'irregular';
-  if (hasOrgDiff(l.te?.[0]) || hasOrgDiff(l.ro?.[0]) || hasOrgDiff(l.su?.[0]) || (l.substText && l.substText.trim())) return 'irregular';
-  return 'normal';
+  if (!l) return 'normal';
+  if (l.status) return l.status;            // server-provided
+  return classifyLessonClient(l).status;    // fallback for older cached lessons
+}
+function getLessonStatusReason(l) {
+  if (!l) return '';
+  if (l.statusReason != null) return l.statusReason;
+  return classifyLessonClient(l).reason;
+}
+const STATUS_LABEL = {
+  normal: 'Normal',
+  raum_changed: 'Raumwechsel',
+  suppliert: 'Suppliert',
+  cancelled: 'Entfällt',
+  ausflug: 'Ausflug',
+};
+const STATUS_ACCENT = {
+  normal: '',
+  raum_changed: 'warn',
+  suppliert: 'warn',
+  cancelled: 'cancel',
+  ausflug: 'blue',
+};
+// Slot machine only knows 3 outcomes — collapse the 5-state status to that space.
+function lessonBetOutcome(l) {
+  const s = getLessonStatus(l);
+  if (s === 'cancelled' || s === 'ausflug') return 'cancelled';
+  if (s === 'suppliert') return 'irregular';
+  return 'normal'; // normal + raum_changed both count as "lesson held"
 }
 function renderEntry(e) {
   if (!e) return '';
@@ -2301,7 +2378,7 @@ $('#spinBtn').addEventListener('click', async () => {
   state.totalSpins += 1;
   updateWalletUI();
 
-  const real = getLessonStatus(currentLesson);
+  const real = lessonBetOutcome(currentLesson);
   const durations = [1800, 2400, 3100];
   const reels = ['#reel0','#reel1','#reel2'];
   try {
@@ -2476,11 +2553,15 @@ function openDetails(lesson) {
   $('#detailDate').textContent = `${dt.toLocaleDateString('de-AT', { weekday:'long', day:'2-digit', month:'long' })} · ${formatTime(lesson.startTime)} – ${formatTime(lesson.endTime)}`;
 
   const status = getLessonStatus(lesson);
+  const statusReason = getLessonStatusReason(lesson);
   const rows = [];
   if (reveal) {
-    if (status === 'cancelled') rows.push({ label:'Status', value:'Entfällt', accent:'cancel' });
-    else if (status === 'irregular') rows.push({ label:'Status', value:'Suppliert', accent:'warn' });
-    else rows.push({ label:'Status', value:'Normal' });
+    const lbl = STATUS_LABEL[status] || 'Normal';
+    const accent = STATUS_ACCENT[status] || '';
+    rows.push(accent ? { label:'Status', value: lbl, accent } : { label:'Status', value: lbl });
+    if (status !== 'normal' && statusReason) {
+      rows.push({ label:'Grund', value: statusReason, stacked: true });
+    }
   } else {
     rows.push({ label:'Plan', value:'Reguläre Stunde' });
   }
@@ -2985,7 +3066,16 @@ function renderCard(l) {
   const longName = l.su?.[0]?.longname || '';
   const teacher = reveal ? renderEntry(l.te?.[0]) : renderPlanEntry(l.te?.[0]);
   const room = reveal ? renderEntry(l.ro?.[0]) : renderPlanEntry(l.ro?.[0]);
-  const statText = reveal ? (status === 'cancelled' ? 'entfällt' : status === 'irregular' ? 'suppliert' : '') : '';
+  let statText = '';
+  if (reveal) {
+    if (status === 'cancelled') statText = 'entfällt';
+    else if (status === 'ausflug') statText = 'Ausflug';
+    else if (status === 'suppliert') statText = 'suppliert';
+    else if (status === 'raum_changed') {
+      const newRoom = l.ro?.[0]?.name || '';
+      statText = newRoom ? `Raum: ${newRoom}` : 'Raumwechsel';
+    }
+  }
   const lid = lessonId(l);
   const played = playedFor(l);
   const betOpen = !played && canGambleLesson(l);
@@ -2996,6 +3086,10 @@ function renderCard(l) {
   if (reveal && l.te?.[0]?.orgname && l.te[0].orgname !== l.te[0].name) tt.push(`Lehrer: ${l.te[0].orgname}${l.te[0].name ? ' → ' + l.te[0].name : ' fehlt'}`);
   if (reveal && l.ro?.[0]?.orgname && l.ro[0].orgname !== l.ro[0].name) tt.push(`Raum: ${l.ro[0].orgname} → ${l.ro[0].name}`);
   if (reveal && l.substText) tt.push(l.substText);
+  if (reveal) {
+    const reason = getLessonStatusReason(l);
+    if (reason && !tt.includes(reason)) tt.push(reason);
+  }
   return `
     <div class="lesson-card ${status} ${played?'played':''}" data-lesson-id="${escapeHtml(lid)}" ${played?`data-result="${played.result}"`:''} title="${escapeHtml(tt.filter(Boolean).join(' · '))}">
       ${examCount ? `<div class="exam-badge" title="Prüfung">${Icons.exam('sm')}</div>` : ''}
