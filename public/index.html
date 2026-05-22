@@ -1668,7 +1668,7 @@
   .hw-card .ttl, .alert-card .ttl {
     font-family: var(--ff-r); font-size: 15px; font-weight: 700;
     letter-spacing: -0.005em; line-height: 1.25; margin-bottom: 3px;
-    overflow-wrap: anywhere;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .hw-card .meta, .alert-card .meta {
     font-size: 12px; color: var(--ink-3); font-weight: 500;
@@ -2505,7 +2505,6 @@ function saveState() {
   LS.setJSON('game', state);
   updateWalletUI();
   scheduleCloudSave();
-  schedulePushLeaderboard();
 }
 function xpForLevel(l) { return 100 * l + 50 * l * (l - 1); }
 function applyXP(amount) {
@@ -2809,6 +2808,9 @@ async function saveToCloud() {
     if (!r.ok) throw new Error(d.error || 'cloud save failed');
     cloudEnabled = d.cloudEnabled !== false;
     setSync(d.ok ? 'synced' : 'error');
+    // Same debounce window the state save uses — pushLeaderboard is best-effort
+    // and won't block the sync UI if it fails.
+    if (cloudEnabled) pushLeaderboard();
   } catch (err) {
     console.warn('[Cloud Save]', err.message);
     setSync('error');
@@ -3689,72 +3691,25 @@ function currentKlass() {
   }
   return '';
 }
-// Pick the most-frequent klass across the loaded week — elective splits put
-// the student in multiple kl entries; the majority class is the real one.
-function detectKlass(lessons) {
-  const counts = new Map();
-  for (const l of (lessons || [])) {
-    const k = l.kl && l.kl[0];
-    if (!k) continue;
-    const name = k.name || k.longname;
-    if (!name) continue;
-    counts.set(name, (counts.get(name) || 0) + 1);
-  }
-  let best = '', max = 0;
-  for (const [k, v] of counts) if (v > max) { best = k; max = v; }
-  return best;
-}
 function lbIsSelf(e) {
   if (!creds || !e) return false;
   const u = (creds.username || '').trim().toLowerCase();
   const s = (creds.school || '').trim().toLowerCase();
   return e.username === u && e.school === s;
 }
-// One-shot profile fetch — populates creds.displayName ("Enrique A.")
-// from Untis. Best-effort: schools that restrict getStudents() leave
-// displayName empty and the leaderboard falls back to the username.
-async function fetchProfile() {
-  if (!creds) return;
-  try {
-    const r = await apiPost('/api/profile', creds);
-    const d = await r.json();
-    if (r.ok && d.ok && d.profile) {
-      if (d.profile.displayName) creds.displayName = d.profile.displayName;
-      if (d.profile.klasseId) creds.klasseId = d.profile.klasseId;
-    }
-  } catch (err) {
-    console.warn('[Profile fetch]', err.message);
-  }
-}
-
 async function pushLeaderboard() {
   if (!creds || cloudEnabled === false) return;
-  // creds.klass is set by fetchWeek after login; currentKlass() is the
-  // fallback if the leaderboard pushes before timetable data loads.
-  const klass = (creds.klass || currentKlass() || '').trim();
   try {
     const r = await apiPost('/api/leaderboard/update', {
-      server: creds.server,
-      school: creds.school,
-      username: creds.username,
-      password: creds.password,
-      klass,
-      displayName: creds.displayName || '',
+      ...creds,
       coins: state.coins,
+      klass: currentKlass(),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) console.warn('[Leaderboard push]', d.error || r.status);
   } catch (err) {
     console.warn('[Leaderboard push]', err.message);
   }
-}
-// Short debounce — every spin calls saveState(); we coalesce rapid changes
-// (e.g., a win that bumps coins + xp in one tick) into one network call.
-let lbPushTimer = null;
-function schedulePushLeaderboard() {
-  if (!creds || cloudEnabled === false) return;
-  if (lbPushTimer) clearTimeout(lbPushTimer);
-  lbPushTimer = setTimeout(() => { lbPushTimer = null; pushLeaderboard(); }, 500);
 }
 let lbLoading = false;
 async function fetchLeaderboard() {
@@ -3806,12 +3761,11 @@ function renderLeaderboard(data) {
       e.klass ? `<span class="chip">${escapeHtml(e.klass)}</span>` : '',
       e.school ? `<span>${escapeHtml(e.school)}</span>` : ''
     ].filter(Boolean).join('');
-    const displayName = (e.displayName && e.displayName.trim()) || e.username || '—';
     return `<div class="${cls}">
       ${isSelf ? '<div class="you-chip">Das bist du</div>' : ''}
       <div class="rank">${i + 1}</div>
       <div class="who">
-        <div class="name">${escapeHtml(displayName)}</div>
+        <div class="name">${escapeHtml(e.username || '—')}</div>
         ${where ? `<div class="where">${where}</div>` : ''}
       </div>
       <div class="coins">${fmt(e.coins)}</div>
@@ -3913,12 +3867,6 @@ async function fetchWeek(monday) {
     const res = await apiPost('/api/timetable-week', { ...creds, rangeStart: isoDate(monday), rangeEnd: isoDate(rangeEnd) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'unbekannter fehler');
-    // Auto-detect Klasse once we have lessons. Persists on creds for the
-    // session so every leaderboard push carries it without recomputing.
-    if (creds) {
-      const detected = detectKlass(data.timetable);
-      if (detected) creds.klass = detected;
-    }
     lastHomeworks = data.homeworks || [];
     lastHomeworkLessons = data.homeworkLessons || [];
     lastAbsences = data.absences || [];
@@ -4118,10 +4066,6 @@ $('#loginBtn').addEventListener('click', async () => {
   LS.set('server', server); LS.set('school', school); LS.set('user', username);
   creds = { server, school, username, password };
   currentMonday = normalizeRangeStart(new Date());
-  // Profile lookup runs in the background — no need to block the timetable
-  // load on it. Once it resolves, creds.displayName is set and the next
-  // leaderboard push carries the friendly name.
-  fetchProfile();
   const cloudResult = await loadFromCloud();
   if (cloudResult === 'empty') saveToCloud();
   fetchWeek(currentMonday);
