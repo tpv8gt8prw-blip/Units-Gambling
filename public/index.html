@@ -1091,7 +1091,7 @@
   .dock {
     position: fixed;
     left: 50%; bottom: calc(var(--safe-bottom) + 14px);
-    transform: translateX(-50%);
+    transform: translate3d(calc(-50% + var(--dock-dx, 0px)), 0, 0);
     width: min(94%, 460px);
     display: none;
     align-items: center;
@@ -1104,8 +1104,17 @@
     box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
     z-index: 50;
     touch-action: pan-y;
-    /* Declarative snap intent — also lets the native engine snap when content overflows. */
     scroll-snap-type: x mandatory;
+    will-change: transform;
+  }
+  .dock.dock-snapping {
+    transition: transform .46s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .dock.dock-dragging {
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+  }
+  :root[data-theme="dark"] .dock.dock-dragging {
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
   }
   .dock.visible { display: flex; }
   :root[data-theme="dark"] .dock {
@@ -3129,28 +3138,86 @@ appView.addEventListener('touchend', (e) => {
   setTab(TAB_NAMES[nextIdx]);
 }, { passive: true });
 
-// ===== Dock swipe-to-switch (mobile) =====
-// Minimal: just touchstart + touchend. No touchmove, no rAF, no velocity tracking.
-(function setupDockSwipe(){
+// ===== Dock swipe-drag navigation (touch only — desktop click stays) =====
+// Live finger-tracking via inline transform writes during touchmove, then a CSS
+// cubic-bezier(.34, 1.56, .64, 1) transition for the spring snap. No rAF.
+(function setupDockDrag(){
   if (!dockEl) return;
-  let sx = 0, sy = 0;
+  const DRAG_THRESHOLD = 6;      // px of movement before drag activates
+  const SWITCH_THRESHOLD = 42;   // px of drag needed to switch tab
+  const RUBBER_BAND = 0.35;      // damping at the edges
+
+  let startX = 0, startY = 0;
+  let lastDx = 0;
+  let active = false;
+  let dragging = false;
+
+  function setDx(px) {
+    dockEl.style.setProperty('--dock-dx', px + 'px');
+  }
+  function snapHome() {
+    dockEl.classList.remove('dock-dragging');
+    dockEl.classList.add('dock-snapping');
+    setDx(0);
+  }
+  function endSnap() {
+    dockEl.classList.remove('dock-snapping');
+  }
+  dockEl.addEventListener('transitionend', (e) => {
+    if (e.propertyName === 'transform') endSnap();
+  });
+
   dockEl.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
-    sx = e.touches[0].clientX;
-    sy = e.touches[0].clientY;
+    active = true;
+    dragging = false;
+    lastDx = 0;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dockEl.classList.remove('dock-snapping');
   }, { passive: true });
-  dockEl.addEventListener('touchend', (e) => {
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx;
-    const dy = t.clientY - sy;
-    if (Math.abs(dx) < 40) return;            // ignore taps + tiny drags
-    if (Math.abs(dy) > Math.abs(dx)) return;  // ignore vertical
+
+  dockEl.addEventListener('touchmove', (e) => {
+    if (!active || e.touches.length !== 1) return;
+    const tx = e.touches[0].clientX - startX;
+    const ty = e.touches[0].clientY - startY;
+
+    if (!dragging) {
+      if (Math.abs(ty) > Math.abs(tx) && Math.abs(ty) > DRAG_THRESHOLD) {
+        active = false; return;
+      }
+      if (Math.abs(tx) < DRAG_THRESHOLD) return;
+      dragging = true;
+      dockEl.classList.add('dock-dragging');
+    }
+
     const idx = TAB_NAMES.indexOf(currentTab);
-    const next = dx < 0 ? idx + 1 : idx - 1;
-    if (next < 0 || next >= TAB_NAMES.length) return;
-    Haptic.light();
-    setTab(TAB_NAMES[next]);
+    let damped = tx;
+    if ((idx === 0 && tx > 0) || (idx === TAB_NAMES.length - 1 && tx < 0)) {
+      damped = tx * RUBBER_BAND;
+    }
+    lastDx = damped;
+    setDx(damped);
   }, { passive: true });
+
+  function release() {
+    if (!active) return;
+    active = false;
+    if (!dragging) { setDx(0); return; }
+    dragging = false;
+
+    const idx = TAB_NAMES.indexOf(currentTab);
+    if (Math.abs(lastDx) >= SWITCH_THRESHOLD) {
+      const next = lastDx < 0 ? idx + 1 : idx - 1;
+      if (next >= 0 && next < TAB_NAMES.length) {
+        Haptic.light();
+        setTab(TAB_NAMES[next]);
+      }
+    }
+    snapHome();
+  }
+  dockEl.addEventListener('touchend', release, { passive: true });
+  dockEl.addEventListener('touchcancel', release, { passive: true });
 })();
 
 // Restore last tab on init (will only matter once appView is visible)
