@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-theme="light" data-casino="off">
+<html lang="de" data-mode="light" data-theme="orange" data-casino="off">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -36,13 +36,45 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
-  :root[data-casino="on"] {
-    --accent: var(--casino-accent);
-    --accent-2: #ffd166;
-    --accent-soft: rgba(233,111,0,0.22);
-    --focus: rgba(233,111,0,0.38);
+  /* Color themes — pick the accent palette. data-theme is independent of
+     data-mode (dark/light), so a theme works in both modes. */
+  :root[data-theme="orange"] {
+    --accent: #e96f00; --accent-2: #ff9d26;
+    --accent-soft: rgba(233,111,0,0.20);
+    --focus: rgba(233,111,0,0.36);
   }
-  :root[data-theme="dark"] {
+  :root[data-theme="purple"] {
+    --accent: #8b5cf6; --accent-2: #c4b5fd;
+    --accent-soft: rgba(139,92,246,0.20);
+    --focus: rgba(139,92,246,0.36);
+  }
+  :root[data-theme="blue"] {
+    --accent: #007aff; --accent-2: #5ac8fa;
+    --accent-soft: rgba(0,122,255,0.20);
+    --focus: rgba(0,122,255,0.36);
+  }
+  :root[data-theme="pink"] {
+    --accent: #ec4899; --accent-2: #f9a8d4;
+    --accent-soft: rgba(236,72,153,0.20);
+    --focus: rgba(236,72,153,0.36);
+  }
+  :root[data-theme="green"] {
+    --accent: #22c55e; --accent-2: #86efac;
+    --accent-soft: rgba(34,197,94,0.20);
+    --focus: rgba(34,197,94,0.36);
+  }
+  :root[data-theme="cyan"] {
+    --accent: #06b6d4; --accent-2: #67e8f9;
+    --accent-soft: rgba(6,182,212,0.20);
+    --focus: rgba(6,182,212,0.36);
+  }
+  :root[data-theme="coral"] {
+    --accent: #ff6b6b; --accent-2: #ffa8a8;
+    --accent-soft: rgba(255,107,107,0.22);
+    --focus: rgba(255,107,107,0.38);
+  }
+  /* Casino is now a behavior-only toggle — accent follows the picked theme. */
+  :root[data-mode="dark"] {
     --bg: #111111;
     --bg-1: rgba(24,24,24,0.96);
     --bg-2: rgba(31,31,31,0.94);
@@ -62,13 +94,13 @@
     --cancel-bg: rgba(255,69,58,0.16);
     --warn-bg: rgba(255,159,10,0.16);
     --win-bg: rgba(48,209,88,0.14);
-    --today-bg: rgba(233,111,0,0.10);
+    --today-bg: color-mix(in srgb, var(--accent) 18%, transparent);
     --card-border: rgba(255,255,255,0.08);
     --shadow: 0 1px 1px rgba(0,0,0,0.35), 0 18px 48px rgba(0,0,0,0.32);
     --shadow-soft: 0 12px 32px rgba(0,0,0,0.22);
     --page-aura: linear-gradient(180deg, #151515 0%, #111111 240px);
   }
-  :root[data-theme="light"] {
+  :root[data-mode="light"] {
     --bg: #f7f1e8;
     --bg-1: rgba(255,255,255,0.94);
     --bg-2: rgba(239,235,229,0.88);
@@ -88,7 +120,7 @@
     --cancel-bg: rgba(255,69,58,0.10);
     --warn-bg: rgba(255,149,0,0.12);
     --win-bg: rgba(48,209,88,0.12);
-    --today-bg: rgba(233,111,0,0.14);
+    --today-bg: color-mix(in srgb, var(--accent) 16%, transparent);
     --card-border: rgba(128,116,101,0.12);
     --shadow: 0 1px 2px rgba(82,57,26,0.04), 0 18px 44px rgba(82,57,26,0.10);
     --shadow-soft: 0 12px 30px rgba(82,57,26,0.08);
@@ -116,7 +148,7 @@
     mask-image: linear-gradient(to bottom, black, transparent 72%);
     -webkit-mask-image: linear-gradient(to bottom, black, transparent 72%);
   }
-  :root[data-theme="dark"] body::after { opacity: .05; }
+  :root[data-mode="dark"] body::after { opacity: .05; }
   a { color: var(--accent); text-decoration: none; font-weight: 600; }
   button {
     font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -645,7 +677,7 @@
       linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, transparent), rgba(255,214,10,0.08)),
       var(--fill-2);
   }
-  :root[data-theme="dark"][data-casino="on"] .lesson-card:not(.played) {
+  :root[data-mode="dark"][data-casino="on"] .lesson-card:not(.played) {
     background:
       linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent),
       var(--fill-2);
@@ -1222,11 +1254,11 @@
   .dock.dock-dragging {
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
   }
-  :root[data-theme="dark"] .dock.dock-dragging {
+  :root[data-mode="dark"] .dock.dock-dragging {
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
   }
   .dock.visible { display: flex; }
-  :root[data-theme="dark"] .dock {
+  :root[data-mode="dark"] .dock {
     background: rgba(28, 28, 30, 0.58);
     border-color: rgba(255, 255, 255, 0.10);
     box-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
@@ -1401,6 +1433,83 @@
   }
   .account-row.danger .lbl { color: var(--cancel); }
   .account-row .chev { color: var(--ink-4); font-size: 16px; line-height: 1; }
+
+  /* ============================================================
+     DESIGN SECTION (Account tab) — Mode toggle + theme color grid
+  ============================================================ */
+  .design-block {
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    padding: 16px;
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  }
+  .design-label {
+    font-size: 11px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin: 6px 2px 8px;
+  }
+  .design-label:first-child { margin-top: 0; }
+  .mode-toggle {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    margin-bottom: 14px;
+  }
+  .mode-toggle button {
+    flex: 1; min-width: 0;
+    padding: 9px 8px;
+    font-size: 13px; font-weight: 650;
+  }
+  .theme-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .theme-swatch {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 5px;
+    background: transparent; border: none;
+    padding: 6px 4px;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: transform .15s var(--ease-out), background .15s var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .theme-swatch:active { transform: scale(0.94); }
+  .theme-swatch .dot {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--swatch, #e96f00);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px color-mix(in srgb, var(--swatch, #e96f00) 28%, transparent);
+    border: 2px solid transparent;
+    transition: transform .15s var(--ease-out), border-color .15s var(--ease-out), box-shadow .2s var(--ease-out);
+    position: relative;
+  }
+  .theme-swatch .name {
+    font-size: 11px; font-weight: 600; color: var(--ink-3);
+    letter-spacing: 0;
+  }
+  .theme-swatch.active .dot {
+    border-color: var(--bg);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      0 0 0 2px var(--swatch, #e96f00),
+      0 6px 18px color-mix(in srgb, var(--swatch, #e96f00) 40%, transparent);
+    transform: scale(1.05);
+  }
+  .theme-swatch.active .dot::after {
+    content: '';
+    position: absolute; inset: 0; margin: auto;
+    width: 12px; height: 6px;
+    border: solid white; border-width: 0 0 2px 2px;
+    transform: rotate(-45deg) translate(1px, -2px);
+    transform-origin: center;
+    border-radius: 1px;
+  }
+  .theme-swatch.active .name { color: var(--ink); font-weight: 700; }
+
+  @media (max-width: 480px) {
+    .theme-grid { grid-template-columns: repeat(4, 1fr); }
+    .theme-swatch .dot { width: 32px; height: 32px; }
+  }
   #syncDot {
     width: 10px; height: 10px; border-radius: 50%;
     background: var(--ink-4); transition: all .25s; flex-shrink: 0;
@@ -1652,7 +1761,7 @@
     background: hsl(var(--subject-hue, 24) 78% 52% / 0.16);
     color: hsl(var(--subject-hue, 24) 78% 42%);
   }
-  :root[data-theme="dark"] .planner-card .subject-tag {
+  :root[data-mode="dark"] .planner-card .subject-tag {
     color: hsl(var(--subject-hue, 24) 80% 70%);
   }
   .planner-card .due-tag {
@@ -1680,7 +1789,7 @@
     letter-spacing: 0.06em; text-transform: uppercase;
     padding: 12px 4px 6px;
   }
-  :root[data-theme="dark"] .planner-group-label {
+  :root[data-mode="dark"] .planner-group-label {
     color: hsl(var(--subject-hue, 24) 80% 68%);
   }
 
@@ -1712,12 +1821,6 @@
 
   <header>
     <div class="logo">Subst<span class="logo-i">ı</span></div>
-    <div class="header-actions">
-      <div class="toggle" id="themeToggle">
-        <button data-theme="dark">Dark</button>
-        <button data-theme="light" class="active">Light</button>
-      </div>
-    </div>
   </header>
 
   <!-- LOGIN -->
@@ -1877,6 +1980,28 @@
           <div class="stat-box"><b id="sBest">0</b><span>Biggest Win</span></div>
           <div class="stat-box"><b id="sNet">0</b><span>Net Coins</span></div>
           <div class="stat-box"><b id="sStreakBest">0</b><span>Best Streak</span></div>
+        </div>
+      </div>
+
+      <div class="account-section">
+        <div class="account-section-title">Design</div>
+        <div class="design-block">
+          <div class="design-label">Modus</div>
+          <div class="toggle mode-toggle" id="modeToggle" role="tablist" aria-label="Modus">
+            <button data-mode="dark" type="button"><span>Dark</span></button>
+            <button data-mode="light" type="button"><span>Light</span></button>
+            <button data-mode="system" type="button" class="active"><span>System</span></button>
+          </div>
+          <div class="design-label">Farbe</div>
+          <div class="theme-grid" id="themeGrid" role="radiogroup" aria-label="Farbe">
+            <button class="theme-swatch" data-theme="orange" type="button" aria-label="Orange"><span class="dot" style="--swatch:#e96f00"></span><span class="name">Orange</span></button>
+            <button class="theme-swatch" data-theme="purple" type="button" aria-label="Purple"><span class="dot" style="--swatch:#8b5cf6"></span><span class="name">Purple</span></button>
+            <button class="theme-swatch" data-theme="blue" type="button" aria-label="Blue"><span class="dot" style="--swatch:#007aff"></span><span class="name">Blue</span></button>
+            <button class="theme-swatch" data-theme="pink" type="button" aria-label="Pink"><span class="dot" style="--swatch:#ec4899"></span><span class="name">Pink</span></button>
+            <button class="theme-swatch" data-theme="green" type="button" aria-label="Green"><span class="dot" style="--swatch:#22c55e"></span><span class="name">Green</span></button>
+            <button class="theme-swatch" data-theme="cyan" type="button" aria-label="Cyan"><span class="dot" style="--swatch:#06b6d4"></span><span class="name">Cyan</span></button>
+            <button class="theme-swatch" data-theme="coral" type="button" aria-label="Coral"><span class="dot" style="--swatch:#ff6b6b"></span><span class="name">Coral</span></button>
+          </div>
         </div>
       </div>
 
@@ -2429,16 +2554,88 @@ function spawnConfetti(count, colors) {
 }
 
 /* ============================================================
-   THEME / CASINO TOGGLES + APP SWITCHES
+   APPEARANCE (mode = dark/light/system, theme = color)
+
+   LS keys:
+     - 'mode'  : 'dark' | 'light' | 'system'   (default: 'system')
+     - 'theme' : 'orange' | 'purple' | …       (default: 'orange')
+
+   Migration: older builds stored 'theme' = 'dark' | 'light'. If we see that
+   shape, move it to 'mode' and reset 'theme' to 'orange' so the new state
+   model is consistent.
 ============================================================ */
-function setTheme(t) {
-  document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#111111' : '#f7f1e8');
-  LS.set('theme', t);
-  $$('#themeToggle button').forEach(b => b.classList.toggle('active', b.dataset.theme === t));
+(function migrateLegacyAppearance() {
+  const t = LS.get('theme');
+  if (t === 'dark' || t === 'light') {
+    if (!LS.get('mode')) LS.set('mode', t);
+    LS.set('theme', 'orange');
+  }
+})();
+
+const MODES = ['dark', 'light', 'system'];
+const COLOR_THEMES = ['orange', 'purple', 'blue', 'pink', 'green', 'cyan', 'coral'];
+const META_THEME_COLOR = { dark: '#111111', light: '#f7f1e8' };
+const systemModeMQ = window.matchMedia('(prefers-color-scheme: dark)');
+
+function getStoredMode() {
+  const m = LS.get('mode');
+  return MODES.includes(m) ? m : 'system';
 }
-$$('#themeToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setTheme(b.dataset.theme); }));
-setTheme(LS.get('theme') || 'light');
+function getStoredColorTheme() {
+  const t = LS.get('theme');
+  return COLOR_THEMES.includes(t) ? t : 'orange';
+}
+function resolveActualMode(storedMode) {
+  if (storedMode === 'system') return systemModeMQ.matches ? 'dark' : 'light';
+  return storedMode;
+}
+
+function applyAppearance() {
+  const storedMode = getStoredMode();
+  const actualMode = resolveActualMode(storedMode);
+  const theme = getStoredColorTheme();
+  document.documentElement.dataset.mode = actualMode;
+  document.documentElement.dataset.theme = theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', META_THEME_COLOR[actualMode] || META_THEME_COLOR.light);
+  // Reflect selection in the Design UI (buttons may not exist before the
+  // markup mounts — guard with optional chaining for safety).
+  $$('#modeToggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === storedMode));
+  $$('#themeGrid .theme-swatch').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+}
+
+function setMode(m) {
+  if (!MODES.includes(m)) m = 'system';
+  LS.set('mode', m);
+  applyAppearance();
+}
+function setColorTheme(t) {
+  if (!COLOR_THEMES.includes(t)) t = 'orange';
+  LS.set('theme', t);
+  applyAppearance();
+}
+
+// System mode listener — only takes effect while user has 'system' selected.
+const onSystemModeChange = () => {
+  if (getStoredMode() === 'system') applyAppearance();
+};
+if (systemModeMQ.addEventListener) systemModeMQ.addEventListener('change', onSystemModeChange);
+else if (systemModeMQ.addListener) systemModeMQ.addListener(onSystemModeChange);  // Safari < 14
+
+$$('#modeToggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    Sound.tap(); Haptic.select();
+    setMode(btn.dataset.mode);
+  });
+});
+$$('#themeGrid .theme-swatch').forEach(btn => {
+  btn.addEventListener('click', () => {
+    Sound.select(); Haptic.select();
+    setColorTheme(btn.dataset.theme);
+  });
+});
+
+applyAppearance();
 
 function setCasino(m, rerender = false) {
   document.documentElement.dataset.casino = m;
