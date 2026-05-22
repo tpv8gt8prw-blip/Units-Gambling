@@ -660,7 +660,8 @@
   .week-grid.compact .bet-overlay .icon .icon-svg { width: 16px; height: 16px; }
   .week-grid.compact .bet-overlay .lbl { font-size: 8.5px; letter-spacing: 0.03em; }
   [data-casino="on"] .week-grid.compact .lesson-card.played::after {
-    font-size: 8px; padding: 1px 4px;
+    font-size: 8px; padding: 2px 5px; border-radius: 4px;
+    bottom: 4px; right: 4px;
   }
 
   /* Casino mode bet overlay */
@@ -708,9 +709,12 @@
   .bet-overlay.locked .lbl { color: var(--ink-3); }
   [data-casino="on"] .lesson-card.played::after {
     content: attr(data-result);
-    position: absolute; top: 4px; right: 4px;
-    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-    padding: 2px 6px; border-radius: 999px;
+    position: absolute; bottom: 8px; right: 8px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 4px 8px; border-radius: 6px;
+    line-height: 1;
+    z-index: 2;
+    pointer-events: none;
   }
   [data-casino="on"] .lesson-card.played[data-result="win"]::after { color: var(--win); background: var(--win-bg); }
   [data-casino="on"] .lesson-card.played[data-result="lose"]::after { color: var(--cancel); background: var(--cancel-bg); }
