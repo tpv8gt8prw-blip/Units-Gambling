@@ -974,6 +974,7 @@
     padding: 16px 4px 4px; margin-top: 4px;
   }
   .info-group-header:first-child { padding-top: 4px; margin-top: 0; }
+  .info-group-header.today { color: var(--accent); }
 
   /* Exam badge on lesson card */
   .lesson-card .exam-badge {
@@ -1616,15 +1617,15 @@
       <div id="homeworkList" class="hw-list"></div>
     </section>
 
-    <!-- ===== ALERTS TAB ===== -->
-    <section class="tab-pane" data-tab="alerts">
+    <!-- ===== ABSENCES TAB ===== -->
+    <section class="tab-pane" data-tab="absences">
       <div class="tab-header">
         <div class="tab-title-wrap">
-          <h1 class="tab-title">Hinweise<em>.</em></h1>
-          <div class="tab-sub" id="alertsSub">Absenzen, Prüfungen & Vertretungen</div>
+          <h1 class="tab-title">Abwesenheiten<em>.</em></h1>
+          <div class="tab-sub" id="absencesSub">Deine Absenzen</div>
         </div>
       </div>
-      <div id="alertsList" class="alerts-list"></div>
+      <div id="absencesList" class="info-list"></div>
     </section>
 
     <!-- ===== ACCOUNT TAB ===== -->
@@ -1735,9 +1736,9 @@
     <span class="ico" id="dockIcoHw"></span>
     <span class="lbl">HÜ</span>
   </button>
-  <button class="dock-btn" data-tab="alerts" aria-label="Hinweise">
-    <span class="ico" id="dockIcoAlerts"></span>
-    <span class="lbl">Hinweise</span>
+  <button class="dock-btn" data-tab="absences" aria-label="Abwesenheiten">
+    <span class="ico" id="dockIcoAbsences"></span>
+    <span class="lbl">Absenzen</span>
   </button>
   <button class="dock-btn" data-tab="account" aria-label="Account">
     <span class="ico" id="dockIcoAccount"></span>
@@ -2182,7 +2183,7 @@ function updateSoundIcon() { /* no-op */ }
 // Inject dock icons (replaces header buttons)
 $('#dockIcoPlan').innerHTML = Icons.plan('lg');
 $('#dockIcoHw').innerHTML = Icons.homework('lg');
-$('#dockIcoAlerts').innerHTML = Icons.bell('lg');
+$('#dockIcoAbsences').innerHTML = Icons.absent('lg');
 $('#dockIcoAccount').innerHTML = Icons.account('lg');
 
 function updateSwitches() {
@@ -2752,121 +2753,65 @@ function renderHomeworkTab() {
 }
 
 /* ============================================================
-   ALERTS TAB (Absences + Exams + Substitutions combined)
+   ABSENCES TAB
 ============================================================ */
-function collectAlerts() {
-  const items = [];
-  // Absences
-  for (const ab of (lastAbsences || [])) {
-    const date = Number(ab.startDate || ab.date || 0);
-    if (!date) continue;
-    const excused = ab.excused === true || ab.excuseStatus === 'excused' || (ab.excuse && ab.excuse.id);
-    const time = formatTimeRange(ab.startTime, ab.endTime);
-    const reason = ab.reason || ab.absenceReason || ab.text || '';
-    items.push({
-      kind: 'absence',
-      date,
-      time: ab.startTime || 0,
-      title: reason || (time ? `Abwesenheit ${time}` : 'Abwesenheit'),
-      meta: [time, excused ? 'Entschuldigt' : 'Offen'].filter(Boolean),
-      tag: excused ? 'Entschuldigt' : 'Offen',
-      cls: excused ? 'warn' : 'warn',
-      icon: Icons.absent('md'),
-    });
-  }
-  // Exams
-  for (const ex of (lastExams || [])) {
-    const date = Number(ex.examDate || ex.date || 0);
-    if (!date) continue;
-    const time = formatTimeRange(ex.startTime, ex.endTime);
-    const subject = ex.subject || ex.su?.[0]?.longname || ex.su?.[0]?.name || '';
-    const teacher = (ex.teachers || ex.te || []).map(t => t.name || t).join(', ');
-    const room = (ex.rooms || ex.ro || []).map(r => r.name || r).join(', ');
-    items.push({
-      kind: 'exam',
-      date,
-      time: ex.startTime || 0,
-      title: ex.name || subject || 'Prüfung',
-      meta: [time, ex.examType, teacher && `Lehrer ${teacher}`, room && `Raum ${room}`].filter(Boolean),
-      tag: ex.examType || 'Prüfung',
-      cls: 'cancel',
-      icon: Icons.exam('md'),
-      body: ex.text || '',
-    });
-  }
-  // Substitutions / cancellations from lessons
-  for (const l of (lastLessons || [])) {
-    const status = getLessonStatus(l);
-    if (status === 'normal') continue;
-    const date = Number(l.date);
-    if (!date) continue;
-    const subj = l.su?.[0]?.longname || l.su?.[0]?.name || '—';
-    const time = formatTimeRange(l.startTime, l.endTime);
-    const teacher = l.te?.[0] ? (l.te[0].name || '') : '';
-    const room = l.ro?.[0] ? (l.ro[0].name || '') : '';
-    const isCancel = status === 'cancelled';
-    items.push({
-      kind: 'lesson',
-      date,
-      time: l.startTime || 0,
-      title: subj,
-      meta: [time, teacher && `Lehrer ${teacher}`, room && `Raum ${room}`, l.substText].filter(Boolean),
-      tag: isCancel ? 'Entfällt' : 'Suppliert',
-      cls: isCancel ? 'cancel' : 'warn',
-      icon: isCancel ? Icons.absent('md') : Icons.bell('md'),
-      lessonRef: l,
-    });
-  }
-  return items.sort((a, b) => (a.date - b.date) || (a.time - b.time));
+function isExcusedAbsence(ab) {
+  return ab.excused === true
+      || ab.excuseStatus === 'excused'
+      || !!(ab.excuse && ab.excuse.id);
 }
-function renderAlertsTab() {
-  const el = $('#alertsList');
+function renderAbsencesTab() {
+  const el = $('#absencesList');
   if (!el) return;
-  const sub = $('#alertsSub');
-  const items = collectAlerts();
-  if (items.length === 0) {
-    if (sub) sub.textContent = 'Diese Woche';
+  const sub = $('#absencesSub');
+  const absences = (lastAbsences || [])
+    .filter(ab => Number(ab.startDate || ab.date || 0))
+    .slice()
+    .sort((a, b) => {
+      const db = Number(b.startDate || b.date || 0) - Number(a.startDate || a.date || 0);
+      if (db !== 0) return db;
+      return Number(a.startTime || 0) - Number(b.startTime || 0);
+    });
+  if (absences.length === 0) {
+    if (sub) sub.textContent = 'Keine Abwesenheiten';
     el.innerHTML = `<div class="list-empty">
-      <div class="ico">${Icons.bell('xl')}</div>
-      <div class="ttl">Keine Hinweise</div>
-      <div class="sub">Keine Absenzen, Prüfungen oder Vertretungen diese Woche.</div>
+      <div class="ico">${Icons.absent('xl')}</div>
+      <div class="ttl">Keine Abwesenheiten</div>
+      <div class="sub">Du warst überall anwesend. Weiter so!</div>
     </div>`;
     return;
   }
-  const counts = items.reduce((acc, it) => (acc[it.kind] = (acc[it.kind] || 0) + 1, acc), {});
-  const summaryParts = [];
-  if (counts.absence) summaryParts.push(`${counts.absence} Absenz${counts.absence === 1 ? '' : 'en'}`);
-  if (counts.exam) summaryParts.push(`${counts.exam} Prüfung${counts.exam === 1 ? '' : 'en'}`);
-  if (counts.lesson) summaryParts.push(`${counts.lesson} Vertretung${counts.lesson === 1 ? '' : 'en'}`);
+  const excusedCount = absences.filter(isExcusedAbsence).length;
+  const pendingCount = absences.length - excusedCount;
+  const summaryParts = [`${absences.length} Absenz${absences.length === 1 ? '' : 'en'}`];
+  if (excusedCount) summaryParts.push(`${excusedCount} entschuldigt`);
+  if (pendingCount) summaryParts.push(`${pendingCount} offen`);
   if (sub) sub.textContent = summaryParts.join(' · ');
   const todayInt = untisDateInt(new Date());
-  // Group by date
+  // Group by date (preserves sorted order)
   const byDate = new Map();
-  for (const it of items) {
-    if (!byDate.has(it.date)) byDate.set(it.date, []);
-    byDate.get(it.date).push(it);
+  for (const ab of absences) {
+    const date = Number(ab.startDate || ab.date || 0);
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(ab);
   }
   let html = '';
   for (const [date, group] of byDate) {
     const isToday = Number(date) === todayInt;
-    html += `<div class="day-section">
-      <div class="day-section-label ${isToday ? 'today' : ''}">${escapeHtml(formatUntisDateLabel(date))}${isToday ? ' · Heute' : ''}</div>`;
-    for (const it of group) {
-      const metaHtml = it.meta && it.meta.length
-        ? `<div class="meta">${it.meta.map(m => `<span>${escapeHtml(m)}</span>`).join(' · ')}</div>`
-        : '';
-      const bodyHtml = it.body ? `<div class="meta" style="margin-top:4px;">${escapeHtml(it.body)}</div>` : '';
-      const lessonAttr = it.lessonRef ? ` data-alert-lesson="${escapeHtml(lessonId(it.lessonRef))}"` : '';
-      html += `<button class="alert-card ${it.cls}"${lessonAttr}>
-        <div class="icon-circle">${it.icon}</div>
-        <div class="body">
-          <div class="ttl">${escapeHtml(it.title)} <span class="tag">${escapeHtml(it.tag)}</span></div>
-          ${metaHtml}
-          ${bodyHtml}
-        </div>
-      </button>`;
+    html += `<div class="info-group-header${isToday ? ' today' : ''}">${escapeHtml(formatUntisDateLabel(date))}${isToday ? ' · Heute' : ''}</div>`;
+    for (const ab of group) {
+      const excused = isExcusedAbsence(ab);
+      const time = formatTimeRange(ab.startTime, ab.endTime);
+      const reason = ab.reason || ab.absenceReason || ab.text || '';
+      const tag = excused ? 'Entschuldigt' : 'Offen';
+      const cls = excused ? 'win' : 'warn';
+      const title = reason || (time ? `Abwesenheit ${time}` : 'Abwesenheit');
+      const metaParts = [time].filter(Boolean);
+      html += `<div class="info-item ${cls}">
+        <div class="ii-title">${escapeHtml(title)} <span class="ii-tag">${escapeHtml(tag)}</span></div>
+        ${metaParts.length ? `<div class="ii-meta">${metaParts.map(m => `<span>${escapeHtml(m)}</span>`).join(' · ')}</div>` : ''}
+      </div>`;
     }
-    html += `</div>`;
   }
   el.innerHTML = html;
 }
@@ -2935,16 +2880,6 @@ function openOfficeHoursModal() {
 $('#openOfficeHours').addEventListener('click', openOfficeHoursModal);
 $('#officeHoursClose').addEventListener('click', () => { Sound.tap(); $('#officeHoursModal').classList.remove('open'); });
 $('#officeHoursModal').addEventListener('click', (e) => { if (e.target === $('#officeHoursModal')) $('#officeHoursModal').classList.remove('open'); });
-
-// Tap an alert card → open the underlying lesson detail (if linked)
-$('#alertsList').addEventListener('click', (e) => {
-  const card = e.target.closest('.alert-card');
-  if (!card) return;
-  const id = card.dataset.alertLesson;
-  if (!id) return;
-  const lesson = (lastLessons || []).find(l => lessonId(l) === id);
-  if (lesson) openDetails(lesson);
-});
 
 /* ============================================================
    TIMETABLE
@@ -3042,7 +2977,7 @@ async function fetchWeek(monday) {
     if (lastAbsences.length > 0) console.log('[Substi] First absence:', lastAbsences[0]);
     renderWeek(data.timetable || [], monday);
     renderHomeworkTab();
-    renderAlertsTab();
+    renderAbsencesTab();
     refreshAccountTab();
     showApp();
     setStatus(msg, ''); setStatus(ttMsg, '');
@@ -3228,7 +3163,7 @@ $$('#viewToggle button').forEach(btn => {
 /* ============================================================
    BOTTOM DOCK / TABS
 ============================================================ */
-const TAB_NAMES = ['plan', 'homework', 'alerts', 'account'];
+const TAB_NAMES = ['plan', 'homework', 'absences', 'account'];
 let currentTab = (() => {
   const saved = LS.get('tab');
   return TAB_NAMES.includes(saved) ? saved : 'plan';
@@ -3265,7 +3200,7 @@ function setTab(name, opts) {
   if (changed && isTouchDevice()) triggerDockShine();
   // Per-tab on-show refresh
   if (name === 'homework') renderHomeworkTab();
-  if (name === 'alerts') renderAlertsTab();
+  if (name === 'absences') renderAbsencesTab();
   if (name === 'account') refreshAccountTab();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
