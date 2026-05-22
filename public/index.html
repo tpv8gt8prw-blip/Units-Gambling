@@ -1135,6 +1135,99 @@
   .info-group-header:first-child { padding-top: 4px; margin-top: 0; }
   .info-group-header.today { color: var(--accent); }
 
+  /* ============================================================
+     LEADERBOARD
+  ============================================================ */
+  .lb-list { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+  .lb-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    position: relative;
+  }
+  .lb-row .rank {
+    font-family: var(--ff-r); font-size: 17px; font-weight: 750;
+    color: var(--ink-3); text-align: center;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .lb-row .who { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+  .lb-row .who .name {
+    font-family: var(--ff-r); font-size: 14.5px; font-weight: 700;
+    line-height: 1.15;
+    color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .lb-row .who .where {
+    font-size: 11.5px; color: var(--ink-3); font-weight: 550;
+    display: flex; gap: 6px; flex-wrap: wrap;
+    line-height: 1.2;
+  }
+  .lb-row .who .where .chip {
+    padding: 1px 7px; border-radius: 999px;
+    background: var(--fill); color: var(--ink-3);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .lb-row .coins {
+    font-family: var(--ff-r); font-size: 15px; font-weight: 750;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  /* Top 3 — medal tints */
+  .lb-row.gold {
+    background:
+      linear-gradient(135deg, rgba(255,215,0,0.20), transparent 60%),
+      var(--glass-strong);
+    border-color: rgba(255,215,0,0.32);
+  }
+  .lb-row.gold .rank { color: #d4af37; }
+  .lb-row.silver {
+    background:
+      linear-gradient(135deg, rgba(192,192,192,0.18), transparent 60%),
+      var(--glass-strong);
+    border-color: rgba(192,192,192,0.28);
+  }
+  .lb-row.silver .rank { color: #a8a8a8; }
+  .lb-row.bronze {
+    background:
+      linear-gradient(135deg, rgba(205,127,50,0.18), transparent 60%),
+      var(--glass-strong);
+    border-color: rgba(205,127,50,0.32);
+  }
+  .lb-row.bronze .rank { color: #cd7f32; }
+  /* Self row — thick accent border + Apple-Arcade-style chip */
+  .lb-row.me {
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .lb-row.me .you-chip {
+    position: absolute; top: -10px; right: 12px;
+    background: var(--accent); color: white;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px;
+    box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 32%, transparent);
+  }
+  .lb-empty {
+    padding: 36px 24px;
+    text-align: center;
+    background: var(--glass-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+  .lb-empty .ttl {
+    font-family: var(--ff-r); font-size: 17px; font-weight: 750;
+    color: var(--ink); margin-bottom: 4px;
+  }
 
   /* ============================================================
      RESPONSIVE
@@ -2032,6 +2125,13 @@
       <div class="account-section">
         <div class="account-section-title">Daten</div>
         <div class="account-list">
+          <button class="account-row" id="openLeaderboard">
+            <div>
+              <div class="lbl">🏆 Leaderboard</div>
+              <div class="sub">Top 100 · Cross-School</div>
+            </div>
+            <div class="end"><span class="chev">›</span></div>
+          </button>
           <button class="account-row" id="openOfficeHours">
             <div>
               <div class="lbl">Sprechzeiten</div>
@@ -2155,6 +2255,18 @@
       <button data-detail-tab="exams">Prüfungen</button>
     </div>
     <div class="details-list" id="detailContent"></div>
+  </div>
+</div>
+
+<!-- ===================== LEADERBOARD MODAL ===================== -->
+<div class="modal-bg" id="leaderboardModal">
+  <div class="modal-card">
+    <button class="modal-close" id="leaderboardClose">✕</button>
+    <h2>Leaderboard<em>.</em></h2>
+    <div class="sub" id="leaderboardSub">Top 100 · Cross-School</div>
+    <div class="lb-list" id="leaderboardList">
+      <div class="detail-empty">Lade…</div>
+    </div>
   </div>
 </div>
 
@@ -2696,6 +2808,9 @@ async function saveToCloud() {
     if (!r.ok) throw new Error(d.error || 'cloud save failed');
     cloudEnabled = d.cloudEnabled !== false;
     setSync(d.ok ? 'synced' : 'error');
+    // Same debounce window the state save uses — pushLeaderboard is best-effort
+    // and won't block the sync UI if it fails.
+    if (cloudEnabled) pushLeaderboard();
   } catch (err) {
     console.warn('[Cloud Save]', err.message);
     setSync('error');
@@ -3565,6 +3680,111 @@ function openOfficeHoursModal() {
 $('#openOfficeHours').addEventListener('click', openOfficeHoursModal);
 $('#officeHoursClose').addEventListener('click', () => { Sound.tap(); $('#officeHoursModal').classList.remove('open'); });
 $('#officeHoursModal').addEventListener('click', (e) => { if (e.target === $('#officeHoursModal')) $('#officeHoursModal').classList.remove('open'); });
+
+/* ============================================================
+   LEADERBOARD (Redis sorted set behind /api/leaderboard/*)
+============================================================ */
+function currentKlass() {
+  for (const l of (lastLessons || [])) {
+    const k = l.kl && l.kl[0];
+    if (k && (k.name || k.longname)) return k.name || k.longname;
+  }
+  return '';
+}
+function lbIsSelf(e) {
+  if (!creds || !e) return false;
+  const u = (creds.username || '').trim().toLowerCase();
+  const s = (creds.school || '').trim().toLowerCase();
+  return e.username === u && e.school === s;
+}
+async function pushLeaderboard() {
+  if (!creds || cloudEnabled === false) return;
+  try {
+    const r = await apiPost('/api/leaderboard/update', {
+      ...creds,
+      coins: state.coins,
+      klass: currentKlass(),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) console.warn('[Leaderboard push]', d.error || r.status);
+  } catch (err) {
+    console.warn('[Leaderboard push]', err.message);
+  }
+}
+let lbLoading = false;
+async function fetchLeaderboard() {
+  if (lbLoading) return null;
+  lbLoading = true;
+  try {
+    const r = await fetch('/api/leaderboard/get');
+    if (!r.ok) throw new Error('http ' + r.status);
+    return await r.json();
+  } catch (err) {
+    console.warn('[Leaderboard get]', err.message);
+    return { ok: false, entries: [], cloudEnabled: true, error: err.message };
+  } finally {
+    lbLoading = false;
+  }
+}
+function renderLeaderboard(data) {
+  const el = $('#leaderboardList');
+  const sub = $('#leaderboardSub');
+  if (!el) return;
+  if (!data || data.cloudEnabled === false) {
+    if (sub) sub.textContent = 'Cloud-Sync ist nicht aktiviert';
+    el.innerHTML = `<div class="lb-empty">
+      <div class="ttl">Leaderboard offline</div>
+      <div>Cloud-Sync ist auf diesem Server nicht aktiviert.</div>
+    </div>`;
+    return;
+  }
+  const entries = (data && data.entries) || [];
+  if (!entries.length) {
+    if (sub) sub.textContent = 'Noch keine Einträge';
+    el.innerHTML = `<div class="lb-empty">
+      <div class="ttl">Niemand hier — noch</div>
+      <div>Sei der erste, der spielt und Coins sammelt.</div>
+    </div>`;
+    return;
+  }
+  // Find self rank for the subtitle
+  let selfRank = null;
+  for (let i = 0; i < entries.length; i++) if (lbIsSelf(entries[i])) { selfRank = i + 1; break; }
+  if (sub) sub.textContent = selfRank
+    ? `Top ${entries.length} · Du bist auf Platz #${selfRank}`
+    : `Top ${entries.length} · Du noch nicht in Top 100`;
+  const medal = (i) => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+  el.innerHTML = entries.map((e, i) => {
+    const isSelf = lbIsSelf(e);
+    const cls = ['lb-row', medal(i), isSelf ? 'me' : ''].filter(Boolean).join(' ');
+    const where = [
+      e.klass ? `<span class="chip">${escapeHtml(e.klass)}</span>` : '',
+      e.school ? `<span>${escapeHtml(e.school)}</span>` : ''
+    ].filter(Boolean).join('');
+    return `<div class="${cls}">
+      ${isSelf ? '<div class="you-chip">Das bist du</div>' : ''}
+      <div class="rank">${i + 1}</div>
+      <div class="who">
+        <div class="name">${escapeHtml(e.username || '—')}</div>
+        ${where ? `<div class="where">${where}</div>` : ''}
+      </div>
+      <div class="coins">${fmt(e.coins)}</div>
+    </div>`;
+  }).join('');
+}
+async function openLeaderboardModal() {
+  Sound.tap(); Haptic.select();
+  const el = $('#leaderboardList');
+  if (el) el.innerHTML = '<div class="lb-empty"><div class="ttl">Lade…</div></div>';
+  $('#leaderboardModal').classList.add('open');
+  // Push first so our own score is fresh when we read back
+  pushLeaderboard();
+  const data = await fetchLeaderboard();
+  renderLeaderboard(data);
+}
+$('#openLeaderboard').addEventListener('click', openLeaderboardModal);
+$('#leaderboardClose').addEventListener('click', () => { Sound.tap(); $('#leaderboardModal').classList.remove('open'); });
+$('#leaderboardModal').addEventListener('click', (e) => { if (e.target === $('#leaderboardModal')) $('#leaderboardModal').classList.remove('open'); });
 
 /* ============================================================
    TIMETABLE

@@ -345,6 +345,49 @@ app.post('/api/state/save', async (req, res) => {
   res.json({ ok, cloudEnabled: true });
 });
 
+/* ============================================================
+   LEADERBOARD — Redis sorted set, member id = "username|school|klass"
+   We store the pipe-delimited tuple so the GET endpoint can split it
+   back into displayable fields without needing a second lookup.
+============================================================ */
+const LEADERBOARD_KEY = 'leaderboard:all';
+
+function leaderboardMember({ username, school, klass }) {
+  return [
+    normalizeKeyPart(username),
+    normalizeKeyPart(school),
+    String(klass || '').trim()
+  ].join('|');
+}
+
+app.post('/api/leaderboard/update', async (req, res) => {
+  const { server, school, username, password, coins, klass } = req.body || {};
+  if (!school || !username || !password || typeof coins !== 'number' || !Number.isFinite(coins)) {
+    return res.status(400).json({ error: 'data missing' });
+  }
+  if (!CLOUD_ENABLED) return res.json({ ok: false, cloudEnabled: false });
+  const member = leaderboardMember({ username, school, klass });
+  const out = await upstashCmd(['ZADD', LEADERBOARD_KEY, String(Math.round(coins)), member]);
+  res.json({ ok: !!out, cloudEnabled: true });
+});
+
+app.get('/api/leaderboard/get', async (_req, res) => {
+  if (!CLOUD_ENABLED) return res.json({ ok: true, entries: [], cloudEnabled: false });
+  const out = await upstashCmd(['ZRANGE', LEADERBOARD_KEY, '0', '99', 'REV', 'WITHSCORES']);
+  const raw = (out && Array.isArray(out.result)) ? out.result : [];
+  const entries = [];
+  for (let i = 0; i < raw.length; i += 2) {
+    const parts = String(raw[i]).split('|');
+    entries.push({
+      username: parts[0] || '',
+      school: parts[1] || '',
+      klass: parts[2] || '',
+      coins: Number(raw[i + 1]) || 0,
+    });
+  }
+  res.json({ ok: true, entries, cloudEnabled: true });
+});
+
 app.get('/api/cloud-status', async (_req, res) => {
   const status = {
     ok: true,
