@@ -1506,32 +1506,7 @@
        are owned by JS (scrub / tab-swipe). */
     touch-action: pan-y;
     isolation: isolate;
-    overflow: visible;
-    will-change: transform, opacity;
-    opacity: 1;
-    transition:
-      opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1),
-      backdrop-filter 0.28s ease,
-      box-shadow 0.28s ease;
-  }
-  /* While scrubbing / swiping — dock breathes lighter (JS sets opacity). */
-  .dock.is-gesture-active {
-    backdrop-filter: blur(28px) saturate(1.65);
-    -webkit-backdrop-filter: blur(28px) saturate(1.65);
-    box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.32),
-      0 -1px 0 inset rgba(255, 255, 255, 0.05),
-      0 0 0 0.5px rgba(0, 0, 0, 0.03),
-      0 4px 10px rgba(0, 0, 0, 0.04),
-      0 10px 28px rgba(0, 0, 0, 0.10);
-  }
-  :root[data-mode="dark"] .dock.is-gesture-active {
-    box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.10),
-      0 -1px 0 inset rgba(255, 255, 255, 0.02),
-      0 0 0 0.5px rgba(0, 0, 0, 0.35),
-      0 4px 10px rgba(0, 0, 0, 0.12),
-      0 10px 28px rgba(0, 0, 0, 0.38);
+    will-change: transform;
   }
   :root[data-mode="dark"] .dock {
     background:
@@ -1608,7 +1583,7 @@
     left: 0;
     width: 0; /* JS sets this to the active button width */
     pointer-events: none;
-    border-radius: 999px;
+    border-radius: 18px;
     background:
       linear-gradient(180deg,
         color-mix(in srgb, var(--accent) 22%, transparent),
@@ -1627,16 +1602,16 @@
     transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1),
                 filter 0.22s ease, box-shadow 0.22s ease;
   }
-  /* Live gesture — soft jelly blob, corners morph via JS. */
+  /* Live gesture — JS drives squash/skew; CSS boosts the glass glow. */
   .dock-indicator.is-liquid-active {
-    transition: width 0.16s cubic-bezier(0.32, 0.72, 0, 1),
-                filter 0.22s ease, box-shadow 0.22s ease;
-    filter: saturate(1.28) brightness(1.08) blur(0.2px);
+    transition: width 0.12s cubic-bezier(0.32, 0.72, 0, 1),
+                filter 0.14s ease, box-shadow 0.14s ease;
+    filter: saturate(1.42) brightness(1.1);
     box-shadow:
       0 1px 0 inset color-mix(in srgb, white 38%, transparent),
-      0 -1px 0 inset color-mix(in srgb, var(--accent) 22%, transparent),
+      0 -1px 0 inset color-mix(in srgb, var(--accent) 20%, transparent),
       0 0 0 0.5px color-mix(in srgb, var(--accent) 28%, transparent),
-      0 12px 32px color-mix(in srgb, var(--accent) 44%, transparent);
+      0 10px 28px color-mix(in srgb, var(--accent) 42%, transparent);
   }
   :root[data-mode="dark"] .dock-indicator {
     background:
@@ -4599,7 +4574,8 @@ function renderCard(l) {
   `;
 }
 
-$('#weekGrid').addEventListener('click', (e) => {
+function handleLessonGridClick(e) {
+  if (planCarousel && performance.now() < planCarousel.suppressClickUntil) return;
   const overlay = e.target.closest('.bet-overlay');
   if (overlay) {
     e.stopPropagation();
@@ -4622,7 +4598,9 @@ $('#weekGrid').addEventListener('click', (e) => {
     const lesson = (lastLessons || []).find(l => lessonId(l) === card.dataset.lessonId);
     if (lesson) openDetails(lesson);
   }
-});
+}
+
+document.getElementById('planPager')?.addEventListener('click', handleLessonGridClick);
 
 /* ============================================================
    AUTH EVENTS
@@ -4854,6 +4832,9 @@ class PlanCarousel {
     this.DISTANCE_RATIO_TO_COMMIT = 0.20;
     this.DIRECTIONAL_THRESHOLD = 8; // px before we lock to horizontal axis
 
+    // After a horizontal swipe, block the synthetic click on lesson cards.
+    this.suppressClickUntil = 0;
+
     this._measure();
     this._attachEvents();
     this._applyTransform();
@@ -5059,7 +5040,8 @@ class PlanCarousel {
 
   _shouldIgnoreTouch(target) {
     if (!target) return false;
-    return !!target.closest('.lesson-card, .bet-overlay, button, a, input, textarea, select, .modal-card, .reels, .reel');
+    // Lesson cards are swipeable — only block true controls (not the card itself).
+    return !!target.closest('button, a, input, textarea, select, .modal-card, .reels, .reel');
   }
 
   _onPointerDown(e) {
@@ -5108,6 +5090,7 @@ class PlanCarousel {
       }
       if (absX < this.DIRECTIONAL_THRESHOLD) return;
       this.committed = true;
+      this.suppressClickUntil = performance.now() + 450;
     }
 
     // Once committed, take ownership: prevent vertical scroll AND any
@@ -5231,13 +5214,8 @@ class DockController {
     this.appSwipeFromW = 0;
     this.appSwipeLastNearestIdx = this.activeIdx;
 
-    // Jelly blob — per-corner radius + transform (no rigid pill).
-    this.liquid = this._neutralLiquid();
-    this._liquidTarget = this._neutralLiquid();
-    // Smoothed flow -1…1 — water never snaps when direction reverses.
-    this._flow = 0;
-    this._dockFade = 1;
-    this._dockFadeTarget = 1;
+    // Liquid-glass deformation (squash / skew / wobble) while dragging.
+    this.liquid = { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
     this._liquidRaf = null;
     this._scrubLastX = 0;
     this._scrubLastT = 0;
@@ -5277,171 +5255,102 @@ class DockController {
     return p ? p.width : 0;
   }
   _applyTransform() {
-    const L = this.liquid;
-    const ox = Math.round(L.originX * 100);
-    this.indicator.style.transformOrigin = `${ox}% center`;
-    this.indicator.style.borderRadius =
-      `${L.r1}% ${L.r2}% ${L.r3}% ${L.r4}% / ${L.ry1}% ${L.ry2}% ${L.ry3}% ${L.ry4}%`;
+    const { sx, sy, skew, ty, br } = this.liquid;
+    const origin = skew < 0 ? 'right center' : skew > 0 ? 'left center' : 'center center';
+    this.indicator.style.transformOrigin = origin;
+    this.indicator.style.borderRadius = br + 'px';
     this.indicator.style.transform =
-      `translate3d(${this.x + L.tx}px, ${L.ty}px, 0) scale(${L.sx}, ${L.sy}) ` +
-      `skewX(${L.skew}deg) skewY(${L.skewY}deg) rotate(${L.rot}deg)`;
-  }
-  _blobCorners(flow, mag) {
-    const f = flow;
-    const m = mag;
-    const soft = 46 + m * 24;
-    const lead = soft + Math.abs(f) * m * 22;
-    const trail = Math.max(30, soft - Math.abs(f) * m * 16);
-    const pinch = soft - m * 8;
-    if (f >= 0) {
-      return { r1: pinch, r2: lead, r3: lead, r4: pinch, ry1: soft, ry2: soft + m * 6, ry3: soft + m * 6, ry4: soft };
-    }
-    return { r1: lead, r2: pinch, r3: pinch, r4: lead, ry1: soft + m * 6, ry2: soft, ry3: soft, ry4: soft + m * 6 };
+      `translate3d(${this.x}px, ${ty}px, 0) scale(${sx}, ${sy}) skewX(${skew}deg)`;
   }
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
   }
-  _setDockGesture(mag) {
-    if (!this.dock) return;
-    // 0 = idle, 1 = full swipe — gentle fade (~82% opacity at max).
-    this._dockFadeTarget = 1 - Math.min(1, mag) * 0.18;
-    this.dock.classList.toggle('is-gesture-active', this._dockFadeTarget < 0.98);
-  }
-  _resetDockGesture() {
-    this._dockFade = 1;
-    this._dockFadeTarget = 1;
-    if (this.dock) {
-      this.dock.style.opacity = '';
-      this.dock.classList.remove('is-gesture-active');
-    }
-  }
-  _neutralLiquid() {
-    const s = 50;
-    return {
-      sx: 1, sy: 1, tx: 0, ty: 0, skew: 0, skewY: 0, rot: 0, originX: 0.5,
-      r1: s, r2: s, r3: s, r4: s, ry1: s, ry2: s, ry3: s, ry4: s,
-    };
-  }
-  _resetLiquidInstant() {
-    this.liquid = this._neutralLiquid();
-    this._liquidTarget = this._neutralLiquid();
-    this._scrubVel = 0;
-    this._flow = 0;
+  _feedLiquidMotion(deltaX, dt) {
+    if (!this._motionOk) return;
+    const v = dt > 0 ? deltaX / dt : 0;
+    this._scrubVel = this._scrubVel * 0.55 + v * 0.45;
+    const mag = Math.min(1, Math.abs(this._scrubVel) / 2200);
+    const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
+    this.liquid.sx = 1 + mag * 0.16;
+    this.liquid.sy = 1 - mag * 0.11;
+    this.liquid.skew = dir * mag * 7.5;
+    this.liquid.ty = -mag * 3.5;
+    this.liquid.br = 18 + mag * 6;
     this._applyTransform();
   }
-  _cancelLiquidLoop() {
+  _resetLiquidInstant() {
+    this.liquid = { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
+    this._scrubVel = 0;
+    this._applyTransform();
+  }
+  _cancelLiquidAnim() {
     if (this._liquidRaf) cancelAnimationFrame(this._liquidRaf);
     this._liquidRaf = null;
   }
-  // Smooth lerp each frame — responsive but never snaps shape.
-  _tickLiquid(now) {
-    const dt = Math.min(0.032, (this._liquidLastT ? (now - this._liquidLastT) / 1000 : 0.016));
-    this._liquidLastT = now;
-    const rate = this.scrubbing || this.appSwiping ? 44 : 18;
-    const k = 1 - Math.exp(-rate * dt);
-    const t = this._liquidTarget;
-    const c = this.liquid;
-    c.sx += (t.sx - c.sx) * k;
-    c.sy += (t.sy - c.sy) * k;
-    c.tx += (t.tx - c.tx) * k;
-    c.ty += (t.ty - c.ty) * k;
-    c.skew += (t.skew - c.skew) * k;
-    c.skewY += (t.skewY - c.skewY) * k;
-    c.rot += (t.rot - c.rot) * k;
-    c.originX += (t.originX - c.originX) * k;
-    for (const key of ['r1', 'r2', 'r3', 'r4', 'ry1', 'ry2', 'ry3', 'ry4']) {
-      c[key] += (t[key] - c[key]) * k;
-    }
-    this._dockFade += (this._dockFadeTarget - this._dockFade) * k;
-    if (this.dock) this.dock.style.opacity = String(this._dockFade);
-    if (!this.scrubbing && !this.appSwiping) {
-      this._flow += (0 - this._flow) * (1 - Math.exp(-9 * dt));
-    }
-    this._applyTransform();
-    const settled =
-      Math.abs(c.sx - 1) < 0.004 && Math.abs(c.sy - 1) < 0.004 &&
-      Math.abs(c.tx) < 0.3 && Math.abs(c.ty) < 0.3 &&
-      Math.abs(c.skew) < 0.2 && Math.abs(c.skewY) < 0.15 && Math.abs(c.rot) < 0.15 &&
-      Math.abs(c.r1 - 50) < 0.5 && Math.abs(this._flow) < 0.03 &&
-      Math.abs(this._dockFade - 1) < 0.015;
-    const targetNeutral =
-      Math.abs(t.sx - 1) < 0.001 && Math.abs(t.sy - 1) < 0.001 &&
-      Math.abs(t.skew) < 0.05 && Math.abs(t.rot) < 0.05;
-    if (settled && targetNeutral && !this.scrubbing && !this.appSwiping && this.rafId == null) {
+  // Jelly settle after release — a few damped wobbles, not just a slide.
+  _settleLiquidWobble() {
+    if (!this._motionOk) {
       this._resetLiquidInstant();
-      this._resetDockGesture();
       this._setLiquidActive(false);
-      this._cancelLiquidLoop();
       return;
     }
-    this._liquidRaf = requestAnimationFrame((n) => this._tickLiquid(n));
+    this._cancelLiquidAnim();
+    let amp = Math.min(0.14, Math.abs(this._scrubVel) / 9000 + 0.04);
+    let vel = this._scrubVel * 0.00008;
+    let t0 = performance.now();
+    const step = (now) => {
+      const dt = Math.min(0.032, (now - t0) / 1000);
+      t0 = now;
+      // Damped spring on amplitude
+      vel += -amp * 42 * dt;
+      vel *= Math.pow(0.72, dt * 60);
+      amp += vel * dt;
+      if (amp < 0.002) {
+        this._resetLiquidInstant();
+        this._setLiquidActive(false);
+        this._liquidRaf = null;
+        return;
+      }
+      this.liquid.sx = 1 + amp;
+      this.liquid.sy = 1 - amp * 0.72;
+      this.liquid.skew = vel * 180;
+      this.liquid.ty = -amp * 18;
+      this.liquid.br = 18 + amp * 40;
+      this._applyTransform();
+      this._liquidRaf = requestAnimationFrame(step);
+    };
+    this._liquidRaf = requestAnimationFrame(step);
   }
-  _ensureLiquidLoop() {
-    if (!this._motionOk) return;
-    if (!this._liquidRaf) {
-      this._liquidLastT = 0;
-      this._liquidRaf = requestAnimationFrame((n) => this._tickLiquid(n));
-    }
-  }
-  // Water-like jelly: flow direction blends smoothly (no hard flip L↔R).
-  _feedLiquidMotion(deltaX, dt, extraMag = 0, displacement = 0) {
-    if (!this._motionOk) return;
-    const v = dt > 0 ? deltaX / dt : 0;
-    this._scrubVel = this._scrubVel * 0.58 + v * 0.42;
-
-    const velMag = Math.min(1, Math.abs(this._scrubVel) / 1600);
-    const dispMag = Math.min(1, Math.abs(displacement) / 48);
-    const mag = Math.min(1, velMag * 0.8 + dispMag * 0.75 + extraMag * 0.55);
-
-    // Continuous flow -1…1 — eases through zero when you reverse direction.
-    const rawFlow = Math.max(-1, Math.min(1,
-      (displacement / 50) * 0.55 + (this._scrubVel / 1200) * 0.45));
-    const flowRate = this.scrubbing || this.appSwiping ? 11 : 7;
-    const flowK = 1 - Math.exp(-flowRate * Math.max(dt, 0.008));
-    this._flow += (rawFlow - this._flow) * flowK;
-
-    const f = this._flow;
-    const stretch = mag * 0.28;
-    this._liquidTarget.sx = 1 + stretch * (1 + Math.abs(f) * 0.2);
-    this._liquidTarget.sy = 1 - stretch * 0.52;
-    this._liquidTarget.tx = f * mag * 16;
-    this._liquidTarget.skew = f * mag * 10;
-    this._liquidTarget.skewY = f * mag * 3.5;
-    this._liquidTarget.rot = f * mag * 5.5;
-    this._liquidTarget.ty = -mag * 3;
-    this._liquidTarget.originX = 0.5 - f * 0.38;
-
-    const corners = this._blobCorners(f, mag);
-    Object.assign(this._liquidTarget, corners);
-
-    this._setDockGesture(mag);
-    this._ensureLiquidLoop();
-  }
-  _relaxLiquid() {
-    this._liquidTarget = this._neutralLiquid();
-    this._dockFadeTarget = 1;
-    if (this.dock) this.dock.classList.remove('is-gesture-active');
-    this._ensureLiquidLoop();
-  }
+  // Quick squish when the user taps the dock (before scrub threshold).
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
+    this._cancelLiquidAnim();
     this._setLiquidActive(true);
-    this._liquidTarget.sx = 1.1;
-    this._liquidTarget.sy = 0.88;
-    this._liquidTarget.tx = 0;
-    this._liquidTarget.skew = 0;
-    this._liquidTarget.skewY = 0;
-    this._liquidTarget.rot = 0;
-    this._liquidTarget.ty = 1.5;
-    this._liquidTarget.originX = 0.5;
-    Object.assign(this._liquidTarget, {
-      r1: 58, r2: 58, r3: 58, r4: 58, ry1: 52, ry2: 52, ry3: 52, ry4: 52,
-    });
-    this._setDockGesture(0.22);
-    this._ensureLiquidLoop();
-    setTimeout(() => {
-      if (!this.scrubbing && !this.appSwiping) this._relaxLiquid();
-    }, 110);
+    const t0 = performance.now();
+    const dur = 220;
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      // Press in → bounce out
+      const s = p < 0.42
+        ? p / 0.42
+        : 1 - (p - 0.42) / 0.58;
+      const squash = 1 + (1 - s) * 0.11;
+      const stretch = 1 - (1 - s) * 0.08;
+      this.liquid.sx = squash;
+      this.liquid.sy = stretch;
+      this.liquid.ty = (1 - s) * 2;
+      this.liquid.skew = 0;
+      this.liquid.br = 18 + (1 - s) * 4;
+      this._applyTransform();
+      if (p < 1) {
+        this._liquidRaf = requestAnimationFrame(step);
+      } else {
+        this._resetLiquidInstant();
+        this._setLiquidActive(false);
+        this._liquidRaf = null;
+      }
+    };
+    this._liquidRaf = requestAnimationFrame(step);
   }
   _setStyleActive(idx) {
     this.buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
@@ -5464,7 +5373,6 @@ class DockController {
   }
   _spring(targetX, initialVelocity = 0) {
     this._cancelSpring();
-    this._ensureLiquidLoop();
     this.velocity = initialVelocity || 0;
     let last = performance.now();
     const step = (now) => {
@@ -5474,14 +5382,11 @@ class DockController {
       const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
       this.velocity += accel * dt;
       this.x += this.velocity * dt;
-      // Jelly follows the spring momentum, then eases out at the end.
-      this._feedLiquidMotion(this.velocity * dt, dt, 0, dx);
       this._applyTransform();
       if (Math.abs(dx) < 0.4 && Math.abs(this.velocity) < 20) {
         this.x = targetX;
         this.velocity = 0;
         this._applyTransform();
-        this._relaxLiquid();
         this.rafId = null;
         return;
       }
@@ -5491,9 +5396,8 @@ class DockController {
   }
   _cancel() {
     this._cancelSpring();
-    this._cancelLiquidLoop();
+    this._cancelLiquidAnim();
     this._resetLiquidInstant();
-    this._resetDockGesture();
     this._setLiquidActive(false);
   }
 
@@ -5530,7 +5434,7 @@ class DockController {
     if (opts.instant) {
       this._setWidthInstant(this._widthForIdx(idx));
       this._cancelSpring();
-      this._cancelLiquidLoop();
+      this._cancelLiquidAnim();
       this._resetLiquidInstant();
       this._setLiquidActive(false);
       this.x = target;
@@ -5547,7 +5451,8 @@ class DockController {
   // ---- Scrub gesture (drag inside the dock) ----
   beginScrub(clientX) {
     if (this.appSwiping) return;
-    this._cancelSpring();
+    this._cancel();
+    this._cancelLiquidAnim();
     this.scrubbing = true;
     this.scrubStartFingerX = clientX;
     this.scrubStartIndicatorX = this.x;
@@ -5555,10 +5460,8 @@ class DockController {
     this._scrubLastX = clientX;
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
-    this._liquidTarget = { ...this.liquid };
     this._setLiquidActive(true);
     this.indicator.style.transition = 'none';
-    this._ensureLiquidLoop();
   }
   updateScrub(clientX) {
     if (!this.scrubbing) return;
@@ -5581,9 +5484,9 @@ class DockController {
     const nearest = this._nearestIdx(nextX);
     const targetW = this._widthForIdx(nearest);
     const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
-    this.indicator.style.width = (curW + (targetW - curW) * 0.28) + 'px';
+    this.indicator.style.width = (curW + (targetW - curW) * 0.35) + 'px';
 
-    this._feedLiquidMotion(frameDx, dt, 0, delta);
+    this._feedLiquidMotion(frameDx, dt);
     // Live highlight whichever tab the pill is closest to.
     if (nearest !== this.scrubLastNearestIdx) {
       this._setStyleActive(nearest);
@@ -5599,11 +5502,13 @@ class DockController {
     if (nearest !== this.activeIdx) {
       Haptic.light();
       Sound.tap();
+      this._settleLiquidWobble();
       setTab(TAB_NAMES[nearest]);
     } else {
       this._setStyleActive(this.activeIdx);
-      this.indicator.style.width = this._widthForIdx(this.activeIdx) + 'px';
+      this._settleLiquidWobble();
       this._spring(this._xForIdx(this.activeIdx));
+      this.indicator.style.width = this._widthForIdx(this.activeIdx) + 'px';
     }
   }
   _nearestIdx(indicatorX) {
@@ -5625,7 +5530,8 @@ class DockController {
   // native iOS: drag right → previous tab, drag left → next tab.
   beginAppSwipe() {
     if (this.scrubbing) return;
-    this._cancelSpring();
+    this._cancel();
+    this._cancelLiquidAnim();
     this.appSwiping = true;
     this.appSwipeFromIdx = this.activeIdx;
     this.appSwipeFromX = this._xForIdx(this.activeIdx);
@@ -5634,10 +5540,8 @@ class DockController {
     this._scrubLastX = 0;
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
-    this._liquidTarget = { ...this.liquid };
     this._setLiquidActive(true);
     this.indicator.style.transition = 'none';
-    this._ensureLiquidLoop();
   }
   updateAppSwipe(dx, viewportWidth) {
     if (!this.appSwiping) return;
@@ -5664,8 +5568,7 @@ class DockController {
     const endW = this._widthForIdx(targetIdx);
     this.x = startX + (endX - startX) * progress;
     this.indicator.style.width = (startW + (endW - startW) * progress) + 'px';
-    // Stretch follows swipe progress (subtle), not raw velocity alone.
-    this._feedLiquidMotion(frameDx, dt, progress * 0.72, dx);
+    this._feedLiquidMotion(frameDx, dt);
     // Once we cross the midpoint, swap the .active class to the
     // target so its icon scales up live — feels "physically connected".
     const nearest = progress > 0.5 ? targetIdx : fromIdx;
@@ -5684,12 +5587,14 @@ class DockController {
     const targetIdx = dx < 0 ? fromIdx + 1 : fromIdx - 1;
     if (targetIdx < 0 || targetIdx >= this.buttons.length) {
       this._setStyleActive(fromIdx);
+      this._settleLiquidWobble();
       this._spring(this._xForIdx(fromIdx));
       return;
     }
     const w = viewportWidth || window.innerWidth || 1;
     const progress = Math.abs(dx) / w;
     const commit = progress > 0.22 || Math.abs(velocity) > 520;
+    this._settleLiquidWobble();
     if (commit) {
       Haptic.light();
       setTab(TAB_NAMES[targetIdx]);
