@@ -505,6 +505,11 @@
     will-change: transform;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
+  }
+  .plan-pager.is-dragging .plan-pager-track {
+    will-change: transform;
+    transition: none !important;
   }
   /* iOS-style spring snap (lite). The rAF spring takes over for
      interactive interruption; this transition is used for synchronous
@@ -1433,6 +1438,13 @@
   ============================================================ */
   .app-view { display: none; }
   .app-view.visible { display: block; padding-bottom: calc(var(--safe-bottom) + 110px); }
+  /* App open: no pinch-zoom inside the shell (login page stays zoomable). */
+  html.app-open {
+    touch-action: manipulation;
+  }
+  html.app-open .app-view {
+    touch-action: pan-x pan-y;
+  }
 
   .tab-pane { display: none; }
   .tab-pane.active {
@@ -1602,16 +1614,16 @@
     transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1),
                 filter 0.22s ease, box-shadow 0.22s ease;
   }
-  /* Live gesture — JS drives squash/skew; CSS boosts the glass glow. */
+  /* Live gesture — subtle glass lift; deformation is JS-smoothed. */
   .dock-indicator.is-liquid-active {
-    transition: width 0.12s cubic-bezier(0.32, 0.72, 0, 1),
-                filter 0.14s ease, box-shadow 0.14s ease;
-    filter: saturate(1.42) brightness(1.1);
+    transition: width 0.14s cubic-bezier(0.32, 0.72, 0, 1),
+                filter 0.2s ease, box-shadow 0.2s ease;
+    filter: saturate(1.22) brightness(1.05);
     box-shadow:
-      0 1px 0 inset color-mix(in srgb, white 38%, transparent),
-      0 -1px 0 inset color-mix(in srgb, var(--accent) 20%, transparent),
-      0 0 0 0.5px color-mix(in srgb, var(--accent) 28%, transparent),
-      0 10px 28px color-mix(in srgb, var(--accent) 42%, transparent);
+      0 1px 0 inset color-mix(in srgb, white 32%, transparent),
+      0 -1px 0 inset color-mix(in srgb, var(--accent) 16%, transparent),
+      0 0 0 0.5px color-mix(in srgb, var(--accent) 22%, transparent),
+      0 8px 22px color-mix(in srgb, var(--accent) 32%, transparent);
   }
   :root[data-mode="dark"] .dock-indicator {
     background:
@@ -4184,14 +4196,20 @@ const dockEl = $('#bottomDock');
 const msg = $('#msg');
 const ttMsg = $('#ttMsg');
 
+const VIEWPORT_UNLOCKED = 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+const VIEWPORT_LOCKED = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no';
+
+function setViewportZoomLock(locked) {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (meta) meta.setAttribute('content', locked ? VIEWPORT_LOCKED : VIEWPORT_UNLOCKED);
+  document.documentElement.classList.toggle('app-open', locked);
+}
+
 function showApp() {
   loginView.style.display = 'none';
   appView.classList.add('visible');
   dockEl.classList.add('visible');
-  // Both the carousel AND the dock indicator may have measured
-  // sizes of 0 while their containers were `display:none`. Wait
-  // one frame for the browser to apply the new layout, then
-  // re-measure so all positions are pixel-accurate.
+  setViewportZoomLock(true);
   requestAnimationFrame(() => {
     if (planCarousel) planCarousel.measure();
     if (dockController) dockController.measure();
@@ -4201,7 +4219,20 @@ function showLogin() {
   loginView.style.display = 'block';
   appView.classList.remove('visible');
   dockEl.classList.remove('visible');
+  setViewportZoomLock(false);
 }
+
+// Block pinch-zoom inside the app (plan swipe uses 1 finger). Login stays zoomable.
+function blockAppPinchZoom(e) {
+  if (!appView.classList.contains('visible')) return;
+  if (e.touches && e.touches.length > 1) e.preventDefault();
+}
+appView.addEventListener('touchmove', blockAppPinchZoom, { passive: false });
+['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => {
+  document.addEventListener(ev, (e) => {
+    if (appView.classList.contains('visible')) e.preventDefault();
+  }, { passive: false });
+});
 
 let creds = null;
 let viewMode = LS.get('viewMode') === 'week' ? 'week' : 'day';
@@ -4574,7 +4605,8 @@ function renderCard(l) {
   `;
 }
 
-$('#weekGrid').addEventListener('click', (e) => {
+function handleLessonGridClick(e) {
+  if (planCarousel && performance.now() < planCarousel.suppressClickUntil) return;
   const overlay = e.target.closest('.bet-overlay');
   if (overlay) {
     e.stopPropagation();
@@ -4597,7 +4629,9 @@ $('#weekGrid').addEventListener('click', (e) => {
     const lesson = (lastLessons || []).find(l => lessonId(l) === card.dataset.lessonId);
     if (lesson) openDetails(lesson);
   }
-});
+}
+
+document.getElementById('planPager')?.addEventListener('click', handleLessonGridClick);
 
 /* ============================================================
    AUTH EVENTS
@@ -4671,7 +4705,10 @@ function setTab(name, opts) {
   // so text color + icon scale follow the pill smoothly. On force
   // (init), we jump without animation to avoid a startup flash.
   if (dockController) {
-    dockController.setActiveTab(name, { instant: !!opts2.force });
+    dockController.setActiveTab(name, {
+      instant: !!opts2.force,
+      syncOnly: !!opts2.dockSync,
+    });
   } else {
     $$('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   }
@@ -4829,6 +4866,9 @@ class PlanCarousel {
     this.DISTANCE_RATIO_TO_COMMIT = 0.20;
     this.DIRECTIONAL_THRESHOLD = 8; // px before we lock to horizontal axis
 
+    // After a horizontal swipe, block the synthetic click on lesson cards.
+    this.suppressClickUntil = 0;
+
     this._measure();
     this._attachEvents();
     this._applyTransform();
@@ -4842,9 +4882,11 @@ class PlanCarousel {
   }
 
   _applyTransform() {
-    // Track baseline is -33.333% (centers slot "current"). Add px offset.
     const px = -this.pageW + this.x;
     this.track.style.transform = `translate3d(${px}px, 0, 0)`;
+  }
+  _setDragging(on) {
+    this.root.classList.toggle('is-dragging', !!on);
   }
 
   _setSnapping(on) {
@@ -5034,7 +5076,8 @@ class PlanCarousel {
 
   _shouldIgnoreTouch(target) {
     if (!target) return false;
-    return !!target.closest('.lesson-card, .bet-overlay, button, a, input, textarea, select, .modal-card, .reels, .reel');
+    // Lesson cards are swipeable — only block true controls (not the card itself).
+    return !!target.closest('button, a, input, textarea, select, .modal-card, .reels, .reel');
   }
 
   _onPointerDown(e) {
@@ -5052,6 +5095,7 @@ class PlanCarousel {
     // original swipe to still commit (iOS Calendar style).
     this._cancelAnim();
     this._setSnapping(false);
+    this._setDragging(true);
 
     this.activeTouchId = t.identifier;
     this.dragging = true;
@@ -5077,12 +5121,13 @@ class PlanCarousel {
       const absX = Math.abs(dx);
       const absY = Math.abs(dy);
       if (absY > absX && absY > this.DIRECTIONAL_THRESHOLD) {
-        // Vertical scroll wins — release control entirely.
         this.dragging = false;
+        this._setDragging(false);
         return;
       }
       if (absX < this.DIRECTIONAL_THRESHOLD) return;
       this.committed = true;
+      this.suppressClickUntil = performance.now() + 450;
     }
 
     // Once committed, take ownership: prevent vertical scroll AND any
@@ -5101,6 +5146,7 @@ class PlanCarousel {
   _onPointerUp(e) {
     if (!this.dragging) return;
     this.dragging = false;
+    this._setDragging(false);
     if (!this.committed) {
       // Tap without horizontal drag. If we interrupted an in-flight
       // spring (pendingCommit set or visual offset non-zero), resume
@@ -5186,7 +5232,6 @@ class DockController {
     this.activeIdx = Math.max(0, TAB_NAMES.indexOf(currentTab));
     this.x = 0;
     this.velocity = 0;
-    this.rafId = null;
 
     // Spring tuning — slightly stiffer than the plan-pager for a
     // crisper, more "snappy" indicator feel.
@@ -5206,9 +5251,12 @@ class DockController {
     this.appSwipeFromW = 0;
     this.appSwipeLastNearestIdx = this.activeIdx;
 
-    // Liquid-glass deformation (squash / skew / wobble) while dragging.
+    // Liquid deformation — current + target, one rAF loop lerps both.
     this.liquid = { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
-    this._liquidRaf = null;
+    this._liquidTarget = { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
+    this._springTarget = null;
+    this._motionLoopId = null;
+    this._pressPulse = null;
     this._scrubLastX = 0;
     this._scrubLastT = 0;
     this._scrubVel = 0;
@@ -5216,7 +5264,7 @@ class DockController {
 
     this._measure();
     // Apply initial position without animation.
-    this._cancel();
+    this._cancelMotion();
     this.x = this._xForIdx(this.activeIdx);
     this._setWidthInstant(this._widthForIdx(this.activeIdx));
     this._applyTransform();
@@ -5257,92 +5305,110 @@ class DockController {
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
   }
-  _feedLiquidMotion(deltaX, dt) {
+  _neutralLiquid() {
+    return { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
+  }
+  _liquidDeformAmount() {
+    const L = this.liquid;
+    return Math.abs(L.sx - 1) + Math.abs(L.sy - 1) + Math.abs(L.skew) * 0.04 + Math.abs(L.ty) * 0.08;
+  }
+  _feedLiquidMotion(deltaX, dt, stretchHint = 0) {
     if (!this._motionOk) return;
     const v = dt > 0 ? deltaX / dt : 0;
-    this._scrubVel = this._scrubVel * 0.55 + v * 0.45;
-    const mag = Math.min(1, Math.abs(this._scrubVel) / 2200);
+    this._scrubVel = this._scrubVel * 0.68 + v * 0.32;
+    const velMag = Math.min(1, Math.abs(this._scrubVel) / 3200);
+    const mag = Math.min(1, velMag * 0.72 + Math.min(1, stretchHint) * 0.38);
     const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
-    this.liquid.sx = 1 + mag * 0.16;
-    this.liquid.sy = 1 - mag * 0.11;
-    this.liquid.skew = dir * mag * 7.5;
-    this.liquid.ty = -mag * 3.5;
-    this.liquid.br = 18 + mag * 6;
-    this._applyTransform();
+    const T = this._liquidTarget;
+    T.sx = 1 + mag * 0.065;
+    T.sy = 1 - mag * 0.042;
+    T.skew = dir * mag * 2.2;
+    T.ty = -mag * 1.4;
+    T.br = 18 + mag * 2.2;
+    this._ensureMotionLoop();
   }
-  _resetLiquidInstant() {
-    this.liquid = { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
-    this._scrubVel = 0;
-    this._applyTransform();
+  _relaxLiquid() {
+    Object.assign(this._liquidTarget, this._neutralLiquid());
+    this._scrubVel *= 0.12;
+    this._ensureMotionLoop();
   }
-  _cancelLiquidAnim() {
-    if (this._liquidRaf) cancelAnimationFrame(this._liquidRaf);
-    this._liquidRaf = null;
-  }
-  // Jelly settle after release — a few damped wobbles, not just a slide.
-  _settleLiquidWobble() {
-    if (!this._motionOk) {
-      this._resetLiquidInstant();
-      this._setLiquidActive(false);
-      return;
+  _snapLiquidIfIdle() {
+    if (this._liquidDeformAmount() < 0.0015) {
+      Object.assign(this.liquid, this._neutralLiquid());
+      Object.assign(this._liquidTarget, this._neutralLiquid());
     }
-    this._cancelLiquidAnim();
-    let amp = Math.min(0.14, Math.abs(this._scrubVel) / 9000 + 0.04);
-    let vel = this._scrubVel * 0.00008;
-    let t0 = performance.now();
-    const step = (now) => {
-      const dt = Math.min(0.032, (now - t0) / 1000);
-      t0 = now;
-      // Damped spring on amplitude
-      vel += -amp * 42 * dt;
-      vel *= Math.pow(0.72, dt * 60);
-      amp += vel * dt;
-      if (amp < 0.002) {
-        this._resetLiquidInstant();
-        this._setLiquidActive(false);
-        this._liquidRaf = null;
-        return;
-      }
-      this.liquid.sx = 1 + amp;
-      this.liquid.sy = 1 - amp * 0.72;
-      this.liquid.skew = vel * 180;
-      this.liquid.ty = -amp * 18;
-      this.liquid.br = 18 + amp * 40;
-      this._applyTransform();
-      this._liquidRaf = requestAnimationFrame(step);
-    };
-    this._liquidRaf = requestAnimationFrame(step);
   }
-  // Quick squish when the user taps the dock (before scrub threshold).
+  _ensureMotionLoop() {
+    if (this._motionLoopId != null) return;
+    let last = performance.now();
+    const tick = (now) => {
+      const dt = Math.min(0.032, (now - last) / 1000);
+      last = now;
+      let running = false;
+
+      if (this._springTarget != null) {
+        running = true;
+        const dx = this._springTarget - this.x;
+        const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
+        this.velocity += accel * dt;
+        this.x += this.velocity * dt;
+        if (Math.abs(dx) < 0.35 && Math.abs(this.velocity) < 16) {
+          this.x = this._springTarget;
+          this.velocity = 0;
+          this._springTarget = null;
+        }
+      }
+
+      if (this._pressPulse) {
+        running = true;
+        const { t0, dur } = this._pressPulse;
+        const p = Math.min(1, (now - t0) / dur);
+        const s = p < 0.4 ? p / 0.4 : 1 - (p - 0.4) / 0.6;
+        const ease = 1 - s;
+        const T = this._liquidTarget;
+        T.sx = 1 + ease * 0.045;
+        T.sy = 1 - ease * 0.032;
+        T.ty = ease * 1.2;
+        T.skew = 0;
+        T.br = 18 + ease * 2;
+        if (p >= 1) this._pressPulse = null;
+      }
+
+      const lk = 1 - Math.exp(-dt * 34);
+      const L = this.liquid;
+      const T = this._liquidTarget;
+      L.sx += (T.sx - L.sx) * lk;
+      L.sy += (T.sy - L.sy) * lk;
+      L.skew += (T.skew - L.skew) * lk;
+      L.ty += (T.ty - L.ty) * lk;
+      L.br += (T.br - L.br) * lk;
+
+      if (this._liquidDeformAmount() > 0.001) running = true;
+      else this._snapLiquidIfIdle();
+
+      const gesturing = this.scrubbing || this.appSwiping || this._springTarget != null;
+      this._setLiquidActive(gesturing && this._liquidDeformAmount() > 0.008);
+
+      this._applyTransform();
+
+      if (running || this.scrubbing || this.appSwiping) {
+        this._motionLoopId = requestAnimationFrame(tick);
+      } else {
+        this._motionLoopId = null;
+        this._setLiquidActive(false);
+      }
+    };
+    this._motionLoopId = requestAnimationFrame(tick);
+  }
+  _stopMotionLoop() {
+    if (this._motionLoopId != null) cancelAnimationFrame(this._motionLoopId);
+    this._motionLoopId = null;
+  }
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
-    this._cancelLiquidAnim();
+    this._pressPulse = { t0: performance.now(), dur: 200 };
     this._setLiquidActive(true);
-    const t0 = performance.now();
-    const dur = 220;
-    const step = (now) => {
-      const p = Math.min(1, (now - t0) / dur);
-      // Press in → bounce out
-      const s = p < 0.42
-        ? p / 0.42
-        : 1 - (p - 0.42) / 0.58;
-      const squash = 1 + (1 - s) * 0.11;
-      const stretch = 1 - (1 - s) * 0.08;
-      this.liquid.sx = squash;
-      this.liquid.sy = stretch;
-      this.liquid.ty = (1 - s) * 2;
-      this.liquid.skew = 0;
-      this.liquid.br = 18 + (1 - s) * 4;
-      this._applyTransform();
-      if (p < 1) {
-        this._liquidRaf = requestAnimationFrame(step);
-      } else {
-        this._resetLiquidInstant();
-        this._setLiquidActive(false);
-        this._liquidRaf = null;
-      }
-    };
-    this._liquidRaf = requestAnimationFrame(step);
+    this._ensureMotionLoop();
   }
   _setStyleActive(idx) {
     this.buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
@@ -5358,39 +5424,23 @@ class DockController {
     this.indicator.style.transition = prev;
   }
 
-  // ---- spring ----
-  _cancelSpring() {
-    if (this.rafId) cancelAnimationFrame(this.rafId);
-    this.rafId = null;
-  }
-  _spring(targetX, initialVelocity = 0) {
-    this._cancelSpring();
+  // ---- spring (unified motion loop) ----
+  _springTo(targetX, initialVelocity = 0) {
+    this._springTarget = targetX;
     this.velocity = initialVelocity || 0;
-    let last = performance.now();
-    const step = (now) => {
-      const dt = Math.min(0.048, (now - last) / 1000);
-      last = now;
-      const dx = targetX - this.x;
-      const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
-      this.velocity += accel * dt;
-      this.x += this.velocity * dt;
-      this._applyTransform();
-      if (Math.abs(dx) < 0.4 && Math.abs(this.velocity) < 20) {
-        this.x = targetX;
-        this.velocity = 0;
-        this._applyTransform();
-        this.rafId = null;
-        return;
-      }
-      this.rafId = requestAnimationFrame(step);
-    };
-    this.rafId = requestAnimationFrame(step);
+    this._ensureMotionLoop();
   }
-  _cancel() {
-    this._cancelSpring();
-    this._cancelLiquidAnim();
-    this._resetLiquidInstant();
+  _cancelSpringOnly() {
+    this._springTarget = null;
+    this.velocity = 0;
+  }
+  _cancelMotion() {
+    this._cancelSpringOnly();
+    this._pressPulse = null;
+    Object.assign(this._liquidTarget, this._neutralLiquid());
+    Object.assign(this.liquid, this._neutralLiquid());
     this._setLiquidActive(false);
+    if (!this.scrubbing && !this.appSwiping) this._stopMotionLoop();
   }
 
   // ---- public ----
@@ -5400,7 +5450,7 @@ class DockController {
     // so the pill never animates in from 0 width (e.g., right after
     // showApp when the dock first becomes visible).
     this._setWidthInstant(this._widthForIdx(this.activeIdx));
-    if (this.rafId === null && !this.scrubbing && !this.appSwiping) {
+    if (this._springTarget == null && !this.scrubbing && !this.appSwiping) {
       this.x = this._xForIdx(this.activeIdx);
       this._applyTransform();
     }
@@ -5409,7 +5459,7 @@ class DockController {
     this._measure();
     if (!this.scrubbing && !this.appSwiping) {
       this._setWidthInstant(this._widthForIdx(this.activeIdx));
-      this._cancel();
+      this._cancelMotion();
       this.x = this._xForIdx(this.activeIdx);
       this._applyTransform();
     }
@@ -5417,34 +5467,35 @@ class DockController {
 
   // Programmatic tab change (called from setTab). If `instant` is true,
   // jump without spring (used during init / non-animated swaps).
+  // `syncOnly` — pane/tab state only; gesture already animates the pill.
   setActiveTab(name, opts = {}) {
     const idx = TAB_NAMES.indexOf(name);
     if (idx < 0) return;
+    if (opts.syncOnly) {
+      this.activeIdx = idx;
+      this._setStyleActive(idx);
+      return;
+    }
     this.activeIdx = idx;
     this._setStyleActive(idx);
     const target = this._xForIdx(idx);
     if (opts.instant) {
       this._setWidthInstant(this._widthForIdx(idx));
-      this._cancelSpring();
-      this._cancelLiquidAnim();
-      this._resetLiquidInstant();
-      this._setLiquidActive(false);
+      this._cancelMotion();
       this.x = target;
-      this.velocity = 0;
       this._applyTransform();
     } else {
-      // Width transitions via CSS during normal animated changes;
-      // x is driven by the rAF spring.
+      this._relaxLiquid();
       this.indicator.style.width = this._widthForIdx(idx) + 'px';
-      this._spring(target);
+      this._springTo(target);
     }
   }
 
   // ---- Scrub gesture (drag inside the dock) ----
   beginScrub(clientX) {
     if (this.appSwiping) return;
-    this._cancel();
-    this._cancelLiquidAnim();
+    this._cancelSpringOnly();
+    this._pressPulse = null;
     this.scrubbing = true;
     this.scrubStartFingerX = clientX;
     this.scrubStartIndicatorX = this.x;
@@ -5452,8 +5503,8 @@ class DockController {
     this._scrubLastX = clientX;
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
-    this._setLiquidActive(true);
     this.indicator.style.transition = 'none';
+    this._ensureMotionLoop();
   }
   updateScrub(clientX) {
     if (!this.scrubbing) return;
@@ -5476,9 +5527,24 @@ class DockController {
     const nearest = this._nearestIdx(nextX);
     const targetW = this._widthForIdx(nearest);
     const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
-    this.indicator.style.width = (curW + (targetW - curW) * 0.35) + 'px';
+    this.indicator.style.width = (curW + (targetW - curW) * 0.28) + 'px';
 
-    this._feedLiquidMotion(frameDx, dt);
+    const span = Math.max(1, (this._xForIdx(this.buttons.length - 1) - this._xForIdx(0)));
+    const stretchHint = Math.min(1, Math.abs(nextX - this._xForIdx(this.activeIdx)) / (span * 0.55));
+    if (Math.abs(frameDx) < 0.6) {
+      const k = 0.28;
+      const T = this._liquidTarget;
+      const N = this._neutralLiquid();
+      T.sx += (N.sx - T.sx) * k;
+      T.sy += (N.sy - T.sy) * k;
+      T.skew += (N.skew - T.skew) * k;
+      T.ty += (N.ty - T.ty) * k;
+      T.br += (N.br - T.br) * k;
+      this._scrubVel *= 0.8;
+    } else {
+      this._feedLiquidMotion(frameDx, dt, stretchHint);
+    }
+    this._ensureMotionLoop();
     // Live highlight whichever tab the pill is closest to.
     if (nearest !== this.scrubLastNearestIdx) {
       this._setStyleActive(nearest);
@@ -5491,21 +5557,23 @@ class DockController {
     this.scrubbing = false;
     this.indicator.style.transition = '';
     const nearest = this._nearestIdx(this.x);
+    const targetX = this._xForIdx(nearest);
+    const targetW = this._widthForIdx(nearest);
     if (nearest !== this.activeIdx) {
       Haptic.light();
       Sound.tap();
-      this._settleLiquidWobble();
-      setTab(TAB_NAMES[nearest]);
+      setTab(TAB_NAMES[nearest], { dockSync: true });
     } else {
       this._setStyleActive(this.activeIdx);
-      this._settleLiquidWobble();
-      this._spring(this._xForIdx(this.activeIdx));
-      this.indicator.style.width = this._widthForIdx(this.activeIdx) + 'px';
     }
+    this.indicator.style.width = targetW + 'px';
+    this._scrubVel *= 0.18;
+    this._relaxLiquid();
+    this._springTo(targetX);
   }
   _nearestIdx(indicatorX) {
-    // Compare the indicator's CENTER to each button's center.
-    const indicatorCenter = indicatorX + this._widthForIdx(this.activeIdx) / 2;
+    const w = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
+    const indicatorCenter = indicatorX + w / 2;
     let best = 0, bestDist = Infinity;
     for (let i = 0; i < this.positions.length; i++) {
       const c = this.positions[i].left + this.positions[i].width / 2;
@@ -5522,8 +5590,8 @@ class DockController {
   // native iOS: drag right → previous tab, drag left → next tab.
   beginAppSwipe() {
     if (this.scrubbing) return;
-    this._cancel();
-    this._cancelLiquidAnim();
+    this._cancelSpringOnly();
+    this._pressPulse = null;
     this.appSwiping = true;
     this.appSwipeFromIdx = this.activeIdx;
     this.appSwipeFromX = this._xForIdx(this.activeIdx);
@@ -5532,8 +5600,8 @@ class DockController {
     this._scrubLastX = 0;
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
-    this._setLiquidActive(true);
     this.indicator.style.transition = 'none';
+    this._ensureMotionLoop();
   }
   updateAppSwipe(dx, viewportWidth) {
     if (!this.appSwiping) return;
@@ -5550,7 +5618,7 @@ class DockController {
     if (targetIdx < 0 || targetIdx >= this.buttons.length) {
       const damped = dx * 0.10;
       this.x = this.appSwipeFromX - damped;
-      this._feedLiquidMotion(frameDx, dt);
+      this._feedLiquidMotion(frameDx, dt, 0.15);
       return;
     }
     const progress = Math.min(1, Math.abs(dx) / (w * 0.6));
@@ -5560,7 +5628,20 @@ class DockController {
     const endW = this._widthForIdx(targetIdx);
     this.x = startX + (endX - startX) * progress;
     this.indicator.style.width = (startW + (endW - startW) * progress) + 'px';
-    this._feedLiquidMotion(frameDx, dt);
+    if (Math.abs(frameDx) < 0.6) {
+      const k = 0.28;
+      const T = this._liquidTarget;
+      const N = this._neutralLiquid();
+      T.sx += (N.sx + progress * 0.02 - T.sx) * k;
+      T.sy += (N.sy - progress * 0.015 - T.sy) * k;
+      T.skew += (N.skew - T.skew) * k;
+      T.ty += (N.ty - T.ty) * k;
+      T.br += (N.br + progress * 1.2 - T.br) * k;
+      this._scrubVel *= 0.8;
+    } else {
+      this._feedLiquidMotion(frameDx, dt, progress);
+    }
+    this._ensureMotionLoop();
     // Once we cross the midpoint, swap the .active class to the
     // target so its icon scales up live — feels "physically connected".
     const nearest = progress > 0.5 ? targetIdx : fromIdx;
@@ -5579,21 +5660,26 @@ class DockController {
     const targetIdx = dx < 0 ? fromIdx + 1 : fromIdx - 1;
     if (targetIdx < 0 || targetIdx >= this.buttons.length) {
       this._setStyleActive(fromIdx);
-      this._settleLiquidWobble();
-      this._spring(this._xForIdx(fromIdx));
+      this._scrubVel *= 0.18;
+      this._relaxLiquid();
+      this._springTo(this._xForIdx(fromIdx));
+      this.indicator.style.width = this._widthForIdx(fromIdx) + 'px';
       return;
     }
     const w = viewportWidth || window.innerWidth || 1;
     const progress = Math.abs(dx) / w;
     const commit = progress > 0.22 || Math.abs(velocity) > 520;
-    this._settleLiquidWobble();
+    const snapIdx = commit ? targetIdx : fromIdx;
+    const targetX = this._xForIdx(snapIdx);
+    this._scrubVel = (velocity || this._scrubVel) * (commit ? 0.22 : 0.15);
+    this._relaxLiquid();
+    this.indicator.style.width = this._widthForIdx(snapIdx) + 'px';
+    this._springTo(targetX, commit ? velocity * 0.0004 : 0);
     if (commit) {
       Haptic.light();
-      setTab(TAB_NAMES[targetIdx]);
+      setTab(TAB_NAMES[targetIdx], { dockSync: true });
     } else {
       this._setStyleActive(fromIdx);
-      this._spring(this._xForIdx(fromIdx));
-      this.indicator.style.width = this._widthForIdx(fromIdx) + 'px';
     }
   }
 }
@@ -5708,7 +5794,7 @@ function recoverFromBackground() {
     });
   }
   if (dockController) {
-    dockController._cancel?.();
+    dockController._cancelMotion?.();
     dockController.scrubbing = false;
     dockController.appSwiping = false;
     requestAnimationFrame(() => dockController.measure());
