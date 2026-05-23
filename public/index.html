@@ -220,6 +220,25 @@
   }
   .toggle button:active:not(.active) { opacity: 0.72; transform: scale(.97); }
 
+  /* Plan-tab header actions (Leaderboard btn + Casino toggle) */
+  .plan-header-actions {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .plan-lb-btn {
+    display: none;
+    align-items: center; gap: 6px;
+    background: var(--glass-strong); color: var(--ink);
+    border: 1px solid var(--glass-border); border-radius: 12px;
+    padding: 7px 12px; font-size: 13px; font-weight: 650;
+    cursor: pointer; line-height: 1;
+    transition: transform .15s var(--ease-out), background .15s var(--ease-out), box-shadow .2s var(--ease-out);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  [data-casino="on"] .plan-lb-btn { display: inline-flex; }
+  .plan-lb-btn .ico { font-size: 14px; }
+  .plan-lb-btn:hover { background: var(--fill-2); box-shadow: 0 6px 18px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.08); }
+  .plan-lb-btn:active { transform: scale(.96); opacity: 0.8; }
+
   /* Icon button */
   .icon-btn {
     background: var(--fill); border: 1px solid var(--glass-border); color: var(--ink);
@@ -1984,9 +2003,15 @@
           <h1 class="tab-title">Stundenplan<em>.</em></h1>
           <div class="tab-sub" id="planSub">—</div>
         </div>
-        <div class="toggle" id="casinoToggle">
-          <button data-casino="off" class="active">Plan</button>
-          <button data-casino="on">Casino</button>
+        <div class="plan-header-actions">
+          <button type="button" class="plan-lb-btn" id="openLeaderboard" aria-label="Leaderboard öffnen">
+            <span class="ico" aria-hidden="true">🏆</span>
+            <span class="lbl">Leaderboard</span>
+          </button>
+          <div class="toggle" id="casinoToggle">
+            <button data-casino="off" class="active">Plan</button>
+            <button data-casino="on">Casino</button>
+          </div>
         </div>
       </div>
 
@@ -2141,13 +2166,6 @@
       <div class="account-section">
         <div class="account-section-title">Daten</div>
         <div class="account-list">
-          <button class="account-row" id="openLeaderboard">
-            <div>
-              <div class="lbl">🏆 Leaderboard</div>
-              <div class="sub">Top 100 · Cross-School</div>
-            </div>
-            <div class="end"><span class="chev">›</span></div>
-          </button>
           <button class="account-row" id="openOfficeHours">
             <div>
               <div class="lbl">Sprechzeiten</div>
