@@ -475,49 +475,47 @@
     overscroll-behavior-x: contain;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   }
-  /* ===== Swipe / nav transition: Apple Music–style crossfade =====
-     The OUTGOING grid is cloned to a fixed-position ghost that slides out
-     (.week-grid-ghost) while the real grid slides in with a spring overshoot. */
-  @keyframes wgEnterFromRight {
-    0%   { transform: translate3d(26%, 0, 0) scale(0.965); opacity: 0; }
-    60%  { transform: translate3d(-2%, 0, 0) scale(1.005); opacity: 1; }
-    100% { transform: translate3d(0, 0, 0)   scale(1);     opacity: 1; }
-  }
-  @keyframes wgEnterFromLeft {
-    0%   { transform: translate3d(-26%, 0, 0) scale(0.965); opacity: 0; }
-    60%  { transform: translate3d(2%, 0, 0)   scale(1.005); opacity: 1; }
-    100% { transform: translate3d(0, 0, 0)    scale(1);     opacity: 1; }
-  }
-  @keyframes wgExitLeft {
-    from { transform: translate3d(0, 0, 0) scale(1);    opacity: 1; }
-    to   { transform: translate3d(-32%, 0, 0) scale(0.94); opacity: 0; }
-  }
-  @keyframes wgExitRight {
-    from { transform: translate3d(0, 0, 0) scale(1);    opacity: 1; }
-    to   { transform: translate3d(32%, 0, 0) scale(0.94); opacity: 0; }
-  }
-  .week-grid.swipe-from-right {
-    animation: wgEnterFromRight 0.35s cubic-bezier(0.34, 1.42, 0.64, 1) both;
-    will-change: transform, opacity;
-  }
-  .week-grid.swipe-from-left {
-    animation: wgEnterFromLeft 0.35s cubic-bezier(0.34, 1.42, 0.64, 1) both;
-    will-change: transform, opacity;
-  }
-  .week-grid-ghost {
-    pointer-events: none;
-    z-index: 50;
-    will-change: transform, opacity;
+  /* ===== Swipe transition stage: synchronized crossfade =====
+     Both grids transition transform + opacity at the same time (no keyframes).
+     Outgoing slides one way, incoming slides in from the opposite side. */
+  .grid-stage {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--r-xl);
     box-shadow: var(--shadow);
   }
-  .week-grid-ghost.wg-exit-left  { animation: wgExitLeft  0.30s cubic-bezier(0.42, 0, 0.58, 1) forwards; }
-  .week-grid-ghost.wg-exit-right { animation: wgExitRight 0.30s cubic-bezier(0.42, 0, 0.58, 1) forwards; }
+  .grid-stage > .week-grid { box-shadow: none; }
+  .grid-stage > .week-grid {
+    transition: transform 300ms ease-out, opacity 300ms ease-out;
+    will-change: transform, opacity;
+  }
+  /* The outgoing grid lifts out of flow so the incoming grid takes its layout slot. */
+  .grid-stage > .week-grid.is-outgoing {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    pointer-events: none;
+  }
+  /* Pre-transition staging (no transition yet — applied before the rAF). */
+  .grid-stage > .week-grid.enter-from-right { transform: translateX(100%); opacity: 0; transition: none; }
+  .grid-stage > .week-grid.enter-from-left  { transform: translateX(-100%); opacity: 0; transition: none; }
+  /* Active = final state for incoming (transition kicks in once class swap happens). */
+  .grid-stage > .week-grid.is-active        { transform: translateX(0); opacity: 1; }
+  /* Final state for outgoing. */
+  .grid-stage > .week-grid.exit-to-left     { transform: translateX(-100%); opacity: 0; }
+  .grid-stage > .week-grid.exit-to-right    { transform: translateX(100%); opacity: 0; }
+
+  .swipe-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-4);
+    letter-spacing: 0.04em;
+    margin: 6px 0 8px;
+    opacity: 0.65;
+    user-select: none;
+  }
+  @media (hover: hover) and (pointer: fine) { .swipe-hint { display: none; } }
   @media (prefers-reduced-motion: reduce) {
-    .week-grid.swipe-from-right,
-    .week-grid.swipe-from-left,
-    .week-grid-ghost.wg-exit-left,
-    .week-grid-ghost.wg-exit-right { animation: none; }
-    .week-grid-ghost { display: none; }
+    .grid-stage > .week-grid { transition: none; }
   }
   .week-grid > * { background: var(--glass-strong); padding: 8px; }
   .gh-corner { background: var(--glass-strong); }
@@ -2073,15 +2071,14 @@
 
       <div class="tt-head">
         <div class="nav">
-          <button class="smbtn" id="prevBtn">← Prev</button>
           <button class="smbtn primary" id="todayBtn">Heute</button>
-          <button class="smbtn" id="nextBtn">Next →</button>
         </div>
         <div class="view-toggle" id="viewToggle" aria-label="Ansicht">
           <button data-view="day" class="active">Tag</button>
           <button data-view="week">Woche</button>
         </div>
       </div>
+      <div class="swipe-hint" aria-hidden="true">← wischen für Wochen/Tag wechseln →</div>
 
       <div class="meta-row">
         <div class="meta"><b id="weekLabel">—</b><span id="weekRange">—</span></div>
@@ -2090,7 +2087,9 @@
         <div class="meta"><b id="cancelCount">Heute</b><span>Wetten</span></div>
       </div>
 
-      <div class="week-grid" id="weekGrid"></div>
+      <div class="grid-stage" id="gridStage">
+        <div class="week-grid" id="weekGrid"></div>
+      </div>
 
       <div class="legend">
         <div class="legend-item"><div class="legend-swatch normal"></div>Normal</div>
@@ -3941,7 +3940,7 @@ function setViewMode(mode) {
   else if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
 }
 function setNavDisabled(d) {
-  ['prevBtn','nextBtn','todayBtn','logoutBtn'].forEach(id => $('#'+id).disabled = d);
+  ['todayBtn','logoutBtn'].forEach(id => { const el = $('#'+id); if (el) el.disabled = d; });
   $$('#viewToggle button').forEach(btn => { btn.disabled = d; });
 }
 
@@ -4021,8 +4020,7 @@ function renderWeek(lessons, monday) {
     ? '50px minmax(220px, 1fr)'
     : '32px repeat(5, minmax(0, 1fr))';
   if (visibleLessons.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1 / -1;" class="empty">Keine Stunden in dieser Ansicht<small>Anderen Tag wählen oder weiter navigieren.</small></div>`;
-    applyPendingSwipeAnim();
+    commitGridHtml(`<div style="grid-column: 1 / -1;" class="empty">Keine Stunden in dieser Ansicht<small>Anderen Tag wählen oder weiter navigieren.</small></div>`);
     return;
   }
 
@@ -4055,52 +4053,65 @@ function renderWeek(lessons, monday) {
       html += `<div class="slot ${t?'day-col-today':''}">${cell.map(renderCard).join('')}</div>`;
     }
   }
-  grid.innerHTML = html;
-  applyPendingSwipeAnim();
+  commitGridHtml(html);
 }
 
 let pendingSwipeAnim = null; // 'next' | 'prev' | null
-function applyPendingSwipeAnim() {
-  if (!pendingSwipeAnim) return;
+
+/* Either swap innerHTML directly, or crossfade if a swipe/click navigation is pending. */
+function commitGridHtml(html) {
   const grid = $('#weekGrid');
+  if (!grid) return;
   const dir = pendingSwipeAnim;
   pendingSwipeAnim = null;
-  if (!grid) return;
-  const cls = dir === 'next' ? 'swipe-from-right' : 'swipe-from-left';
-  grid.classList.remove('swipe-from-right', 'swipe-from-left');
-  void grid.offsetWidth; // restart animation
-  grid.classList.add(cls);
+  if (!dir) { grid.innerHTML = html; return; }
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { grid.innerHTML = html; return; }
+  performCrossfade(dir, html);
 }
 
-/* Clone the current grid into a fixed-position ghost that slides out
-   immediately (gives instant tactile feedback while fetchWeek resolves). */
-function beginExitAnimation(direction) {
-  const grid = $('#weekGrid');
-  if (!grid) return;
-  document.querySelectorAll('.week-grid-ghost').forEach(g => g.remove());
-  const rect = grid.getBoundingClientRect();
-  if (rect.width < 2 || rect.height < 2) return;
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) return;
-  const ghost = grid.cloneNode(true);
-  ghost.id = '';
-  ghost.classList.add('week-grid-ghost');
-  ghost.classList.remove('swipe-from-right', 'swipe-from-left');
-  Object.assign(ghost.style, {
-    position: 'fixed',
-    top: `${rect.top}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    margin: '0',
-  });
-  document.body.appendChild(ghost);
-  // Force reflow so the animation starts from the captured state.
-  void ghost.offsetWidth;
-  ghost.classList.add(direction === 'next' ? 'wg-exit-left' : 'wg-exit-right');
-  const remove = () => { if (ghost.isConnected) ghost.remove(); };
-  ghost.addEventListener('animationend', remove, { once: true });
-  setTimeout(remove, 600);
+/* Synchronized two-layer crossfade. The current grid becomes "outgoing"
+   (absolute, lifted out of flow), a fresh clone slots into its layout
+   place pre-positioned off-screen. One rAF later, both classes flip so
+   their CSS transitions on transform+opacity run in parallel. */
+function performCrossfade(direction, newHtml) {
+  const stage = $('#gridStage');
+  const oldGrid = $('#weekGrid');
+  if (!stage || !oldGrid) return;
+
+  // Strip any prior in-flight transition state.
+  stage.querySelectorAll('.week-grid.is-outgoing').forEach(n => n.remove());
+
+  const newGrid = oldGrid.cloneNode(false); // attributes incl. inline grid-template-columns
+  newGrid.id = 'weekGrid';
+  newGrid.innerHTML = newHtml;
+  newGrid.classList.remove('is-outgoing', 'is-active', 'enter-from-right', 'enter-from-left', 'exit-to-left', 'exit-to-right');
+  newGrid.classList.add(direction === 'next' ? 'enter-from-right' : 'enter-from-left');
+
+  // Lift the old grid out of flow so the new one drops into its slot.
+  oldGrid.removeAttribute('id');
+  oldGrid.style.height = oldGrid.offsetHeight + 'px';
+  oldGrid.classList.add('is-outgoing');
+
+  stage.insertBefore(newGrid, oldGrid);
+
+  // Double rAF guarantees the browser registers the "from" state before
+  // we flip to the "to" state, so the transition actually runs.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    newGrid.classList.remove('enter-from-right', 'enter-from-left');
+    newGrid.classList.add('is-active');
+    oldGrid.classList.add(direction === 'next' ? 'exit-to-left' : 'exit-to-right');
+  }));
+
+  let cleaned = false;
+  const finish = () => {
+    if (cleaned) return;
+    cleaned = true;
+    if (oldGrid.isConnected) oldGrid.remove();
+    newGrid.classList.remove('is-active');
+  };
+  newGrid.addEventListener('transitionend', finish, { once: true });
+  setTimeout(finish, 450);
 }
 
 function renderCard(l) {
@@ -4164,7 +4175,7 @@ function renderCard(l) {
   `;
 }
 
-$('#weekGrid').addEventListener('click', (e) => {
+$('#gridStage').addEventListener('click', (e) => {
   const overlay = e.target.closest('.bet-overlay');
   if (overlay) {
     e.stopPropagation();
@@ -4217,22 +4228,19 @@ $('#logoutBtn').addEventListener('click', () => {
 function navigateRange(direction) {
   Sound.tap(); Haptic.select();
   pendingSwipeAnim = direction;
-  beginExitAnimation(direction);
   const step = direction === 'next' ? viewStepDays() : -viewStepDays();
   currentMonday = addDays(currentMonday, step);
   fetchWeek(currentMonday);
 }
-$('#prevBtn').addEventListener('click', () => navigateRange('prev'));
-$('#nextBtn').addEventListener('click', () => navigateRange('next'));
 $('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); pendingSwipeAnim = null; currentMonday = normalizeRangeStart(new Date()); fetchWeek(currentMonday); });
 
 /* ============================================================
-   SWIPE NAVIGATION (Wochen/Tage wischen wie Untis App)
-   Mobile: swipe left → next, swipe right → prev. Desktop buttons unchanged.
+   SWIPE NAVIGATION — primary navigation now that prev/next buttons are gone.
+   Attached to the stable #gridStage so swap-out of #weekGrid doesn't unbind.
 ============================================================ */
 (function setupPlanSwipe() {
-  const grid = $('#weekGrid');
-  if (!grid) return;
+  const stage = $('#gridStage');
+  if (!stage) return;
   const THRESHOLD_PX = 60;   // deliberate swipe
   const FLICK_PX = 30;       // fast flick minimum
   const FLICK_MS = 320;      // fast flick max duration
@@ -4240,14 +4248,14 @@ $('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); p
 
   let sx = 0, sy = 0, st = 0, tracking = false, axis = null;
 
-  grid.addEventListener('touchstart', (e) => {
+  stage.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) { tracking = false; return; }
     const t = e.touches[0];
     sx = t.clientX; sy = t.clientY; st = Date.now();
     tracking = true; axis = null;
   }, { passive: true });
 
-  grid.addEventListener('touchmove', (e) => {
+  stage.addEventListener('touchmove', (e) => {
     if (!tracking) return;
     const t = e.touches[0];
     const dx = t.clientX - sx, dy = t.clientY - sy;
@@ -4256,7 +4264,7 @@ $('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); p
     }
   }, { passive: true });
 
-  grid.addEventListener('touchend', (e) => {
+  stage.addEventListener('touchend', (e) => {
     if (!tracking) return;
     tracking = false;
     if (axis !== 'h') return;
@@ -4268,7 +4276,7 @@ $('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); p
     navigateRange(dx < 0 ? 'next' : 'prev');
   }, { passive: true });
 
-  grid.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+  stage.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
 })();
 $$('#viewToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
