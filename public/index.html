@@ -1506,6 +1506,7 @@
        are owned by JS (scrub / tab-swipe). */
     touch-action: pan-y;
     isolation: isolate;
+    overflow: visible;
     will-change: transform, opacity;
     opacity: 1;
     transition:
@@ -1607,6 +1608,7 @@
     left: 0;
     width: 0; /* JS sets this to the active button width */
     pointer-events: none;
+    overflow: visible;
     border-radius: 18px;
     background:
       linear-gradient(180deg,
@@ -1626,9 +1628,12 @@
     transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1),
                 filter 0.22s ease, box-shadow 0.22s ease;
   }
-  /* Live gesture — boosted glow while the jelly pill is active. */
+  /* Live gesture — pill blooms past the dock rim like water. */
   .dock-indicator.is-liquid-active {
+    top: -4px;
+    bottom: -4px;
     transition: width 0.16s cubic-bezier(0.32, 0.72, 0, 1),
+                top 0.22s ease, bottom 0.22s ease,
                 filter 0.22s ease, box-shadow 0.22s ease;
     filter: saturate(1.32) brightness(1.1);
     box-shadow:
@@ -5231,8 +5236,10 @@ class DockController {
     this.appSwipeLastNearestIdx = this.activeIdx;
 
     // Jelly liquid: current + target, lerped every frame (stretch follows finger).
-    this.liquid = { sx: 1, sy: 1, ty: 0, skew: 0, rot: 0, br: 18, originX: 0.5 };
-    this._liquidTarget = { sx: 1, sy: 1, ty: 0, skew: 0, rot: 0, br: 18, originX: 0.5 };
+    this.liquid = { sx: 1, sy: 1, tx: 0, ty: 0, skew: 0, rot: 0, br: 18 };
+    this._liquidTarget = { sx: 1, sy: 1, tx: 0, ty: 0, skew: 0, rot: 0, br: 18 };
+    // Smoothed flow -1…1 — water never snaps when direction reverses.
+    this._flow = 0;
     this._dockFade = 1;
     this._dockFadeTarget = 1;
     this._liquidRaf = null;
@@ -5274,20 +5281,19 @@ class DockController {
     return p ? p.width : 0;
   }
   _applyTransform() {
-    const { sx, sy, ty, skew, rot, br, originX } = this.liquid;
-    const ox = Math.round(originX * 100);
-    this.indicator.style.transformOrigin = `${ox}% center`;
+    const { sx, sy, tx, ty, skew, rot, br } = this.liquid;
+    this.indicator.style.transformOrigin = 'center center';
     this.indicator.style.borderRadius = br + 'px';
     this.indicator.style.transform =
-      `translate3d(${this.x}px, ${ty}px, 0) scale(${sx}, ${sy}) skewX(${skew}deg) rotate(${rot}deg)`;
+      `translate3d(${this.x + tx}px, ${ty}px, 0) scale(${sx}, ${sy}) skewX(${skew}deg) rotate(${rot}deg)`;
   }
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
   }
   _setDockGesture(mag) {
     if (!this.dock) return;
-    // 0 = idle, 1 = full swipe — dock fades to ~58% opacity at max.
-    this._dockFadeTarget = 1 - Math.min(1, mag) * 0.42;
+    // 0 = idle, 1 = full swipe — gentle fade (~82% opacity at max).
+    this._dockFadeTarget = 1 - Math.min(1, mag) * 0.18;
     this.dock.classList.toggle('is-gesture-active', this._dockFadeTarget < 0.98);
   }
   _resetDockGesture() {
@@ -5299,12 +5305,13 @@ class DockController {
     }
   }
   _neutralLiquid() {
-    return { sx: 1, sy: 1, ty: 0, skew: 0, rot: 0, br: 18, originX: 0.5 };
+    return { sx: 1, sy: 1, tx: 0, ty: 0, skew: 0, rot: 0, br: 18 };
   }
   _resetLiquidInstant() {
     this.liquid = this._neutralLiquid();
     this._liquidTarget = this._neutralLiquid();
     this._scrubVel = 0;
+    this._flow = 0;
     this._applyTransform();
   }
   _cancelLiquidLoop() {
@@ -5315,24 +5322,29 @@ class DockController {
   _tickLiquid(now) {
     const dt = Math.min(0.032, (this._liquidLastT ? (now - this._liquidLastT) / 1000 : 0.016));
     this._liquidLastT = now;
-    const rate = this.scrubbing || this.appSwiping ? 52 : 22;
+    const rate = this.scrubbing || this.appSwiping ? 44 : 18;
     const k = 1 - Math.exp(-rate * dt);
     const t = this._liquidTarget;
     const c = this.liquid;
     c.sx += (t.sx - c.sx) * k;
     c.sy += (t.sy - c.sy) * k;
+    c.tx += (t.tx - c.tx) * k;
     c.ty += (t.ty - c.ty) * k;
     c.skew += (t.skew - c.skew) * k;
     c.rot += (t.rot - c.rot) * k;
     c.br += (t.br - c.br) * k;
-    c.originX += (t.originX - c.originX) * k;
     this._dockFade += (this._dockFadeTarget - this._dockFade) * k;
     if (this.dock) this.dock.style.opacity = String(this._dockFade);
+    if (!this.scrubbing && !this.appSwiping) {
+      this._flow += (0 - this._flow) * (1 - Math.exp(-9 * dt));
+    }
     this._applyTransform();
     const settled =
       Math.abs(c.sx - 1) < 0.004 && Math.abs(c.sy - 1) < 0.004 &&
-      Math.abs(c.ty) < 0.25 && Math.abs(c.skew) < 0.2 && Math.abs(c.rot) < 0.15 &&
-      Math.abs(c.br - 18) < 0.3 && Math.abs(this._dockFade - 1) < 0.015;
+      Math.abs(c.tx) < 0.25 && Math.abs(c.ty) < 0.25 &&
+      Math.abs(c.skew) < 0.2 && Math.abs(c.rot) < 0.15 &&
+      Math.abs(c.br - 18) < 0.3 && Math.abs(this._flow) < 0.03 &&
+      Math.abs(this._dockFade - 1) < 0.015;
     const targetNeutral =
       Math.abs(t.sx - 1) < 0.001 && Math.abs(t.sy - 1) < 0.001 &&
       Math.abs(t.skew) < 0.05 && Math.abs(t.rot) < 0.05;
@@ -5352,33 +5364,32 @@ class DockController {
       this._liquidRaf = requestAnimationFrame((n) => this._tickLiquid(n));
     }
   }
-  // Jelly stretch: elongates toward the finger, squashes on the perpendicular axis.
-  // Anchor flips with direction so it never warps "only one side" awkwardly.
+  // Water-like jelly: flow direction blends smoothly (no hard flip L↔R).
   _feedLiquidMotion(deltaX, dt, extraMag = 0, displacement = 0) {
     if (!this._motionOk) return;
     const v = dt > 0 ? deltaX / dt : 0;
-    this._scrubVel = this._scrubVel * 0.55 + v * 0.45;
+    this._scrubVel = this._scrubVel * 0.58 + v * 0.42;
 
-    const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || Math.sign(displacement) || 0;
     const velMag = Math.min(1, Math.abs(this._scrubVel) / 1600);
     const dispMag = Math.min(1, Math.abs(displacement) / 48);
     const mag = Math.min(1, velMag * 0.8 + dispMag * 0.75 + extraMag * 0.55);
 
-    const stretch = mag * 0.26;
-    this._liquidTarget.sx = 1 + stretch;
-    this._liquidTarget.sy = 1 - stretch * 0.62;
-    this._liquidTarget.skew = dir * mag * 9.5;
-    this._liquidTarget.rot = dir * mag * 5.5;
-    this._liquidTarget.ty = -mag * 4.5;
-    this._liquidTarget.br = 18 + mag * 14;
+    // Continuous flow -1…1 — eases through zero when you reverse direction.
+    const rawFlow = Math.max(-1, Math.min(1,
+      (displacement / 50) * 0.55 + (this._scrubVel / 1200) * 0.45));
+    const flowRate = this.scrubbing || this.appSwiping ? 11 : 7;
+    const flowK = 1 - Math.exp(-flowRate * Math.max(dt, 0.008));
+    this._flow += (rawFlow - this._flow) * flowK;
 
-    if (dir > 0) {
-      this._liquidTarget.originX = 0.04;
-    } else if (dir < 0) {
-      this._liquidTarget.originX = 0.96;
-    } else {
-      this._liquidTarget.originX = 0.5;
-    }
+    const stretch = mag * 0.24;
+    const bloom = 1 + mag * 0.14;
+    this._liquidTarget.sx = (1 + stretch) * bloom;
+    this._liquidTarget.sy = (1 + mag * 0.16 - stretch * 0.38) * bloom;
+    this._liquidTarget.tx = this._flow * mag * 14;
+    this._liquidTarget.skew = this._flow * mag * 8.5;
+    this._liquidTarget.rot = this._flow * mag * 4.8;
+    this._liquidTarget.ty = -mag * 3.5;
+    this._liquidTarget.br = 18 + mag * 14;
 
     this._setDockGesture(mag);
     this._ensureLiquidLoop();
@@ -5392,14 +5403,14 @@ class DockController {
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
     this._setLiquidActive(true);
-    this._liquidTarget.sx = 1.14;
-    this._liquidTarget.sy = 0.84;
+    this._liquidTarget.sx = 1.16;
+    this._liquidTarget.sy = 1.08;
+    this._liquidTarget.tx = 0;
     this._liquidTarget.skew = 0;
     this._liquidTarget.rot = 0;
     this._liquidTarget.ty = 2.5;
     this._liquidTarget.br = 26;
-    this._liquidTarget.originX = 0.5;
-    this._setDockGesture(0.35);
+    this._setDockGesture(0.22);
     this._ensureLiquidLoop();
     setTimeout(() => {
       if (!this.scrubbing && !this.appSwiping) this._relaxLiquid();
