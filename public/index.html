@@ -220,10 +220,17 @@
   }
   .toggle button:active:not(.active) { opacity: 0.72; transform: scale(.97); }
 
-  /* Plan-tab header actions (Leaderboard btn + Casino toggle) */
-  .plan-header-actions {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  /* Plan-tab control row (Casino toggle left, Leaderboard btn right) */
+  .plan-header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: -6px 0 14px;
   }
+  .plan-header-controls .toggle-section { flex: 0 0 auto; }
+  .plan-header-controls .leader-section { flex: 0 0 auto; min-height: 36px; display: flex; align-items: center; }
   .plan-lb-btn {
     display: none;
     align-items: center; gap: 6px;
@@ -2003,15 +2010,20 @@
           <h1 class="tab-title">Stundenplan<em>.</em></h1>
           <div class="tab-sub" id="planSub">—</div>
         </div>
-        <div class="plan-header-actions">
-          <button type="button" class="plan-lb-btn" id="openLeaderboard" aria-label="Leaderboard öffnen">
-            <span class="ico" aria-hidden="true">🏆</span>
-            <span class="lbl">Leaderboard</span>
-          </button>
+      </div>
+
+      <div class="plan-header-controls">
+        <div class="toggle-section">
           <div class="toggle" id="casinoToggle">
             <button data-casino="off" class="active">Plan</button>
             <button data-casino="on">Casino</button>
           </div>
+        </div>
+        <div class="leader-section">
+          <button type="button" class="plan-lb-btn" id="openLeaderboard" aria-label="Leaderboard öffnen">
+            <span class="ico" aria-hidden="true">🏆</span>
+            <span class="lbl">Leaderboard</span>
+          </button>
         </div>
       </div>
 
