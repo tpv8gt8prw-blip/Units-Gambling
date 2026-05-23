@@ -1595,10 +1595,23 @@
       0 0 0 0.5px color-mix(in srgb, var(--accent) 18%, transparent),
       0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent);
     transform: translate3d(0, 0, 0);
-    will-change: transform, width;
+    transform-origin: center center;
+    will-change: transform, width, filter, border-radius;
     z-index: 1;
     /* Width only — translation is driven by JS spring. */
-    transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1),
+                filter 0.22s ease, box-shadow 0.22s ease;
+  }
+  /* Live gesture — JS drives squash/skew; CSS boosts the glass glow. */
+  .dock-indicator.is-liquid-active {
+    transition: width 0.12s cubic-bezier(0.32, 0.72, 0, 1),
+                filter 0.14s ease, box-shadow 0.14s ease;
+    filter: saturate(1.42) brightness(1.1);
+    box-shadow:
+      0 1px 0 inset color-mix(in srgb, white 38%, transparent),
+      0 -1px 0 inset color-mix(in srgb, var(--accent) 20%, transparent),
+      0 0 0 0.5px color-mix(in srgb, var(--accent) 28%, transparent),
+      0 10px 28px color-mix(in srgb, var(--accent) 42%, transparent);
   }
   :root[data-mode="dark"] .dock-indicator {
     background:
@@ -1716,6 +1729,17 @@
     line-height: 0.94; letter-spacing: -0.035em;
     font-variant-numeric: tabular-nums;
     text-shadow: 0 6px 28px color-mix(in srgb, var(--gold) 32%, transparent);
+    display: inline-block;
+    transform-origin: center center;
+    transition: transform 0.2s cubic-bezier(0.34, 1.36, 0.64, 1),
+                filter 0.2s ease;
+  }
+  .wallet-hero-coins.is-counting {
+    transform: scale(1.035);
+    filter: brightness(1.12) saturate(1.08);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wallet-hero-coins.is-counting { transform: none; filter: none; }
   }
   .wallet-hero-meta {
     display: flex; justify-content: center; gap: 28px;
@@ -2456,7 +2480,7 @@
           <button class="account-row danger" id="logoutBtn">
             <div>
               <div class="lbl">Abmelden</div>
-              <div class="sub">Untis-Verbindung trennen</div>
+              <div class="sub">Verbindung trennen</div>
             </div>
           </button>
         </div>
@@ -2930,8 +2954,66 @@ function stopRollingHaptic() {
    WALLET UI + CONFETTI
 ============================================================ */
 function fmt(n) { return n.toLocaleString('de-AT'); }
-function updateWalletUI() {
-  $('#wCoins').textContent = fmt(state.coins);
+
+let wCoinsAnimRaf = null;
+let wCoinsDisplayed = null; // last value painted into #wCoins
+
+function setWalletCoinsInstant(n) {
+  const el = $('#wCoins');
+  if (el) el.textContent = fmt(n);
+  wCoinsDisplayed = n;
+}
+
+/** Fast odometer-style count-up for the Account hero coins. */
+function animateWalletCoinsTo(target, opts = {}) {
+  const el = $('#wCoins');
+  if (!el) return;
+  const end = Math.round(Number(target) || 0);
+  const start = opts.from != null ? Math.round(opts.from) : (wCoinsDisplayed ?? end);
+  if (start === end && !opts.force) {
+    setWalletCoinsInstant(end);
+    return;
+  }
+  if (wCoinsAnimRaf) cancelAnimationFrame(wCoinsAnimRaf);
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) {
+    setWalletCoinsInstant(end);
+    return;
+  }
+
+  const span = Math.abs(end - start);
+  // "Richtig schnell" — short duration, scales slightly with distance.
+  const dur = opts.duration ?? Math.min(620, Math.max(320, 280 + span * 0.35));
+  const t0 = performance.now();
+  el.classList.add('is-counting');
+
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    // Snappy ease-out — numbers race up then settle.
+    const e = 1 - Math.pow(1 - p, 4);
+    const val = Math.round(start + (end - start) * e);
+    el.textContent = fmt(val);
+    wCoinsDisplayed = val;
+    if (p < 1) {
+      wCoinsAnimRaf = requestAnimationFrame(step);
+    } else {
+      el.textContent = fmt(end);
+      wCoinsDisplayed = end;
+      wCoinsAnimRaf = null;
+      el.classList.remove('is-counting');
+    }
+  };
+  wCoinsAnimRaf = requestAnimationFrame(step);
+}
+
+function updateWalletUI(opts = {}) {
+  const onAccount = currentTab === 'account';
+  if (onAccount && !opts.instant) {
+    animateWalletCoinsTo(state.coins, { from: wCoinsDisplayed });
+  } else {
+    setWalletCoinsInstant(state.coins);
+  }
   $('#wLevel').textContent = state.level;
   const need = xpForLevel(state.level);
   $('#wXp').textContent = `${state.xp} / ${need} XP`;
@@ -2940,16 +3022,10 @@ function updateWalletUI() {
   if ($('#modalBalance')) $('#modalBalance').textContent = fmt(state.coins);
 }
 function animateCoins(delta) {
-  const el = $('#wCoins');
-  const start = state.coins - delta, end = state.coins, dur = 800;
-  const t0 = performance.now();
-  const step = (now) => {
-    const p = Math.min(1, (now - t0) / dur);
-    const e = 1 - Math.pow(1 - p, 3);
-    el.textContent = fmt(Math.round(start + (end - start) * e));
-    if (p < 1) requestAnimationFrame(step); else el.textContent = fmt(end);
-  };
-  requestAnimationFrame(step);
+  animateWalletCoinsTo(state.coins, {
+    from: state.coins - delta,
+    duration: Math.min(520, Math.max(300, Math.abs(delta) * 0.25)),
+  });
 }
 function spawnConfetti(count, colors) {
   colors = colors || ['#e96f00','#ff9d26','#ffd60a','#30d158','#ff453a'];
@@ -4602,7 +4678,15 @@ function setTab(name, opts) {
   // Per-tab on-show refresh
   if (name === 'homework') renderHomeworkAll();
   if (name === 'absences') renderAbsencesTab();
-  if (name === 'account') refreshAccountTab();
+  if (name === 'account') {
+    refreshAccountTab();
+    if (!opts2.force) {
+      // Fast count-up every time the Account tab is opened.
+      animateWalletCoinsTo(state.coins, { from: 0, duration: 520 });
+    } else {
+      setWalletCoinsInstant(state.coins);
+    }
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 $$('.dock-btn').forEach(btn => {
@@ -5122,6 +5206,14 @@ class DockController {
     this.appSwipeFromW = 0;
     this.appSwipeLastNearestIdx = this.activeIdx;
 
+    // Liquid-glass deformation (squash / skew / wobble) while dragging.
+    this.liquid = { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
+    this._liquidRaf = null;
+    this._scrubLastX = 0;
+    this._scrubLastT = 0;
+    this._scrubVel = 0;
+    this._motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     this._measure();
     // Apply initial position without animation.
     this._cancel();
@@ -5155,7 +5247,102 @@ class DockController {
     return p ? p.width : 0;
   }
   _applyTransform() {
-    this.indicator.style.transform = `translate3d(${this.x}px, 0, 0)`;
+    const { sx, sy, skew, ty, br } = this.liquid;
+    const origin = skew < 0 ? 'right center' : skew > 0 ? 'left center' : 'center center';
+    this.indicator.style.transformOrigin = origin;
+    this.indicator.style.borderRadius = br + 'px';
+    this.indicator.style.transform =
+      `translate3d(${this.x}px, ${ty}px, 0) scale(${sx}, ${sy}) skewX(${skew}deg)`;
+  }
+  _setLiquidActive(on) {
+    this.indicator.classList.toggle('is-liquid-active', !!on);
+  }
+  _feedLiquidMotion(deltaX, dt) {
+    if (!this._motionOk) return;
+    const v = dt > 0 ? deltaX / dt : 0;
+    this._scrubVel = this._scrubVel * 0.55 + v * 0.45;
+    const mag = Math.min(1, Math.abs(this._scrubVel) / 2200);
+    const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
+    this.liquid.sx = 1 + mag * 0.16;
+    this.liquid.sy = 1 - mag * 0.11;
+    this.liquid.skew = dir * mag * 7.5;
+    this.liquid.ty = -mag * 3.5;
+    this.liquid.br = 18 + mag * 6;
+    this._applyTransform();
+  }
+  _resetLiquidInstant() {
+    this.liquid = { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
+    this._scrubVel = 0;
+    this._applyTransform();
+  }
+  _cancelLiquidAnim() {
+    if (this._liquidRaf) cancelAnimationFrame(this._liquidRaf);
+    this._liquidRaf = null;
+  }
+  // Jelly settle after release — a few damped wobbles, not just a slide.
+  _settleLiquidWobble() {
+    if (!this._motionOk) {
+      this._resetLiquidInstant();
+      this._setLiquidActive(false);
+      return;
+    }
+    this._cancelLiquidAnim();
+    let amp = Math.min(0.14, Math.abs(this._scrubVel) / 9000 + 0.04);
+    let vel = this._scrubVel * 0.00008;
+    let t0 = performance.now();
+    const step = (now) => {
+      const dt = Math.min(0.032, (now - t0) / 1000);
+      t0 = now;
+      // Damped spring on amplitude
+      vel += -amp * 42 * dt;
+      vel *= Math.pow(0.72, dt * 60);
+      amp += vel * dt;
+      if (amp < 0.002) {
+        this._resetLiquidInstant();
+        this._setLiquidActive(false);
+        this._liquidRaf = null;
+        return;
+      }
+      this.liquid.sx = 1 + amp;
+      this.liquid.sy = 1 - amp * 0.72;
+      this.liquid.skew = vel * 180;
+      this.liquid.ty = -amp * 18;
+      this.liquid.br = 18 + amp * 40;
+      this._applyTransform();
+      this._liquidRaf = requestAnimationFrame(step);
+    };
+    this._liquidRaf = requestAnimationFrame(step);
+  }
+  // Quick squish when the user taps the dock (before scrub threshold).
+  pulsePress() {
+    if (!this._motionOk || this.scrubbing || this.appSwiping) return;
+    this._cancelLiquidAnim();
+    this._setLiquidActive(true);
+    const t0 = performance.now();
+    const dur = 220;
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      // Press in → bounce out
+      const s = p < 0.42
+        ? p / 0.42
+        : 1 - (p - 0.42) / 0.58;
+      const squash = 1 + (1 - s) * 0.11;
+      const stretch = 1 - (1 - s) * 0.08;
+      this.liquid.sx = squash;
+      this.liquid.sy = stretch;
+      this.liquid.ty = (1 - s) * 2;
+      this.liquid.skew = 0;
+      this.liquid.br = 18 + (1 - s) * 4;
+      this._applyTransform();
+      if (p < 1) {
+        this._liquidRaf = requestAnimationFrame(step);
+      } else {
+        this._resetLiquidInstant();
+        this._setLiquidActive(false);
+        this._liquidRaf = null;
+      }
+    };
+    this._liquidRaf = requestAnimationFrame(step);
   }
   _setStyleActive(idx) {
     this.buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
@@ -5172,8 +5359,12 @@ class DockController {
   }
 
   // ---- spring ----
+  _cancelSpring() {
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = null;
+  }
   _spring(targetX, initialVelocity = 0) {
-    this._cancel();
+    this._cancelSpring();
     this.velocity = initialVelocity || 0;
     let last = performance.now();
     const step = (now) => {
@@ -5196,8 +5387,10 @@ class DockController {
     this.rafId = requestAnimationFrame(step);
   }
   _cancel() {
-    if (this.rafId) cancelAnimationFrame(this.rafId);
-    this.rafId = null;
+    this._cancelSpring();
+    this._cancelLiquidAnim();
+    this._resetLiquidInstant();
+    this._setLiquidActive(false);
   }
 
   // ---- public ----
@@ -5232,7 +5425,10 @@ class DockController {
     const target = this._xForIdx(idx);
     if (opts.instant) {
       this._setWidthInstant(this._widthForIdx(idx));
-      this._cancel();
+      this._cancelSpring();
+      this._cancelLiquidAnim();
+      this._resetLiquidInstant();
+      this._setLiquidActive(false);
       this.x = target;
       this.velocity = 0;
       this._applyTransform();
@@ -5248,13 +5444,25 @@ class DockController {
   beginScrub(clientX) {
     if (this.appSwiping) return;
     this._cancel();
+    this._cancelLiquidAnim();
     this.scrubbing = true;
     this.scrubStartFingerX = clientX;
     this.scrubStartIndicatorX = this.x;
     this.scrubLastNearestIdx = this.activeIdx;
+    this._scrubLastX = clientX;
+    this._scrubLastT = performance.now();
+    this._scrubVel = 0;
+    this._setLiquidActive(true);
+    this.indicator.style.transition = 'none';
   }
   updateScrub(clientX) {
     if (!this.scrubbing) return;
+    const now = performance.now();
+    const frameDx = clientX - this._scrubLastX;
+    const dt = Math.max(0.008, (now - this._scrubLastT) / 1000);
+    this._scrubLastX = clientX;
+    this._scrubLastT = now;
+
     const delta = clientX - this.scrubStartFingerX;
     let nextX = this.scrubStartIndicatorX + delta;
     const minX = this._xForIdx(0);
@@ -5263,9 +5471,15 @@ class DockController {
     if (nextX < minX) nextX = minX - (minX - nextX) * 0.35;
     else if (nextX > maxX) nextX = maxX + (nextX - maxX) * 0.35;
     this.x = nextX;
-    this._applyTransform();
-    // Live highlight whichever tab the pill is closest to.
+
+    // Morph width between tabs while scrubbing (liquid stretch).
     const nearest = this._nearestIdx(nextX);
+    const targetW = this._widthForIdx(nearest);
+    const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
+    this.indicator.style.width = (curW + (targetW - curW) * 0.35) + 'px';
+
+    this._feedLiquidMotion(frameDx, dt);
+    // Live highlight whichever tab the pill is closest to.
     if (nearest !== this.scrubLastNearestIdx) {
       this._setStyleActive(nearest);
       this.scrubLastNearestIdx = nearest;
@@ -5275,18 +5489,18 @@ class DockController {
   endScrub() {
     if (!this.scrubbing) return;
     this.scrubbing = false;
+    this.indicator.style.transition = '';
     const nearest = this._nearestIdx(this.x);
     if (nearest !== this.activeIdx) {
       Haptic.light();
       Sound.tap();
-      // setTab itself will call back into setActiveTab and trigger
-      // the spring to the chosen tab. We just need to update the
-      // logical tab — no need to spring from inside endScrub.
+      this._settleLiquidWobble();
       setTab(TAB_NAMES[nearest]);
     } else {
-      // Pulled back to the original tab — spring home.
       this._setStyleActive(this.activeIdx);
+      this._settleLiquidWobble();
       this._spring(this._xForIdx(this.activeIdx));
+      this.indicator.style.width = this._widthForIdx(this.activeIdx) + 'px';
     }
   }
   _nearestIdx(indicatorX) {
@@ -5309,23 +5523,34 @@ class DockController {
   beginAppSwipe() {
     if (this.scrubbing) return;
     this._cancel();
+    this._cancelLiquidAnim();
     this.appSwiping = true;
     this.appSwipeFromIdx = this.activeIdx;
     this.appSwipeFromX = this._xForIdx(this.activeIdx);
     this.appSwipeFromW = this._widthForIdx(this.activeIdx);
     this.appSwipeLastNearestIdx = this.activeIdx;
+    this._scrubLastX = 0;
+    this._scrubLastT = performance.now();
+    this._scrubVel = 0;
+    this._setLiquidActive(true);
+    this.indicator.style.transition = 'none';
   }
   updateAppSwipe(dx, viewportWidth) {
     if (!this.appSwiping) return;
+    const now = performance.now();
+    const dt = Math.max(0.008, (now - this._scrubLastT) / 1000);
+    const frameDx = dx - this._scrubLastX;
+    this._scrubLastX = dx;
+    this._scrubLastT = now;
+
     const fromIdx = this.appSwipeFromIdx;
     // dx<0 → next (idx+1); dx>0 → prev (idx-1)
     const targetIdx = dx < 0 ? fromIdx + 1 : fromIdx - 1;
     const w = viewportWidth || window.innerWidth || 1;
     if (targetIdx < 0 || targetIdx >= this.buttons.length) {
-      // Out-of-bounds: rubber-band a tiny amount toward the direction.
       const damped = dx * 0.10;
       this.x = this.appSwipeFromX - damped;
-      this._applyTransform();
+      this._feedLiquidMotion(frameDx, dt);
       return;
     }
     const progress = Math.min(1, Math.abs(dx) / (w * 0.6));
@@ -5335,7 +5560,7 @@ class DockController {
     const endW = this._widthForIdx(targetIdx);
     this.x = startX + (endX - startX) * progress;
     this.indicator.style.width = (startW + (endW - startW) * progress) + 'px';
-    this._applyTransform();
+    this._feedLiquidMotion(frameDx, dt);
     // Once we cross the midpoint, swap the .active class to the
     // target so its icon scales up live — feels "physically connected".
     const nearest = progress > 0.5 ? targetIdx : fromIdx;
@@ -5348,25 +5573,26 @@ class DockController {
   endAppSwipe(dx, velocity, viewportWidth) {
     if (!this.appSwiping) return;
     this.appSwiping = false;
+    this.indicator.style.transition = '';
+    this._scrubVel = velocity || this._scrubVel;
     const fromIdx = this.appSwipeFromIdx;
     const targetIdx = dx < 0 ? fromIdx + 1 : fromIdx - 1;
     if (targetIdx < 0 || targetIdx >= this.buttons.length) {
-      // Snap back.
       this._setStyleActive(fromIdx);
+      this._settleLiquidWobble();
       this._spring(this._xForIdx(fromIdx));
       return;
     }
     const w = viewportWidth || window.innerWidth || 1;
     const progress = Math.abs(dx) / w;
-    // Commit if past 22% of viewport OR fast flick.
     const commit = progress > 0.22 || Math.abs(velocity) > 520;
+    this._settleLiquidWobble();
     if (commit) {
       Haptic.light();
       setTab(TAB_NAMES[targetIdx]);
     } else {
       this._setStyleActive(fromIdx);
       this._spring(this._xForIdx(fromIdx));
-      // Snap width back too.
       this.indicator.style.width = this._widthForIdx(fromIdx) + 'px';
     }
   }
@@ -5386,6 +5612,7 @@ class DockController {
     if (e.touches.length !== 1) { pending = null; return; }
     const t = e.touches[0];
     pending = { x: t.clientX, y: t.clientY, scrubbing: false };
+    if (dockController) dockController.pulsePress();
   }, { passive: true });
 
   dockEl.addEventListener('touchmove', (e) => {
