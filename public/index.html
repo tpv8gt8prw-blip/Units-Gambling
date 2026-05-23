@@ -4035,7 +4035,23 @@ function renderLeaderboard(data) {
     </div>`;
     return;
   }
-  const entries = (data && data.entries) || [];
+  // Defensive client-side de-dupe: keep only the highest-scoring row per
+  // (username, school). The server should already do this, but older
+  // server deployments (pre-fix) may still return legacy "user|school|klass"
+  // duplicates from Redis, and the leaderboard would silently double up.
+  const seenStable = new Set();
+  const entries = ((data && data.entries) || [])
+    .slice()
+    .sort((a, b) => (Number(b.coins) || 0) - (Number(a.coins) || 0))
+    .filter(e => {
+      const u = String(e.username || '').trim().toLowerCase();
+      const s = String(e.school || '').trim().toLowerCase();
+      const k = `${u}|${s}`;
+      if (seenStable.has(k)) return false;
+      seenStable.add(k);
+      return true;
+    })
+    .slice(0, 100);
   if (!entries.length) {
     if (sub) sub.textContent = 'Noch keine Einträge';
     el.innerHTML = `<div class="lb-empty">
@@ -4145,6 +4161,11 @@ function getRangeEnd(start) {
 // duplicate-week bug becomes structurally impossible.
 // ============================================================
 const rangeCache = new Map();
+// Cached lessons are considered fresh for this long. After expiry the
+// next ensureRangeFetched() will re-issue an HTTP request (in-flight
+// promises are still de-duplicated). Keeps past weeks correct without
+// thrashing the network.
+const RANGE_CACHE_TTL_MS = 60_000;
 function rangeKey(mode, monday) {
   return `${mode}:${isoDate(normalizeRangeStart(monday, mode))}`;
 }
@@ -4166,7 +4187,22 @@ async function ensureRangeFetched(monday, opts = {}) {
   const key = rangeKey(mode, monday);
   const existing = rangeCache.get(key);
   if (existing?.fetching) return existing.fetching;
-  if (existing?.lessons && !opts.force) return; // cached and fresh enough
+  // Re-fetch when:
+  //   * `force` flag is set
+  //   * we have no payload yet
+  //   * non-empty cache is older than RANGE_CACHE_TTL_MS
+  //   * empty cache is older than EMPTY_RETRY_MS (briefly trust an empty
+  //     response so a real holiday week doesn't trigger a refetch storm,
+  //     but recover quickly from transient API failures)
+  const EMPTY_RETRY_MS = 10_000;
+  const hasPayload = Array.isArray(existing?.lessons) && !!existing.fetchedAt;
+  const age = hasPayload ? Date.now() - existing.fetchedAt : Infinity;
+  const isFresh = hasPayload && (
+    existing.lessons.length > 0
+      ? age < RANGE_CACHE_TTL_MS
+      : age < EMPTY_RETRY_MS
+  );
+  if (isFresh && !opts.force) return;
 
   const start = normalizeRangeStart(monday, mode);
   const end = getRangeEnd(start);
@@ -4881,13 +4917,16 @@ class PlanCarousel {
     this.velocity = 0;
     this._applyTransform();
     this.refresh();
-    this._prefetchNeighbours();
+    // On a real user navigation, force a fresh fetch of the new center
+    // so a stale-empty cache (e.g. transient API hiccup during the
+    // initial prefetch) can't strand the user on "Keine Stunden".
+    this._prefetchNeighbours({ forceCenter: true });
   }
 
-  _prefetchNeighbours() {
+  _prefetchNeighbours(opts = {}) {
     if (!creds) return;
     const step = viewStepDays();
-    ensureRangeFetched(currentMonday).catch(() => {});
+    ensureRangeFetched(currentMonday, opts.forceCenter ? { force: true } : {}).catch(() => {});
     ensureRangeFetched(addDays(currentMonday, step)).catch(() => {});
     ensureRangeFetched(addDays(currentMonday, -step)).catch(() => {});
   }
@@ -5405,11 +5444,63 @@ if (window.location.protocol === 'file:') {
 document.addEventListener('touchstart', ensureAudio, { once: true });
 document.addEventListener('pointerdown', ensureAudio, { once: true });
 document.addEventListener('click', ensureAudio, { once: true });
+// When the tab comes back to the foreground we have to actively recover
+// from whatever state the browser left us in:
+//   * rAF is paused while hidden, so spring loops can resume with a
+//     huge dt — clamping helps but a stale `lastT` can still feel laggy
+//   * a touch may have been mid-flight and the corresponding touchend
+//     never arrived, leaving `.dragging` / `.scrubbing` stuck
+//   * viewport dimensions can change (rotated, address bar collapsed)
+//     while we were hidden, invalidating our cached pageW / button geom
+//   * cached timetable rows may be older than the TTL → quietly refresh
+// Doing all of this in one place keeps the "feels native after backgrounding"
+// promise honest.
+function recoverFromBackground() {
+  if (planCarousel) {
+    planCarousel._cancelAnim?.();
+    planCarousel.dragging = false;
+    planCarousel.committed = false;
+    planCarousel.pendingCommit = null;
+    planCarousel.activeTouchId = null;
+    planCarousel.lockedAxis = null;
+    planCarousel.samples = [];
+    planCarousel.velocity = 0;
+    planCarousel.x = 0;
+    requestAnimationFrame(() => {
+      planCarousel.measure();
+      planCarousel._applyTransform?.();
+      planCarousel.refresh?.();
+      // Force-refresh the visible center after a long pause so the
+      // user always sees up-to-date data when returning to the app.
+      if (creds) {
+        ensureRangeFetched(currentMonday, { force: true }).catch(() => {});
+        const step = viewStepDays();
+        ensureRangeFetched(addDays(currentMonday, step)).catch(() => {});
+        ensureRangeFetched(addDays(currentMonday, -step)).catch(() => {});
+      }
+    });
+  }
+  if (dockController) {
+    dockController._cancel?.();
+    dockController.scrubbing = false;
+    dockController.appSwiping = false;
+    requestAnimationFrame(() => dockController.measure());
+  }
+}
+
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') ensureAudio();
-  else stopRollingHaptic();
+  if (document.visibilityState === 'visible') {
+    ensureAudio();
+    recoverFromBackground();
+  } else {
+    stopRollingHaptic();
+  }
 });
-window.addEventListener('pageshow', ensureAudio);
+window.addEventListener('pageshow', (e) => {
+  ensureAudio();
+  // bfcache restore — same recovery as visibilitychange.
+  if (e.persisted) recoverFromBackground();
+});
 </script>
 </body>
 </html>

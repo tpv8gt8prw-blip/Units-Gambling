@@ -399,22 +399,59 @@ app.post('/api/state/save', async (req, res) => {
 
 /* ============================================================
    LEADERBOARD
-     ZSET  leaderboard:all    score=coins, member="username|school|klass"
+     ZSET  leaderboard:all    score=coins, member="username|school"
      HASH  leaderboard:names  member → displayName ("Enrique A.")
-   Member id stays the stable username|school|klass tuple so ZADD always
-   overwrites the same row even if the user's display name changes.
-   displayName is stored separately so the GET endpoint can return both
-   the stable id and a friendly name.
+     HASH  leaderboard:klass  member → klass ("5A")
+   Member id is the stable username|school tuple. Klass is stored in
+   a separate hash because it can change (and used to be folded into
+   the member id, which caused duplicate rows whenever the klass
+   string changed or was missing during an early push).
+   On every update we also opportunistically clean up any legacy
+   member ids that share the same username|school but a different
+   klass suffix, so the leaderboard self-heals.
 ============================================================ */
 const LEADERBOARD_KEY = 'leaderboard:all';
 const LEADERBOARD_NAMES_KEY = 'leaderboard:names';
+const LEADERBOARD_KLASS_KEY = 'leaderboard:klass';
 
-function leaderboardMember({ username, school, klass }) {
+function leaderboardMember({ username, school }) {
   return [
     normalizeKeyPart(username),
-    normalizeKeyPart(school),
-    String(klass || '').trim()
+    normalizeKeyPart(school)
   ].join('|');
+}
+
+// Removes any legacy "username|school|klass" entries that share the same
+// username|school prefix as `stableMember`. Best-effort: a failure here
+// must never block the actual score update.
+async function purgeLegacyLeaderboardEntries(stableMember) {
+  try {
+    const prefix = stableMember + '|';
+    // ZSCAN walks the sorted set in chunks. We MATCH on the legacy
+    // 3-part shape (one or more chars after the second pipe).
+    let cursor = '0';
+    const toRemove = [];
+    do {
+      const out = await upstashCmd([
+        'ZSCAN', LEADERBOARD_KEY, cursor, 'MATCH', prefix + '*', 'COUNT', '200'
+      ]);
+      const result = out && out.result;
+      if (!Array.isArray(result) || result.length < 2) break;
+      cursor = String(result[0]);
+      const pairs = result[1] || [];
+      for (let i = 0; i < pairs.length; i += 2) {
+        const m = String(pairs[i]);
+        // Only treat as legacy when it has an additional segment.
+        if (m !== stableMember && m.startsWith(prefix)) toRemove.push(m);
+      }
+    } while (cursor !== '0' && toRemove.length < 50);
+    if (toRemove.length) {
+      await upstashCmd(['ZREM', LEADERBOARD_KEY, ...toRemove]);
+      await upstashCmd(['HDEL', LEADERBOARD_NAMES_KEY, ...toRemove]);
+    }
+  } catch (err) {
+    console.warn('[Leaderboard purge]', err.message);
+  }
 }
 
 app.post('/api/leaderboard/update', async (req, res) => {
@@ -423,17 +460,25 @@ app.post('/api/leaderboard/update', async (req, res) => {
     return res.status(400).json({ error: 'data missing' });
   }
   if (!CLOUD_ENABLED) return res.json({ ok: false, cloudEnabled: false });
-  const member = leaderboardMember({ username, school, klass });
+  const member = leaderboardMember({ username, school });
   const zadd = await upstashCmd(['ZADD', LEADERBOARD_KEY, String(Math.round(coins)), member]);
   if (displayName && String(displayName).trim()) {
     await upstashCmd(['HSET', LEADERBOARD_NAMES_KEY, member, String(displayName).trim()]);
   }
+  const klassStr = String(klass || '').trim();
+  if (klassStr) {
+    await upstashCmd(['HSET', LEADERBOARD_KLASS_KEY, member, klassStr]);
+  }
+  // Fire-and-forget cleanup of legacy duplicate rows.
+  purgeLegacyLeaderboardEntries(member);
   res.json({ ok: !!zadd, cloudEnabled: true });
 });
 
 app.get('/api/leaderboard/get', async (_req, res) => {
   if (!CLOUD_ENABLED) return res.json({ ok: true, entries: [], cloudEnabled: false });
-  const out = await upstashCmd(['ZRANGE', LEADERBOARD_KEY, '0', '99', 'REV', 'WITHSCORES']);
+  // Fetch a wider window than needed so we can drop legacy duplicates
+  // (older entries with a klass suffix) and still return up to 100 rows.
+  const out = await upstashCmd(['ZRANGE', LEADERBOARD_KEY, '0', '299', 'REV', 'WITHSCORES']);
   const raw = (out && Array.isArray(out.result)) ? out.result : [];
   if (!raw.length) return res.json({ ok: true, entries: [], cloudEnabled: true });
 
@@ -441,27 +486,48 @@ app.get('/api/leaderboard/get', async (_req, res) => {
   for (let i = 0; i < raw.length; i += 2) {
     members.push({ key: String(raw[i]), coins: Number(raw[i + 1]) || 0 });
   }
-  // Batch-fetch display names in one HMGET round-trip.
+  // Batch-fetch display names + klass in two HMGET round-trips.
   const namesByMember = {};
+  const klassByMember = {};
   try {
-    const namesOut = await upstashCmd(['HMGET', LEADERBOARD_NAMES_KEY, ...members.map(m => m.key)]);
+    const keys = members.map(m => m.key);
+    const [namesOut, klassOut] = await Promise.all([
+      upstashCmd(['HMGET', LEADERBOARD_NAMES_KEY, ...keys]),
+      upstashCmd(['HMGET', LEADERBOARD_KLASS_KEY, ...keys]),
+    ]);
     if (namesOut && Array.isArray(namesOut.result)) {
       members.forEach((m, i) => { namesByMember[m.key] = namesOut.result[i] || ''; });
+    }
+    if (klassOut && Array.isArray(klassOut.result)) {
+      members.forEach((m, i) => { klassByMember[m.key] = klassOut.result[i] || ''; });
     }
   } catch (err) {
     console.warn('[Leaderboard HMGET]', err.message);
   }
 
-  const entries = members.map(m => {
+  // De-duplicate: collapse any rows that share the same username|school
+  // prefix (a legacy "user|school|klass" row + the new "user|school" row,
+  // or several legacy rows from different klass values). Because raw is
+  // already sorted by score DESC, the first time we see a prefix wins.
+  const seen = new Set();
+  const entries = [];
+  for (const m of members) {
     const parts = m.key.split('|');
-    return {
-      username: parts[0] || '',
-      school: parts[1] || '',
-      klass: parts[2] || '',
+    const username = parts[0] || '';
+    const school = parts[1] || '';
+    const stableKey = `${username}|${school}`;
+    if (seen.has(stableKey)) continue;
+    seen.add(stableKey);
+    entries.push({
+      username,
+      school,
+      // Prefer the explicit klass hash; fall back to legacy 3-part key.
+      klass: klassByMember[m.key] || parts[2] || '',
       displayName: namesByMember[m.key] || '',
       coins: m.coins,
-    };
-  });
+    });
+    if (entries.length >= 100) break;
+  }
   res.json({ ok: true, entries, cloudEnabled: true });
 });
 
