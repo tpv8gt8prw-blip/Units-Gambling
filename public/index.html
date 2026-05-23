@@ -1460,85 +1460,218 @@
   }
 
   /* ============================================================
-     LIQUID GLASS BOTTOM DOCK
+     LIQUID GLASS BOTTOM DOCK — iOS 26 / Apple Music style
+     ------------------------------------------------------------
+     Layered translucency:
+       1. backdrop-filter blur + saturate boost  (the "glass")
+       2. base linear-gradient for soft top-to-bottom tint
+       3. ::before pseudo — specular gloss highlight at the top
+       4. ::after pseudo — subtle bottom rim shading for depth
+       5. inset box-shadow highlights — frosted edge lighting
+       6. outer drop shadow — separation from content
+     The active tab is rendered by a dedicated #dockIndicator pill
+     that lives BEHIND the buttons (z-index 1) and is translated
+     by JS via a spring. Buttons themselves keep their text color
+     change for active state but otherwise stay transparent — no
+     more abrupt background swap.
   ============================================================ */
   .dock {
     position: fixed;
-    left: 50%; bottom: calc(var(--safe-bottom) + 14px);
-    transform: translate3d(calc(-50% + var(--dock-dx, 0px)), 0, 0);
+    left: 50%;
+    bottom: calc(var(--safe-bottom) + 14px);
+    transform: translate3d(-50%, 0, 0);
     width: min(94%, 460px);
     display: none;
     align-items: center;
-    gap: 4px; padding: 7px;
-    background: var(--glass);
-    border-radius: 26px;
+    gap: 0;
+    padding: 8px;
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.34) 0%,
+        rgba(255, 255, 255, 0.10) 38%,
+        rgba(255, 255, 255, 0.04) 100%),
+      var(--glass);
+    border-radius: 28px;
     border: 0.5px solid var(--glass-border);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.48),
+      0 -1px 0 inset rgba(255, 255, 255, 0.08),
+      0 0 0 0.5px rgba(0, 0, 0, 0.04),
+      0 4px 12px rgba(0, 0, 0, 0.06),
+      0 14px 36px rgba(0, 0, 0, 0.16);
     z-index: 50;
+    /* Pan-y lets vertical scroll through; horizontal gestures
+       are owned by JS (scrub / tab-swipe). */
     touch-action: pan-y;
-    scroll-snap-type: x mandatory;
+    isolation: isolate;
     will-change: transform;
   }
-  .dock.dock-snapping {
-    transition: transform .46s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .dock.dock-dragging {
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
-  }
-  :root[data-mode="dark"] .dock.dock-dragging {
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
-  }
-  .dock.visible { display: flex; }
   :root[data-mode="dark"] .dock {
-    background: rgba(28, 28, 30, 0.58);
-    border-color: rgba(255, 255, 255, 0.10);
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.11) 0%,
+        rgba(255, 255, 255, 0.03) 38%,
+        rgba(255, 255, 255, 0.01) 100%),
+      rgba(28, 28, 30, 0.62);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.16),
+      0 -1px 0 inset rgba(255, 255, 255, 0.04),
+      0 0 0 0.5px rgba(0, 0, 0, 0.45),
+      0 4px 12px rgba(0, 0, 0, 0.18),
+      0 14px 36px rgba(0, 0, 0, 0.55);
   }
+  /* Top specular gloss — the curved light highlight that makes
+     real liquid glass look wet. Positioned just inside the top
+     edge and faded to transparent ~halfway down. */
   .dock::before {
     content: '';
-    position: absolute; inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(180deg, rgba(255,255,255,0.18), transparent 60%);
+    position: absolute;
+    left: 7%;
+    right: 7%;
+    top: 1px;
+    height: 38%;
+    border-radius: 999px;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.48) 0%,
+      rgba(255, 255, 255, 0.18) 40%,
+      rgba(255, 255, 255, 0.00) 100%);
     pointer-events: none;
+    filter: blur(0.5px);
+    /* Above the indicator pill (so the pill picks up the wet shine)
+       but below the buttons (so icons stay crisp). */
+    z-index: 2;
     mix-blend-mode: overlay;
   }
-  @media (hover: hover) and (pointer: fine) {
-    .dock { touch-action: auto; }
+  :root[data-mode="dark"] .dock::before {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.06) 40%,
+      rgba(255, 255, 255, 0.00) 100%);
+  }
+  /* Bottom rim — adds depth so the dock feels lifted from content. */
+  .dock::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg,
+      transparent 60%,
+      rgba(0, 0, 0, 0.05) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  :root[data-mode="dark"] .dock::after {
+    background: linear-gradient(180deg,
+      transparent 60%,
+      rgba(0, 0, 0, 0.18) 100%);
+  }
+  .dock.visible { display: flex; }
+
+  /* ============================================================
+     ACTIVE INDICATOR PILL
+     A single absolute element sized to one dock-btn. JS
+     translates it via translate3d with a rAF spring. Width is
+     animated by CSS for resize / tab-width changes.
+  ============================================================ */
+  .dock-indicator {
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 0;
+    width: 0; /* JS sets this to the active button width */
+    pointer-events: none;
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 22%, transparent),
+        color-mix(in srgb, var(--accent) 12%, transparent)),
+      var(--accent-soft);
+    box-shadow:
+      0 1px 0 inset color-mix(in srgb, white 28%, transparent),
+      0 -1px 0 inset color-mix(in srgb, var(--accent) 14%, transparent),
+      0 0 0 0.5px color-mix(in srgb, var(--accent) 18%, transparent),
+      0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent);
+    transform: translate3d(0, 0, 0);
+    will-change: transform, width;
+    z-index: 1;
+    /* Width only — translation is driven by JS spring. */
+    transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  :root[data-mode="dark"] .dock-indicator {
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 32%, transparent),
+        color-mix(in srgb, var(--accent) 18%, transparent)),
+      color-mix(in srgb, var(--accent) 12%, transparent);
+    box-shadow:
+      0 1px 0 inset color-mix(in srgb, white 18%, transparent),
+      0 -1px 0 inset color-mix(in srgb, black 28%, transparent),
+      0 0 0 0.5px color-mix(in srgb, var(--accent) 22%, transparent),
+      0 6px 18px color-mix(in srgb, var(--accent) 36%, transparent);
+  }
+  /* Reduced-motion users skip the width transition too. */
+  @media (prefers-reduced-motion: reduce) {
+    .dock-indicator { transition: none; }
   }
 
   .dock-btn {
-    flex: 1 1 0; min-width: 0; height: 50px;
-    background: transparent; border: none;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 3px;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 50px;
+    background: transparent;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
     color: var(--ink-3);
-    font-size: 10.5px; font-weight: 650; letter-spacing: 0.01em;
+    font-size: 10.5px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
     border-radius: 14px;
     position: relative;
-    scroll-snap-align: center;
+    z-index: 3; /* above indicator pill (1) and gloss (2) */
     transition:
-      color .15s ease,
-      background-color .15s ease,
-      box-shadow .15s ease,
-      transform .15s ease;
+      color .22s var(--ease-out),
+      transform .18s cubic-bezier(0.34, 1.36, 0.64, 1);
     -webkit-tap-highlight-color: transparent;
   }
   .dock-btn .icon-svg {
-    width: 22px; height: 22px;
-    transition: transform .15s ease;
+    width: 22px;
+    height: 22px;
+    transition:
+      transform .26s cubic-bezier(0.34, 1.36, 0.64, 1),
+      opacity .22s var(--ease-out);
+    opacity: 0.86;
   }
-  .dock-btn .lbl { line-height: 1; pointer-events: none; }
-  .dock-btn:active { transform: scale(0.94); }
-
-  /* Active tab — quiet standing glow, no animation, no pulsing. */
+  .dock-btn .lbl {
+    line-height: 1;
+    pointer-events: none;
+    opacity: 0.82;
+    transition: opacity .22s var(--ease-out);
+  }
+  .dock-btn:active {
+    transform: scale(0.94);
+  }
+  .dock-btn:active .icon-svg {
+    transform: scale(0.92);
+  }
+  /* Active state — text color + icon scale + label opacity boost.
+     The pill bg is handled by .dock-indicator (positioned by JS). */
   .dock-btn.active {
     color: var(--accent);
-    background-color: var(--accent-soft);
-    box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 40%, transparent);
   }
-  .dock-btn.active .icon-svg { transform: scale(1.06); }
+  .dock-btn.active .icon-svg {
+    transform: scale(1.10);
+    opacity: 1;
+  }
+  .dock-btn.active .lbl {
+    opacity: 1;
+  }
 
   .dock-btn .badge {
     position: absolute; top: 4px; right: 22%;
@@ -1549,6 +1682,7 @@
     border-radius: 999px; text-align: center;
     box-shadow: 0 0 0 2px var(--glass);
     pointer-events: none;
+    z-index: 5;
   }
 
   /* ============================================================
@@ -2339,6 +2473,7 @@
 
 <!-- ===================== BOTTOM DOCK ===================== -->
 <nav class="dock" id="bottomDock" aria-label="Navigation">
+  <div class="dock-indicator" id="dockIndicator" aria-hidden="true"></div>
   <button class="dock-btn active" data-tab="plan" aria-label="Stundenplan">
     <span class="ico" id="dockIcoPlan"></span>
     <span class="lbl">Plan</span>
@@ -3961,13 +4096,14 @@ function showApp() {
   loginView.style.display = 'none';
   appView.classList.add('visible');
   dockEl.classList.add('visible');
-  // The carousel may have measured a page width of 0 while it was
-  // hidden (display:none → clientWidth=0). Re-measure now that the
-  // app view is on-screen so swipe distance ratios are correct.
-  if (planCarousel) {
-    // Wait one frame so the browser has applied the new layout.
-    requestAnimationFrame(() => planCarousel.measure());
-  }
+  // Both the carousel AND the dock indicator may have measured
+  // sizes of 0 while their containers were `display:none`. Wait
+  // one frame for the browser to apply the new layout, then
+  // re-measure so all positions are pixel-accurate.
+  requestAnimationFrame(() => {
+    if (planCarousel) planCarousel.measure();
+    if (dockController) dockController.measure();
+  });
 }
 function showLogin() {
   loginView.style.display = 'block';
@@ -4418,7 +4554,15 @@ function setTab(name, opts) {
   currentTab = name;
   LS.set('tab', name);
   $$('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.tab === name));
-  $$('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  // Drive the dock pill via the controller (spring-animated). The
+  // `.active` class on dock-btn is also updated by the controller
+  // so text color + icon scale follow the pill smoothly. On force
+  // (init), we jump without animation to avoid a startup flash.
+  if (dockController) {
+    dockController.setActiveTab(name, { instant: !!opts2.force });
+  } else {
+    $$('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  }
   // Per-tab on-show refresh
   if (name === 'homework') renderHomeworkAll();
   if (name === 'absences') renderAbsencesTab();
@@ -4432,7 +4576,11 @@ $$('.dock-btn').forEach(btn => {
   });
 });
 
-// Swipe horizontally on content area to switch tabs
+// ===== App-view tab swipe with LIVE indicator tracking =====
+// The user drags horizontally on the content area; the dock pill
+// follows the finger PROPORTIONALLY (so a half-swipe puts the pill
+// halfway to the next tab — physically connected). On release, we
+// commit if the drag exceeded the threshold or the flick was fast.
 let swipeStart = null;
 appView.addEventListener('touchstart', (e) => {
   if (e.touches.length !== 1) { swipeStart = null; return; }
@@ -4441,23 +4589,60 @@ appView.addEventListener('touchstart', (e) => {
   // trigger tab changes.
   if (e.target.closest('.plan-pager, .week-grid, .modal-card, .dock, .reels, .reel, input, button.app-switch')) { swipeStart = null; return; }
   const t = e.touches[0];
-  swipeStart = { x: t.clientX, y: t.clientY, t: Date.now() };
+  swipeStart = {
+    x: t.clientX,
+    y: t.clientY,
+    t: performance.now(),
+    tracking: false,
+    lastX: t.clientX,
+    lastT: performance.now(),
+    velocity: 0,
+  };
 }, { passive: true });
-appView.addEventListener('touchend', (e) => {
-  if (!swipeStart) return;
-  const t = e.changedTouches[0];
+
+appView.addEventListener('touchmove', (e) => {
+  if (!swipeStart || e.touches.length !== 1) return;
+  const t = e.touches[0];
   const dx = t.clientX - swipeStart.x;
   const dy = t.clientY - swipeStart.y;
-  const dt = Date.now() - swipeStart.t;
+
+  if (!swipeStart.tracking) {
+    // Decide: vertical scroll (let browser handle) vs horizontal tab swipe.
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      swipeStart = null;
+      return;
+    }
+    if (Math.abs(dx) < 12) return;
+    swipeStart.tracking = true;
+    if (dockController) dockController.beginAppSwipe();
+  }
+
+  if (dockController) dockController.updateAppSwipe(dx, window.innerWidth);
+
+  // Velocity estimate over the last move sample.
+  const now = performance.now();
+  const dt = (now - swipeStart.lastT) / 1000;
+  if (dt > 0) swipeStart.velocity = (t.clientX - swipeStart.lastX) / dt;
+  swipeStart.lastX = t.clientX;
+  swipeStart.lastT = now;
+}, { passive: true });
+
+appView.addEventListener('touchend', (e) => {
+  if (!swipeStart) return;
+  const tracking = swipeStart.tracking;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - swipeStart.x;
+  const v = swipeStart.velocity;
   swipeStart = null;
-  if (dt > 600) return;
-  if (Math.abs(dy) > 50) return;
-  if (Math.abs(dx) < 80) return;
-  const idx = TAB_NAMES.indexOf(currentTab);
-  const nextIdx = dx < 0 ? idx + 1 : idx - 1;
-  if (nextIdx < 0 || nextIdx >= TAB_NAMES.length) return;
-  Haptic.light();
-  setTab(TAB_NAMES[nextIdx]);
+  if (!tracking) return;
+  if (dockController) dockController.endAppSwipe(dx, v, window.innerWidth);
+}, { passive: true });
+
+appView.addEventListener('touchcancel', () => {
+  if (!swipeStart) return;
+  const tracking = swipeStart.tracking;
+  swipeStart = null;
+  if (tracking && dockController) dockController.endAppSwipe(0, 0, window.innerWidth);
 }, { passive: true });
 
 // ============================================================
@@ -4850,86 +5035,356 @@ class PlanCarousel {
   planCarousel.refresh();
 })();
 
-// ===== Dock swipe-drag navigation (touch only — desktop click stays) =====
-// Live finger-tracking via inline transform writes during touchmove, then a CSS
-// cubic-bezier(.34, 1.56, .64, 1) transition for the spring snap. No rAF.
-(function setupDockDrag(){
+// ============================================================
+// DOCK CONTROLLER — liquid-glass indicator pill
+// ------------------------------------------------------------
+// Owns the animated pill that sits behind the active dock button.
+// The pill is positioned via translate3d driven by an rAF spring
+// (interruptible, GPU-accelerated). Three input modes:
+//
+//   1. Tap / programmatic setActiveTab  → spring to target
+//   2. Scrub on dock (drag a finger inside the dock)
+//        → pill follows the finger live; rubber-bands at edges;
+//        → release commits to the nearest tab
+//   3. App-view tab swipe (touch on the content area)
+//        → pill slides PROPORTIONALLY toward prev/next tab as the
+//          finger moves (the user-requested "halfway swipe →
+//          halfway indicator"); release commits past threshold
+// ============================================================
+let dockController = null;
+
+class DockController {
+  constructor(dockEl, indicatorEl) {
+    this.dock = dockEl;
+    this.indicator = indicatorEl;
+    this.buttons = Array.from(dockEl.querySelectorAll('.dock-btn'));
+    this.positions = []; // [{left, width}] per button, relative to dock inner
+
+    this.activeIdx = Math.max(0, TAB_NAMES.indexOf(currentTab));
+    this.x = 0;
+    this.velocity = 0;
+    this.rafId = null;
+
+    // Spring tuning — slightly stiffer than the plan-pager for a
+    // crisper, more "snappy" indicator feel.
+    this.STIFFNESS = 260;
+    this.DAMPING = 30;
+
+    // Scrub state
+    this.scrubbing = false;
+    this.scrubStartFingerX = 0;
+    this.scrubStartIndicatorX = 0;
+    this.scrubLastNearestIdx = this.activeIdx;
+
+    // App-swipe state
+    this.appSwiping = false;
+    this.appSwipeFromIdx = this.activeIdx;
+    this.appSwipeFromX = 0;
+    this.appSwipeFromW = 0;
+    this.appSwipeLastNearestIdx = this.activeIdx;
+
+    this._measure();
+    // Apply initial position without animation.
+    this._cancel();
+    this.x = this._xForIdx(this.activeIdx);
+    this._setWidthInstant(this._widthForIdx(this.activeIdx));
+    this._applyTransform();
+
+    // Re-measure on viewport changes. The dock buttons may have
+    // resized (orientation flip, system font size change, etc.).
+    window.addEventListener('resize', () => this._handleResize(), { passive: true });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => this._handleResize(), 80);
+    }, { passive: true });
+  }
+
+  // ---- geometry ----
+  _measure() {
+    if (!this.buttons.length) return;
+    const dockRect = this.dock.getBoundingClientRect();
+    this.positions = this.buttons.map(b => {
+      const r = b.getBoundingClientRect();
+      return { left: r.left - dockRect.left, width: r.width };
+    });
+  }
+  _xForIdx(idx) {
+    const p = this.positions[idx];
+    return p ? p.left : 0;
+  }
+  _widthForIdx(idx) {
+    const p = this.positions[idx];
+    return p ? p.width : 0;
+  }
+  _applyTransform() {
+    this.indicator.style.transform = `translate3d(${this.x}px, 0, 0)`;
+  }
+  _setStyleActive(idx) {
+    this.buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
+  }
+  // Set the indicator's width WITHOUT triggering the CSS width
+  // transition. Used during initial measure / resize so the pill
+  // doesn't animate in from 0.
+  _setWidthInstant(w) {
+    const prev = this.indicator.style.transition;
+    this.indicator.style.transition = 'none';
+    this.indicator.style.width = w + 'px';
+    void this.indicator.offsetWidth; // force reflow
+    this.indicator.style.transition = prev;
+  }
+
+  // ---- spring ----
+  _spring(targetX, initialVelocity = 0) {
+    this._cancel();
+    this.velocity = initialVelocity || 0;
+    let last = performance.now();
+    const step = (now) => {
+      const dt = Math.min(0.048, (now - last) / 1000);
+      last = now;
+      const dx = targetX - this.x;
+      const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
+      this.velocity += accel * dt;
+      this.x += this.velocity * dt;
+      this._applyTransform();
+      if (Math.abs(dx) < 0.4 && Math.abs(this.velocity) < 20) {
+        this.x = targetX;
+        this.velocity = 0;
+        this._applyTransform();
+        this.rafId = null;
+        return;
+      }
+      this.rafId = requestAnimationFrame(step);
+    };
+    this.rafId = requestAnimationFrame(step);
+  }
+  _cancel() {
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = null;
+  }
+
+  // ---- public ----
+  measure() {
+    this._measure();
+    // Keep pill anchored to active tab after measure. Instant update
+    // so the pill never animates in from 0 width (e.g., right after
+    // showApp when the dock first becomes visible).
+    this._setWidthInstant(this._widthForIdx(this.activeIdx));
+    if (this.rafId === null && !this.scrubbing && !this.appSwiping) {
+      this.x = this._xForIdx(this.activeIdx);
+      this._applyTransform();
+    }
+  }
+  _handleResize() {
+    this._measure();
+    if (!this.scrubbing && !this.appSwiping) {
+      this._setWidthInstant(this._widthForIdx(this.activeIdx));
+      this._cancel();
+      this.x = this._xForIdx(this.activeIdx);
+      this._applyTransform();
+    }
+  }
+
+  // Programmatic tab change (called from setTab). If `instant` is true,
+  // jump without spring (used during init / non-animated swaps).
+  setActiveTab(name, opts = {}) {
+    const idx = TAB_NAMES.indexOf(name);
+    if (idx < 0) return;
+    this.activeIdx = idx;
+    this._setStyleActive(idx);
+    const target = this._xForIdx(idx);
+    if (opts.instant) {
+      this._setWidthInstant(this._widthForIdx(idx));
+      this._cancel();
+      this.x = target;
+      this.velocity = 0;
+      this._applyTransform();
+    } else {
+      // Width transitions via CSS during normal animated changes;
+      // x is driven by the rAF spring.
+      this.indicator.style.width = this._widthForIdx(idx) + 'px';
+      this._spring(target);
+    }
+  }
+
+  // ---- Scrub gesture (drag inside the dock) ----
+  beginScrub(clientX) {
+    if (this.appSwiping) return;
+    this._cancel();
+    this.scrubbing = true;
+    this.scrubStartFingerX = clientX;
+    this.scrubStartIndicatorX = this.x;
+    this.scrubLastNearestIdx = this.activeIdx;
+  }
+  updateScrub(clientX) {
+    if (!this.scrubbing) return;
+    const delta = clientX - this.scrubStartFingerX;
+    let nextX = this.scrubStartIndicatorX + delta;
+    const minX = this._xForIdx(0);
+    const maxX = this._xForIdx(this.positions.length - 1);
+    // Rubber-band at edges (like iOS scrollers).
+    if (nextX < minX) nextX = minX - (minX - nextX) * 0.35;
+    else if (nextX > maxX) nextX = maxX + (nextX - maxX) * 0.35;
+    this.x = nextX;
+    this._applyTransform();
+    // Live highlight whichever tab the pill is closest to.
+    const nearest = this._nearestIdx(nextX);
+    if (nearest !== this.scrubLastNearestIdx) {
+      this._setStyleActive(nearest);
+      this.scrubLastNearestIdx = nearest;
+      Haptic.select();
+    }
+  }
+  endScrub() {
+    if (!this.scrubbing) return;
+    this.scrubbing = false;
+    const nearest = this._nearestIdx(this.x);
+    if (nearest !== this.activeIdx) {
+      Haptic.light();
+      Sound.tap();
+      // setTab itself will call back into setActiveTab and trigger
+      // the spring to the chosen tab. We just need to update the
+      // logical tab — no need to spring from inside endScrub.
+      setTab(TAB_NAMES[nearest]);
+    } else {
+      // Pulled back to the original tab — spring home.
+      this._setStyleActive(this.activeIdx);
+      this._spring(this._xForIdx(this.activeIdx));
+    }
+  }
+  _nearestIdx(indicatorX) {
+    // Compare the indicator's CENTER to each button's center.
+    const indicatorCenter = indicatorX + this._widthForIdx(this.activeIdx) / 2;
+    let best = 0, bestDist = Infinity;
+    for (let i = 0; i < this.positions.length; i++) {
+      const c = this.positions[i].left + this.positions[i].width / 2;
+      const d = Math.abs(indicatorCenter - c);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
+  }
+
+  // ---- App-view tab swipe progress tracking ----
+  // The user is dragging horizontally on the content area outside
+  // the dock. We slide the pill proportionally toward the prev or
+  // next tab as the finger moves. Direction convention follows
+  // native iOS: drag right → previous tab, drag left → next tab.
+  beginAppSwipe() {
+    if (this.scrubbing) return;
+    this._cancel();
+    this.appSwiping = true;
+    this.appSwipeFromIdx = this.activeIdx;
+    this.appSwipeFromX = this._xForIdx(this.activeIdx);
+    this.appSwipeFromW = this._widthForIdx(this.activeIdx);
+    this.appSwipeLastNearestIdx = this.activeIdx;
+  }
+  updateAppSwipe(dx, viewportWidth) {
+    if (!this.appSwiping) return;
+    const fromIdx = this.appSwipeFromIdx;
+    // dx<0 → next (idx+1); dx>0 → prev (idx-1)
+    const targetIdx = dx < 0 ? fromIdx + 1 : fromIdx - 1;
+    const w = viewportWidth || window.innerWidth || 1;
+    if (targetIdx < 0 || targetIdx >= this.buttons.length) {
+      // Out-of-bounds: rubber-band a tiny amount toward the direction.
+      const damped = dx * 0.10;
+      this.x = this.appSwipeFromX - damped;
+      this._applyTransform();
+      return;
+    }
+    const progress = Math.min(1, Math.abs(dx) / (w * 0.6));
+    const startX = this.appSwipeFromX;
+    const endX = this._xForIdx(targetIdx);
+    const startW = this.appSwipeFromW;
+    const endW = this._widthForIdx(targetIdx);
+    this.x = startX + (endX - startX) * progress;
+    this.indicator.style.width = (startW + (endW - startW) * progress) + 'px';
+    this._applyTransform();
+    // Once we cross the midpoint, swap the .active class to the
+    // target so its icon scales up live — feels "physically connected".
+    const nearest = progress > 0.5 ? targetIdx : fromIdx;
+    if (nearest !== this.appSwipeLastNearestIdx) {
+      this._setStyleActive(nearest);
+      this.appSwipeLastNearestIdx = nearest;
+      Haptic.select();
+    }
+  }
+  endAppSwipe(dx, velocity, viewportWidth) {
+    if (!this.appSwiping) return;
+    this.appSwiping = false;
+    const fromIdx = this.appSwipeFromIdx;
+    const targetIdx = dx < 0 ? fromIdx + 1 : fromIdx - 1;
+    if (targetIdx < 0 || targetIdx >= this.buttons.length) {
+      // Snap back.
+      this._setStyleActive(fromIdx);
+      this._spring(this._xForIdx(fromIdx));
+      return;
+    }
+    const w = viewportWidth || window.innerWidth || 1;
+    const progress = Math.abs(dx) / w;
+    // Commit if past 22% of viewport OR fast flick.
+    const commit = progress > 0.22 || Math.abs(velocity) > 520;
+    if (commit) {
+      Haptic.light();
+      setTab(TAB_NAMES[targetIdx]);
+    } else {
+      this._setStyleActive(fromIdx);
+      this._spring(this._xForIdx(fromIdx));
+      // Snap width back too.
+      this.indicator.style.width = this._widthForIdx(fromIdx) + 'px';
+    }
+  }
+}
+
+// ===== Dock scrub gesture (replaces the old whole-dock drag) =====
+// Tapping a tab still goes through the existing dock-btn click
+// handlers. Only an actual horizontal DRAG inside the dock triggers
+// the scrub controller (we wait for a few px of horizontal movement
+// to disambiguate from a tap).
+(function setupDockScrub() {
   if (!dockEl) return;
-  const DRAG_THRESHOLD = 6;      // px of movement before drag activates
-  const SWITCH_THRESHOLD = 42;   // px of drag needed to switch tab
-  const RUBBER_BAND = 0.35;      // damping at the edges
-
-  let startX = 0, startY = 0;
-  let lastDx = 0;
-  let active = false;
-  let dragging = false;
-
-  function setDx(px) {
-    dockEl.style.setProperty('--dock-dx', px + 'px');
-  }
-  function snapHome() {
-    dockEl.classList.remove('dock-dragging');
-    dockEl.classList.add('dock-snapping');
-    setDx(0);
-  }
-  function endSnap() {
-    dockEl.classList.remove('dock-snapping');
-  }
-  dockEl.addEventListener('transitionend', (e) => {
-    if (e.propertyName === 'transform') endSnap();
-  });
+  const THRESHOLD = 6;
+  let pending = null;
 
   dockEl.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) return;
-    active = true;
-    dragging = false;
-    lastDx = 0;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    dockEl.classList.remove('dock-snapping');
+    if (e.touches.length !== 1) { pending = null; return; }
+    const t = e.touches[0];
+    pending = { x: t.clientX, y: t.clientY, scrubbing: false };
   }, { passive: true });
 
   dockEl.addEventListener('touchmove', (e) => {
-    if (!active || e.touches.length !== 1) return;
-    const tx = e.touches[0].clientX - startX;
-    const ty = e.touches[0].clientY - startY;
-
-    if (!dragging) {
-      if (Math.abs(ty) > Math.abs(tx) && Math.abs(ty) > DRAG_THRESHOLD) {
-        active = false; return;
+    if (!pending || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - pending.x;
+    const dy = t.clientY - pending.y;
+    if (!pending.scrubbing) {
+      // Decide: vertical scroll vs horizontal scrub.
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > THRESHOLD) {
+        pending = null;
+        return;
       }
-      if (Math.abs(tx) < DRAG_THRESHOLD) return;
-      dragging = true;
-      dockEl.classList.add('dock-dragging');
+      if (Math.abs(dx) < THRESHOLD) return;
+      pending.scrubbing = true;
+      if (dockController) dockController.beginScrub(pending.x);
     }
-
-    const idx = TAB_NAMES.indexOf(currentTab);
-    let damped = tx;
-    if ((idx === 0 && tx > 0) || (idx === TAB_NAMES.length - 1 && tx < 0)) {
-      damped = tx * RUBBER_BAND;
-    }
-    lastDx = damped;
-    setDx(damped);
+    if (dockController) dockController.updateScrub(t.clientX);
   }, { passive: true });
 
-  function release() {
-    if (!active) return;
-    active = false;
-    if (!dragging) { setDx(0); return; }
-    dragging = false;
-
-    const idx = TAB_NAMES.indexOf(currentTab);
-    if (Math.abs(lastDx) >= SWITCH_THRESHOLD) {
-      const next = lastDx < 0 ? idx + 1 : idx - 1;
-      if (next >= 0 && next < TAB_NAMES.length) {
-        Haptic.light();
-        setTab(TAB_NAMES[next]);
-      }
-    }
-    snapHome();
-  }
+  const release = () => {
+    if (!pending) return;
+    const wasScrubbing = pending.scrubbing;
+    pending = null;
+    if (wasScrubbing && dockController) dockController.endScrub();
+  };
   dockEl.addEventListener('touchend', release, { passive: true });
   dockEl.addEventListener('touchcancel', release, { passive: true });
+})();
+
+// Init the dock controller AFTER setTab has been defined (it's
+// referenced inside the controller's gesture handlers). The
+// controller picks up the saved currentTab and positions the pill
+// to match without animation.
+(function initDockController() {
+  const indicator = document.getElementById('dockIndicator');
+  if (!dockEl || !indicator) return;
+  dockController = new DockController(dockEl, indicator);
 })();
 
 // Restore last tab on init (will only matter once appView is visible)
