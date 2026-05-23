@@ -475,20 +475,49 @@
     overscroll-behavior-x: contain;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   }
-  /* Swipe / nav slide-in (Untis-style). Plays whenever the range advances. */
-  @keyframes wgSlideFromRight {
-    from { transform: translate3d(28px, 0, 0); opacity: 0.35; }
-    to   { transform: translate3d(0, 0, 0); opacity: 1; }
+  /* ===== Swipe / nav transition: Apple Music–style crossfade =====
+     The OUTGOING grid is cloned to a fixed-position ghost that slides out
+     (.week-grid-ghost) while the real grid slides in with a spring overshoot. */
+  @keyframes wgEnterFromRight {
+    0%   { transform: translate3d(26%, 0, 0) scale(0.965); opacity: 0; }
+    60%  { transform: translate3d(-2%, 0, 0) scale(1.005); opacity: 1; }
+    100% { transform: translate3d(0, 0, 0)   scale(1);     opacity: 1; }
   }
-  @keyframes wgSlideFromLeft {
-    from { transform: translate3d(-28px, 0, 0); opacity: 0.35; }
-    to   { transform: translate3d(0, 0, 0); opacity: 1; }
+  @keyframes wgEnterFromLeft {
+    0%   { transform: translate3d(-26%, 0, 0) scale(0.965); opacity: 0; }
+    60%  { transform: translate3d(2%, 0, 0)   scale(1.005); opacity: 1; }
+    100% { transform: translate3d(0, 0, 0)    scale(1);     opacity: 1; }
   }
-  .week-grid.swipe-from-right { animation: wgSlideFromRight 0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
-  .week-grid.swipe-from-left  { animation: wgSlideFromLeft  0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  @keyframes wgExitLeft {
+    from { transform: translate3d(0, 0, 0) scale(1);    opacity: 1; }
+    to   { transform: translate3d(-32%, 0, 0) scale(0.94); opacity: 0; }
+  }
+  @keyframes wgExitRight {
+    from { transform: translate3d(0, 0, 0) scale(1);    opacity: 1; }
+    to   { transform: translate3d(32%, 0, 0) scale(0.94); opacity: 0; }
+  }
+  .week-grid.swipe-from-right {
+    animation: wgEnterFromRight 0.35s cubic-bezier(0.34, 1.42, 0.64, 1) both;
+    will-change: transform, opacity;
+  }
+  .week-grid.swipe-from-left {
+    animation: wgEnterFromLeft 0.35s cubic-bezier(0.34, 1.42, 0.64, 1) both;
+    will-change: transform, opacity;
+  }
+  .week-grid-ghost {
+    pointer-events: none;
+    z-index: 50;
+    will-change: transform, opacity;
+    box-shadow: var(--shadow);
+  }
+  .week-grid-ghost.wg-exit-left  { animation: wgExitLeft  0.30s cubic-bezier(0.42, 0, 0.58, 1) forwards; }
+  .week-grid-ghost.wg-exit-right { animation: wgExitRight 0.30s cubic-bezier(0.42, 0, 0.58, 1) forwards; }
   @media (prefers-reduced-motion: reduce) {
     .week-grid.swipe-from-right,
-    .week-grid.swipe-from-left { animation: none; }
+    .week-grid.swipe-from-left,
+    .week-grid-ghost.wg-exit-left,
+    .week-grid-ghost.wg-exit-right { animation: none; }
+    .week-grid-ghost { display: none; }
   }
   .week-grid > * { background: var(--glass-strong); padding: 8px; }
   .gh-corner { background: var(--glass-strong); }
@@ -4043,6 +4072,37 @@ function applyPendingSwipeAnim() {
   grid.classList.add(cls);
 }
 
+/* Clone the current grid into a fixed-position ghost that slides out
+   immediately (gives instant tactile feedback while fetchWeek resolves). */
+function beginExitAnimation(direction) {
+  const grid = $('#weekGrid');
+  if (!grid) return;
+  document.querySelectorAll('.week-grid-ghost').forEach(g => g.remove());
+  const rect = grid.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return;
+  const ghost = grid.cloneNode(true);
+  ghost.id = '';
+  ghost.classList.add('week-grid-ghost');
+  ghost.classList.remove('swipe-from-right', 'swipe-from-left');
+  Object.assign(ghost.style, {
+    position: 'fixed',
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    margin: '0',
+  });
+  document.body.appendChild(ghost);
+  // Force reflow so the animation starts from the captured state.
+  void ghost.offsetWidth;
+  ghost.classList.add(direction === 'next' ? 'wg-exit-left' : 'wg-exit-right');
+  const remove = () => { if (ghost.isConnected) ghost.remove(); };
+  ghost.addEventListener('animationend', remove, { once: true });
+  setTimeout(remove, 600);
+}
+
 function renderCard(l) {
   const realStatus = l._status || getLessonStatus(l);
   const reveal = shouldRevealOutcome(l);
@@ -4157,6 +4217,7 @@ $('#logoutBtn').addEventListener('click', () => {
 function navigateRange(direction) {
   Sound.tap(); Haptic.select();
   pendingSwipeAnim = direction;
+  beginExitAnimation(direction);
   const step = direction === 'next' ? viewStepDays() : -viewStepDays();
   currentMonday = addDays(currentMonday, step);
   fetchWeek(currentMonday);
