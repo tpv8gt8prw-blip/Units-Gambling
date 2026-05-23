@@ -1630,8 +1630,8 @@
   }
   /* Live gesture — pill blooms past the dock rim like water. */
   .dock-indicator.is-liquid-active {
-    top: -4px;
-    bottom: -4px;
+    top: 5px;
+    bottom: 5px;
     transition: width 0.16s cubic-bezier(0.32, 0.72, 0, 1),
                 top 0.22s ease, bottom 0.22s ease,
                 filter 0.22s ease, box-shadow 0.22s ease;
@@ -5381,10 +5381,10 @@ class DockController {
     const flowK = 1 - Math.exp(-flowRate * Math.max(dt, 0.008));
     this._flow += (rawFlow - this._flow) * flowK;
 
-    const stretch = mag * 0.24;
-    const bloom = 1 + mag * 0.14;
+    const stretch = mag * 0.18;
+    const bloom = 1 + mag * 0.06;
     this._liquidTarget.sx = (1 + stretch) * bloom;
-    this._liquidTarget.sy = (1 + mag * 0.16 - stretch * 0.38) * bloom;
+    this._liquidTarget.sy = (1 + mag * 0.07 - stretch * 0.38) * bloom;
     this._liquidTarget.tx = this._flow * mag * 14;
     this._liquidTarget.skew = this._flow * mag * 8.5;
     this._liquidTarget.rot = this._flow * mag * 4.8;
@@ -5403,8 +5403,8 @@ class DockController {
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
     this._setLiquidActive(true);
-    this._liquidTarget.sx = 1.16;
-    this._liquidTarget.sy = 1.08;
+    this._liquidTarget.sx = 1.08;
+    this._liquidTarget.sy = 1.03;
     this._liquidTarget.tx = 0;
     this._liquidTarget.skew = 0;
     this._liquidTarget.rot = 0;
