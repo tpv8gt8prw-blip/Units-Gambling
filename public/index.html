@@ -1589,6 +1589,7 @@
      animated by CSS for resize / tab-width changes.
   ============================================================ */
   .dock-indicator {
+    --pill-strain: 0;
     position: absolute;
     top: 8px;
     bottom: 8px;
@@ -1596,46 +1597,92 @@
     width: 0; /* JS sets this to the active button width */
     pointer-events: none;
     border-radius: 18px;
+    /* WhatsApp-style liquid lens — very transparent, refractive */
     background:
       linear-gradient(180deg,
-        color-mix(in srgb, var(--accent) 22%, transparent),
-        color-mix(in srgb, var(--accent) 12%, transparent)),
-      var(--accent-soft);
+        rgba(255, 255, 255, 0.2) 0%,
+        rgba(255, 255, 255, 0.07) 42%,
+        rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(14px) saturate(1.9) brightness(1.04);
+    -webkit-backdrop-filter: blur(14px) saturate(1.9) brightness(1.04);
+    border: 0.5px solid rgba(255, 255, 255, 0.16);
     box-shadow:
-      0 1px 0 inset color-mix(in srgb, white 28%, transparent),
-      0 -1px 0 inset color-mix(in srgb, var(--accent) 14%, transparent),
-      0 0 0 0.5px color-mix(in srgb, var(--accent) 18%, transparent),
-      0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent);
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      inset 0 -1px 0 rgba(255, 120, 150, 0.06),
+      0 0 0 0.5px rgba(120, 170, 255, 0.05),
+      0 4px 14px rgba(0, 0, 0, 0.06);
     transform: translate3d(0, 0, 0);
     transform-origin: center center;
-    will-change: transform, width, filter, border-radius;
+    will-change: transform, width;
+    contain: layout style;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
     z-index: 1;
-    /* Width only — translation is driven by JS spring. */
-    transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1),
-                filter 0.22s ease, box-shadow 0.22s ease;
+    transition: width 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    overflow: hidden;
   }
-  /* Live gesture — subtle glass lift; deformation is JS-smoothed. */
+  /* Chromatic rim / prism fringe (like iOS tab lens) */
+  .dock-indicator::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: calc(0.25 + var(--pill-strain) * 0.75);
+    background: linear-gradient(
+      108deg,
+      rgba(255, 95, 95, 0.28) 0%,
+      rgba(255, 255, 255, 0.42) 20%,
+      rgba(110, 195, 255, 0.26) 48%,
+      rgba(255, 220, 130, 0.2) 72%,
+      rgba(190, 130, 255, 0.24) 100%
+    );
+    mix-blend-mode: screen;
+    transition: opacity 0.12s ease;
+  }
+  .dock-indicator::after {
+    content: '';
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    top: 1px;
+    height: 42%;
+    border-radius: 999px;
+    pointer-events: none;
+    opacity: calc(0.35 + var(--pill-strain) * 0.45);
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.12) 55%,
+      transparent 100%);
+    mix-blend-mode: overlay;
+  }
   .dock-indicator.is-liquid-active {
-    transition: width 0.14s cubic-bezier(0.32, 0.72, 0, 1),
-                filter 0.2s ease, box-shadow 0.2s ease;
-    filter: saturate(1.22) brightness(1.05);
+    transition: width 0.1s cubic-bezier(0.32, 0.72, 0, 1);
+    backdrop-filter: blur(16px) saturate(2.05) brightness(1.08);
+    -webkit-backdrop-filter: blur(16px) saturate(2.05) brightness(1.08);
+    border-color: rgba(255, 255, 255, 0.22);
     box-shadow:
-      0 1px 0 inset color-mix(in srgb, white 32%, transparent),
-      0 -1px 0 inset color-mix(in srgb, var(--accent) 16%, transparent),
-      0 0 0 0.5px color-mix(in srgb, var(--accent) 22%, transparent),
-      0 8px 22px color-mix(in srgb, var(--accent) 32%, transparent);
+      inset 0 1px 0 rgba(255, 255, 255, 0.48),
+      inset 0 -1px 0 rgba(255, 100, 130, 0.1),
+      0 0 0 0.5px rgba(130, 180, 255, 0.1),
+      0 6px 20px rgba(0, 0, 0, 0.1);
   }
   :root[data-mode="dark"] .dock-indicator {
     background:
       linear-gradient(180deg,
-        color-mix(in srgb, var(--accent) 32%, transparent),
-        color-mix(in srgb, var(--accent) 18%, transparent)),
-      color-mix(in srgb, var(--accent) 12%, transparent);
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.05) 45%,
+        rgba(255, 255, 255, 0.015) 100%);
+    border-color: rgba(255, 255, 255, 0.12);
     box-shadow:
-      0 1px 0 inset color-mix(in srgb, white 18%, transparent),
-      0 -1px 0 inset color-mix(in srgb, black 28%, transparent),
-      0 0 0 0.5px color-mix(in srgb, var(--accent) 22%, transparent),
-      0 6px 18px color-mix(in srgb, var(--accent) 36%, transparent);
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -1px 0 rgba(255, 90, 120, 0.05),
+      0 0 0 0.5px rgba(100, 150, 255, 0.06),
+      0 4px 16px rgba(0, 0, 0, 0.28);
+  }
+  :root[data-mode="dark"] .dock-indicator.is-liquid-active {
+    backdrop-filter: blur(18px) saturate(2.1) brightness(1.12);
+    -webkit-backdrop-filter: blur(18px) saturate(2.1) brightness(1.12);
   }
   /* Reduced-motion users skip the width transition too. */
   @media (prefers-reduced-motion: reduce) {
@@ -5235,8 +5282,8 @@ class DockController {
 
     // Spring tuning — slightly stiffer than the plan-pager for a
     // crisper, more "snappy" indicator feel.
-    this.STIFFNESS = 260;
-    this.DAMPING = 30;
+    this.STIFFNESS = 285;
+    this.DAMPING = 31;
 
     // Scrub state
     this.scrubbing = false;
@@ -5297,10 +5344,12 @@ class DockController {
   _applyTransform() {
     const { sx, sy, skew, ty, br } = this.liquid;
     const origin = skew < 0 ? 'right center' : skew > 0 ? 'left center' : 'center center';
+    const strain = Math.min(1, this._liquidDeformAmount() * 2.8);
     this.indicator.style.transformOrigin = origin;
     this.indicator.style.borderRadius = br + 'px';
+    this.indicator.style.setProperty('--pill-strain', strain.toFixed(3));
     this.indicator.style.transform =
-      `translate3d(${this.x}px, ${ty}px, 0) scale(${sx}, ${sy}) skewX(${skew}deg)`;
+      `translate3d(${this.x}px, ${ty}px, 0) scale3d(${sx}, ${sy}, 1) skewX(${skew}deg)`;
   }
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
@@ -5315,16 +5364,17 @@ class DockController {
   _feedLiquidMotion(deltaX, dt, stretchHint = 0) {
     if (!this._motionOk) return;
     const v = dt > 0 ? deltaX / dt : 0;
-    this._scrubVel = this._scrubVel * 0.68 + v * 0.32;
-    const velMag = Math.min(1, Math.abs(this._scrubVel) / 3200);
-    const mag = Math.min(1, velMag * 0.72 + Math.min(1, stretchHint) * 0.38);
+    this._scrubVel = this._scrubVel * 0.58 + v * 0.42;
+    const velMag = Math.min(1, Math.abs(this._scrubVel) / 2400);
+    const mag = Math.min(1, velMag * 0.55 + Math.min(1, stretchHint) * 0.62);
     const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
     const T = this._liquidTarget;
-    T.sx = 1 + mag * 0.065;
-    T.sy = 1 - mag * 0.042;
-    T.skew = dir * mag * 2.2;
-    T.ty = -mag * 1.4;
-    T.br = 18 + mag * 2.2;
+    // Directional liquid stretch (fast, viscous — like WhatsApp tab lens)
+    T.sx = 1 + mag * 0.13;
+    T.sy = 1 - mag * 0.055;
+    T.skew = dir * mag * 5.5;
+    T.ty = -mag * 2.2;
+    T.br = 18 + mag * 5;
     this._ensureMotionLoop();
   }
   _relaxLiquid() {
@@ -5363,18 +5413,19 @@ class DockController {
         running = true;
         const { t0, dur } = this._pressPulse;
         const p = Math.min(1, (now - t0) / dur);
-        const s = p < 0.4 ? p / 0.4 : 1 - (p - 0.4) / 0.6;
+        const s = p < 0.35 ? p / 0.35 : 1 - (p - 0.35) / 0.65;
         const ease = 1 - s;
         const T = this._liquidTarget;
-        T.sx = 1 + ease * 0.045;
-        T.sy = 1 - ease * 0.032;
-        T.ty = ease * 1.2;
+        const grow = 1 + ease * 0.085;
+        T.sx = grow;
+        T.sy = grow;
+        T.ty = ease * 1.5;
         T.skew = 0;
-        T.br = 18 + ease * 2;
+        T.br = 18 + ease * 3;
         if (p >= 1) this._pressPulse = null;
       }
 
-      const lk = 1 - Math.exp(-dt * 34);
+      const lk = 1 - Math.exp(-dt * (this.scrubbing || this.appSwiping ? 52 : 36));
       const L = this.liquid;
       const T = this._liquidTarget;
       L.sx += (T.sx - L.sx) * lk;
@@ -5406,7 +5457,7 @@ class DockController {
   }
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
-    this._pressPulse = { t0: performance.now(), dur: 200 };
+    this._pressPulse = { t0: performance.now(), dur: 180 };
     this._setLiquidActive(true);
     this._ensureMotionLoop();
   }
@@ -5504,6 +5555,8 @@ class DockController {
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
     this.indicator.style.transition = 'none';
+    Object.assign(this._liquidTarget, { sx: 1.05, sy: 1.05, skew: 0, ty: 0, br: 19 });
+    this._setLiquidActive(true);
     this._ensureMotionLoop();
   }
   updateScrub(clientX) {
@@ -5527,20 +5580,20 @@ class DockController {
     const nearest = this._nearestIdx(nextX);
     const targetW = this._widthForIdx(nearest);
     const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
-    this.indicator.style.width = (curW + (targetW - curW) * 0.28) + 'px';
+    this.indicator.style.width = (curW + (targetW - curW) * 0.45) + 'px';
 
     const span = Math.max(1, (this._xForIdx(this.buttons.length - 1) - this._xForIdx(0)));
     const stretchHint = Math.min(1, Math.abs(nextX - this._xForIdx(this.activeIdx)) / (span * 0.55));
-    if (Math.abs(frameDx) < 0.6) {
-      const k = 0.28;
+    if (Math.abs(frameDx) < 0.5) {
+      const k = 0.18;
       const T = this._liquidTarget;
-      const N = this._neutralLiquid();
-      T.sx += (N.sx - T.sx) * k;
-      T.sy += (N.sy - T.sy) * k;
-      T.skew += (N.skew - T.skew) * k;
-      T.ty += (N.ty - T.ty) * k;
-      T.br += (N.br - T.br) * k;
-      this._scrubVel *= 0.8;
+      const hold = 1 + stretchHint * 0.04;
+      T.sx += (hold - T.sx) * k;
+      T.sy += (hold - T.sy) * k;
+      T.skew += (stretchHint * Math.sign(nextX - this._xForIdx(this.activeIdx)) * 2 - T.skew) * k;
+      T.ty += (0 - T.ty) * k;
+      T.br += ((18 + stretchHint * 3) - T.br) * k;
+      this._scrubVel *= 0.85;
     } else {
       this._feedLiquidMotion(frameDx, dt, stretchHint);
     }
@@ -5601,6 +5654,8 @@ class DockController {
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
     this.indicator.style.transition = 'none';
+    Object.assign(this._liquidTarget, { sx: 1.04, sy: 1.04, skew: 0, ty: 0, br: 19 });
+    this._setLiquidActive(true);
     this._ensureMotionLoop();
   }
   updateAppSwipe(dx, viewportWidth) {
@@ -5628,16 +5683,17 @@ class DockController {
     const endW = this._widthForIdx(targetIdx);
     this.x = startX + (endX - startX) * progress;
     this.indicator.style.width = (startW + (endW - startW) * progress) + 'px';
-    if (Math.abs(frameDx) < 0.6) {
-      const k = 0.28;
+    if (Math.abs(frameDx) < 0.5) {
+      const k = 0.18;
       const T = this._liquidTarget;
-      const N = this._neutralLiquid();
-      T.sx += (N.sx + progress * 0.02 - T.sx) * k;
-      T.sy += (N.sy - progress * 0.015 - T.sy) * k;
-      T.skew += (N.skew - T.skew) * k;
-      T.ty += (N.ty - T.ty) * k;
-      T.br += (N.br + progress * 1.2 - T.br) * k;
-      this._scrubVel *= 0.8;
+      const hold = 1 + progress * 0.05;
+      const dir = dx < 0 ? -1 : 1;
+      T.sx += (hold - T.sx) * k;
+      T.sy += (hold - 0.02 - T.sy) * k;
+      T.skew += (dir * progress * 3.5 - T.skew) * k;
+      T.ty += (0 - T.ty) * k;
+      T.br += ((18 + progress * 4) - T.br) * k;
+      this._scrubVel *= 0.85;
     } else {
       this._feedLiquidMotion(frameDx, dt, progress);
     }
