@@ -475,6 +475,21 @@
     overscroll-behavior-x: contain;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   }
+  /* Swipe / nav slide-in (Untis-style). Plays whenever the range advances. */
+  @keyframes wgSlideFromRight {
+    from { transform: translate3d(28px, 0, 0); opacity: 0.35; }
+    to   { transform: translate3d(0, 0, 0); opacity: 1; }
+  }
+  @keyframes wgSlideFromLeft {
+    from { transform: translate3d(-28px, 0, 0); opacity: 0.35; }
+    to   { transform: translate3d(0, 0, 0); opacity: 1; }
+  }
+  .week-grid.swipe-from-right { animation: wgSlideFromRight 0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .week-grid.swipe-from-left  { animation: wgSlideFromLeft  0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  @media (prefers-reduced-motion: reduce) {
+    .week-grid.swipe-from-right,
+    .week-grid.swipe-from-left { animation: none; }
+  }
   .week-grid > * { background: var(--glass-strong); padding: 8px; }
   .gh-corner { background: var(--glass-strong); }
   .day-header {
@@ -3978,6 +3993,7 @@ function renderWeek(lessons, monday) {
     : '32px repeat(5, minmax(0, 1fr))';
   if (visibleLessons.length === 0) {
     grid.innerHTML = `<div style="grid-column: 1 / -1;" class="empty">Keine Stunden in dieser Ansicht<small>Anderen Tag wählen oder weiter navigieren.</small></div>`;
+    applyPendingSwipeAnim();
     return;
   }
 
@@ -4011,6 +4027,20 @@ function renderWeek(lessons, monday) {
     }
   }
   grid.innerHTML = html;
+  applyPendingSwipeAnim();
+}
+
+let pendingSwipeAnim = null; // 'next' | 'prev' | null
+function applyPendingSwipeAnim() {
+  if (!pendingSwipeAnim) return;
+  const grid = $('#weekGrid');
+  const dir = pendingSwipeAnim;
+  pendingSwipeAnim = null;
+  if (!grid) return;
+  const cls = dir === 'next' ? 'swipe-from-right' : 'swipe-from-left';
+  grid.classList.remove('swipe-from-right', 'swipe-from-left');
+  void grid.offsetWidth; // restart animation
+  grid.classList.add(cls);
 }
 
 function renderCard(l) {
@@ -4124,9 +4154,61 @@ $('#logoutBtn').addEventListener('click', () => {
   showLogin();
   setStatus(msg, '');
 });
-$('#prevBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = addDays(currentMonday, -viewStepDays()); fetchWeek(currentMonday); });
-$('#nextBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = addDays(currentMonday, viewStepDays()); fetchWeek(currentMonday); });
-$('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = normalizeRangeStart(new Date()); fetchWeek(currentMonday); });
+function navigateRange(direction) {
+  Sound.tap(); Haptic.select();
+  pendingSwipeAnim = direction;
+  const step = direction === 'next' ? viewStepDays() : -viewStepDays();
+  currentMonday = addDays(currentMonday, step);
+  fetchWeek(currentMonday);
+}
+$('#prevBtn').addEventListener('click', () => navigateRange('prev'));
+$('#nextBtn').addEventListener('click', () => navigateRange('next'));
+$('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); pendingSwipeAnim = null; currentMonday = normalizeRangeStart(new Date()); fetchWeek(currentMonday); });
+
+/* ============================================================
+   SWIPE NAVIGATION (Wochen/Tage wischen wie Untis App)
+   Mobile: swipe left → next, swipe right → prev. Desktop buttons unchanged.
+============================================================ */
+(function setupPlanSwipe() {
+  const grid = $('#weekGrid');
+  if (!grid) return;
+  const THRESHOLD_PX = 60;   // deliberate swipe
+  const FLICK_PX = 30;       // fast flick minimum
+  const FLICK_MS = 320;      // fast flick max duration
+  const H_BIAS = 1.3;        // horizontal must clearly dominate vertical
+
+  let sx = 0, sy = 0, st = 0, tracking = false, axis = null;
+
+  grid.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { tracking = false; return; }
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY; st = Date.now();
+    tracking = true; axis = null;
+  }, { passive: true });
+
+  grid.addEventListener('touchmove', (e) => {
+    if (!tracking) return;
+    const t = e.touches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+  }, { passive: true });
+
+  grid.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    if (axis !== 'h') return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - st;
+    if (Math.abs(dx) < Math.abs(dy) * H_BIAS) return;
+    const flick = dt < FLICK_MS && Math.abs(dx) > FLICK_PX;
+    if (Math.abs(dx) < THRESHOLD_PX && !flick) return;
+    navigateRange(dx < 0 ? 'next' : 'prev');
+  }, { passive: true });
+
+  grid.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+})();
 $$('#viewToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
     Sound.tap(); Haptic.select();
