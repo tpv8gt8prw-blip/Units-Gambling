@@ -475,7 +475,83 @@
     overscroll-behavior-x: contain;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   }
-  /* Swipe / nav slide-in (Untis-style). Plays whenever the range advances. */
+  /* ============================================================
+     PLAN PAGER — 3-page horizontal carousel for native-style swipe
+     navigation between day/week ranges. The track holds three .week-grid
+     pages and is translated with GPU-accelerated transform3d to follow
+     the finger in real time. After a commit, content is recycled in-place
+     (DOM identity of the center #weekGrid is preserved so existing
+     handlers keep working).
+  ============================================================ */
+  .plan-pager {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--r-xl);
+    border: 1px solid var(--glass-border);
+    background: var(--sep-2);
+    box-shadow: var(--shadow);
+    overscroll-behavior-x: contain;
+    /* Allow vertical scroll, block horizontal so our JS owns it */
+    touch-action: pan-y;
+    contain: layout paint;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .plan-pager-track {
+    display: flex;
+    width: 300%;
+    /* Default position centers the "current" page (-33.333%). */
+    transform: translate3d(-33.3333%, 0, 0);
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  /* iOS-style spring snap (lite). The rAF spring takes over for
+     interactive interruption; this transition is used for synchronous
+     "snap to position" moments where momentum isn't a factor. */
+  .plan-pager-track.is-snapping {
+    transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .plan-pager-page {
+    flex: 0 0 33.3333%;
+    width: 33.3333%;
+    min-width: 0;
+    position: relative;
+  }
+  .plan-pager-page > .week-grid {
+    /* The pager owns the outer chrome; pages render edge-to-edge. */
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* Off-screen pages don't receive taps. The center page keeps its
+     existing #weekGrid click handlers intact. */
+  .plan-pager-page:not([data-is-current="true"]) {
+    pointer-events: none;
+  }
+  /* Loading shimmer for pages that haven't been fetched yet. */
+  .plan-pager-page .week-grid.is-loading {
+    position: relative;
+  }
+  .plan-pager-page .week-grid.is-loading::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 4%, transparent), transparent);
+    animation: pagerShimmer 1.4s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes pagerShimmer {
+    from { transform: translate3d(-100%, 0, 0); }
+    to   { transform: translate3d(100%, 0, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .plan-pager-track { transition: none !important; }
+    .plan-pager-page .week-grid.is-loading::after { animation: none; }
+  }
+
+  /* Legacy slide keyframes — kept for back-compat with any callsite that
+     might still apply the class. The pager itself uses transform-based
+     navigation and never adds these classes. */
   @keyframes wgSlideFromRight {
     from { transform: translate3d(28px, 0, 0); opacity: 0.35; }
     to   { transform: translate3d(0, 0, 0); opacity: 1; }
@@ -483,10 +559,6 @@
   @keyframes wgSlideFromLeft {
     from { transform: translate3d(-28px, 0, 0); opacity: 0.35; }
     to   { transform: translate3d(0, 0, 0); opacity: 1; }
-  }
-  .week-grid.swipe-from-right,
-  .week-grid.swipe-from-left {
-    will-change: transform, opacity;
   }
   .week-grid.swipe-from-right { animation: wgSlideFromRight 0.2s ease-out; }
   .week-grid.swipe-from-left  { animation: wgSlideFromLeft  0.2s ease-out; }
@@ -1336,8 +1408,12 @@
       backdrop-filter: none; -webkit-backdrop-filter: none;
       box-shadow: none;
     }
-    .week-grid.swipe-from-right,
-    .week-grid.swipe-from-left { animation-duration: 0.18s; }
+    /* The pager carries the chrome on mobile; flatten its shadow a touch
+       so the page surface feels close to the viewport. */
+    .plan-pager {
+      box-shadow: 0 1px 0 var(--sep-2);
+      backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
     .lesson-card { box-shadow: none; }
   }
   @media (min-width: 641px) {
@@ -2080,7 +2156,13 @@
         <div class="meta"><b id="cancelCount">Heute</b><span>Wetten</span></div>
       </div>
 
-      <div class="week-grid" id="weekGrid"></div>
+      <div class="plan-pager" id="planPager">
+        <div class="plan-pager-track" id="planPagerTrack">
+          <div class="plan-pager-page" data-slot="prev"><div class="week-grid"></div></div>
+          <div class="plan-pager-page" data-slot="current" data-is-current="true"><div class="week-grid" id="weekGrid"></div></div>
+          <div class="plan-pager-page" data-slot="next"><div class="week-grid"></div></div>
+        </div>
+      </div>
 
       <div class="legend">
         <div class="legend-item"><div class="legend-swatch normal"></div>Normal</div>
@@ -3879,6 +3961,13 @@ function showApp() {
   loginView.style.display = 'none';
   appView.classList.add('visible');
   dockEl.classList.add('visible');
+  // The carousel may have measured a page width of 0 while it was
+  // hidden (display:none → clientWidth=0). Re-measure now that the
+  // app view is on-screen so swipe distance ratios are correct.
+  if (planCarousel) {
+    // Wait one frame so the browser has applied the new layout.
+    requestAnimationFrame(() => planCarousel.measure());
+  }
 }
 function showLogin() {
   loginView.style.display = 'block';
@@ -3889,7 +3978,6 @@ function showLogin() {
 let creds = null;
 let viewMode = LS.get('viewMode') === 'week' ? 'week' : 'day';
 let currentMonday = normalizeRangeStart(new Date(), viewMode);
-let pendingSwipeDir = null;
 let lastLessons = null, lastMonday = null, lastHomeworks = [], lastHomeworkLessons = [], lastAbsences = [], lastExams = [];
 let officeHoursData = null, officeHoursLoading = false;
 
@@ -3914,13 +4002,95 @@ function normalizeRangeStart(date, mode = viewMode) {
 function getRangeEnd(start) {
   return addDays(start, currentViewDays() - 1);
 }
-// Optimistic navigation: animate + render immediately from cache, fetch in background.
+// ============================================================
+// PER-RANGE CACHE  (key: `${mode}:${isoMonday}`)
+// Each navigation reads from / writes to this map. No shared
+// "lastLessons" leak between adjacent ranges → the previous
+// duplicate-week bug becomes structurally impossible.
+// ============================================================
+const rangeCache = new Map();
+function rangeKey(mode, monday) {
+  return `${mode}:${isoDate(normalizeRangeStart(monday, mode))}`;
+}
+function getRangeFromCache(monday, mode = viewMode) {
+  return rangeCache.get(rangeKey(mode, monday)) || null;
+}
+function putRangeInCache(monday, mode, patch) {
+  const key = rangeKey(mode, monday);
+  const existing = rangeCache.get(key) || {};
+  rangeCache.set(key, { ...existing, ...patch });
+}
+
+// Fetches a single range into the cache. Concurrent calls for the same
+// range share one in-flight promise. Updates are dispatched to the
+// carousel so visible pages re-render in place when their data lands.
+async function ensureRangeFetched(monday, opts = {}) {
+  if (!creds) return;
+  const mode = viewMode;
+  const key = rangeKey(mode, monday);
+  const existing = rangeCache.get(key);
+  if (existing?.fetching) return existing.fetching;
+  if (existing?.lessons && !opts.force) return; // cached and fresh enough
+
+  const start = normalizeRangeStart(monday, mode);
+  const end = getRangeEnd(start);
+
+  const promise = (async () => {
+    try {
+      const res = await apiPost('/api/timetable-week', {
+        ...creds,
+        rangeStart: isoDate(start),
+        rangeEnd: isoDate(end),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'unbekannter fehler');
+      const payload = {
+        lessons: data.timetable || [],
+        homeworks: data.homeworks || [],
+        homeworkLessons: data.homeworkLessons || [],
+        absences: data.absences || [],
+        exams: data.exams || [],
+        fetchedAt: Date.now(),
+        fetching: null,
+        error: null,
+      };
+      rangeCache.set(key, payload);
+      // If this is the currently-centered range, mirror into the
+      // legacy globals so dependent UIs (homework / absences / account
+      // tabs, click handler lookup) stay in sync.
+      if (rangeKey(viewMode, currentMonday) === key) {
+        lastHomeworks = payload.homeworks;
+        lastHomeworkLessons = payload.homeworkLessons;
+        lastAbsences = payload.absences;
+        lastExams = payload.exams;
+        renderHomeworkTab();
+        renderAbsencesTab();
+        refreshAccountTab();
+      }
+      if (typeof planCarousel !== 'undefined' && planCarousel) {
+        planCarousel.notifyRangeUpdate(start, mode);
+      }
+      return payload;
+    } catch (e) {
+      rangeCache.set(key, { ...(existing || {}), fetching: null, error: e.message });
+      throw e;
+    }
+  })();
+
+  rangeCache.set(key, { ...(existing || {}), fetching: promise });
+  return promise;
+}
+
+// Optimistic navigation triggered from the prev/next buttons. Delegates
+// to the carousel so the visual transition is identical to a swipe.
 function navigateRange(dir) {
-  const step = dir === 'right' ? viewStepDays() : -viewStepDays();
-  currentMonday = addDays(currentMonday, step);
-  pendingSwipeDir = dir;
-  if (lastLessons) renderWeek(lastLessons, currentMonday);
-  if (creds) fetchWeek(currentMonday);
+  if (planCarousel) {
+    planCarousel.navigate(dir === 'right' ? +1 : -1);
+  } else {
+    const step = dir === 'right' ? viewStepDays() : -viewStepDays();
+    currentMonday = addDays(currentMonday, step);
+    if (creds) ensureRangeFetched(currentMonday);
+  }
 }
 function updateViewToggle() {
   $$('#viewToggle button').forEach(btn => {
@@ -3936,55 +4106,66 @@ function setViewMode(mode) {
   LS.set('viewMode', viewMode);
   currentMonday = normalizeRangeStart(currentMonday, viewMode);
   updateViewToggle();
+  if (planCarousel) {
+    planCarousel.snapToMonday(currentMonday);
+    planCarousel.measure();
+  }
   if (creds) fetchWeek(currentMonday);
-  else if (lastLessons && lastMonday) renderWeek(lastLessons, lastMonday);
+  else if (planCarousel) planCarousel.refresh();
 }
 function setNavDisabled(d) {
   ['prevBtn','nextBtn','todayBtn','logoutBtn'].forEach(id => $('#'+id).disabled = d);
   $$('#viewToggle button').forEach(btn => { btn.disabled = d; });
 }
 
+// Top-level "open this range" entry point. Used by login + view-mode
+// switch + the "Heute" button. Pre-warms the cache for the current
+// and adjacent ranges so swiping forward/back is instantaneous.
 async function fetchWeek(monday) {
   if (!creds) return;
   monday = normalizeRangeStart(monday);
   currentMonday = monday;
   const first = loginView.style.display !== 'none';
-  const rangeEnd = getRangeEnd(monday);
-  if (first) { setStatus(msg, `<span class="spinner"></span>verbinde mit ${escapeHtml(creds.server)}…`); $('#loginBtn').disabled = true; }
-  else { setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`); setNavDisabled(true); }
+  if (first) {
+    setStatus(msg, `<span class="spinner"></span>verbinde mit ${escapeHtml(creds.server)}…`);
+    $('#loginBtn').disabled = true;
+  } else {
+    setStatus(ttMsg, `<span class="spinner"></span>lade ${viewLabel()}…`);
+  }
+  // Show whatever we have for the center range right now (cached or empty)
+  if (planCarousel) planCarousel.snapToMonday(monday);
   try {
-    const res = await apiPost('/api/timetable-week', { ...creds, rangeStart: isoDate(monday), rangeEnd: isoDate(rangeEnd) });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'unbekannter fehler');
-    lastHomeworks = data.homeworks || [];
-    lastHomeworkLessons = data.homeworkLessons || [];
-    lastAbsences = data.absences || [];
-    lastExams = data.exams || [];
-    console.log('[Substi] Loaded:', {
-      lessons: (data.timetable || []).length,
-      homeworks: lastHomeworks.length,
-      homeworkLessons: lastHomeworkLessons.length,
-      absences: lastAbsences.length,
-      exams: lastExams.length,
-    });
-    if (lastHomeworks.length > 0) console.log('[Substi] First homework:', lastHomeworks[0]);
-    if (lastAbsences.length > 0) console.log('[Substi] First absence:', lastAbsences[0]);
-    renderWeek(data.timetable || [], monday);
-    renderHomeworkTab();
-    renderAbsencesTab();
-    refreshAccountTab();
-    showApp();
-    setStatus(msg, ''); setStatus(ttMsg, '');
+    await ensureRangeFetched(monday, { force: !getRangeFromCache(monday) });
+    // Prefetch adjacent ranges in the background — never awaited so a
+    // slow neighbour can't block the visible week.
+    const step = viewStepDays();
+    ensureRangeFetched(addDays(monday, step)).catch(() => {});
+    ensureRangeFetched(addDays(monday, -step)).catch(() => {});
+    if (first) showApp();
+    setStatus(msg, '');
+    setStatus(ttMsg, '');
   } catch (e) {
     Haptic.error();
     if (first) setStatus(msg, `Fehler: ${escapeHtml(e.message)}`, true);
     else setStatus(ttMsg, `Fehler: ${escapeHtml(e.message)}`, true);
-  } finally { $('#loginBtn').disabled = false; setNavDisabled(false); }
+  } finally {
+    $('#loginBtn').disabled = false;
+  }
 }
 
-function renderWeek(lessons, monday) {
+// ============================================================
+// GRID RENDERING — split into pure functions so each carousel page
+// renders from its own data without touching globals. The legacy
+// renderWeek(lessons, monday) name is kept as a cache-syncing wrapper
+// for backwards compatibility with all the "rerender after action"
+// callsites (casino toggle, sound toggle, bet outcome, etc.).
+// ============================================================
+
+// Build the grid markup for one range and inject it into an arbitrary
+// .week-grid element. NO globals are touched.
+function renderWeekIntoGrid(gridEl, lessons, monday) {
+  if (!gridEl) return;
   monday = normalizeRangeStart(monday);
-  lastLessons = lessons; lastMonday = monday;
   const today = new Date();
   const allLessons = Array.isArray(lessons) ? lessons : [];
   for (const l of allLessons) l._status = getLessonStatus(l);
@@ -3994,37 +4175,17 @@ function renderWeek(lessons, monday) {
   const visibleDates = new Set(days.map(untisDateInt));
   const visibleLessons = allLessons.filter(l => visibleDates.has(Number(l.date)));
 
-  $('#lessonCount').textContent = visibleLessons.length;
-  $('#supplCount').textContent = '07:00';
-  $('#cancelCount').textContent = 'Heute';
-
-  const rangeEnd = days[days.length - 1];
-  $('#weekLabel').textContent = viewMode === 'day'
-    ? days[0].toLocaleDateString('de-AT', { weekday:'long' })
-    : `KW ${isoWeekNumber(days[0])}`;
-  $('#weekRange').textContent = viewMode === 'day'
-    ? `${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} · KW ${isoWeekNumber(days[0])}`
-    : `${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} – ${rangeEnd.toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} · KW ${isoWeekNumber(days[0])}`;
-  const planSubEl = $('#planSub');
-  if (planSubEl) {
-    planSubEl.textContent = viewMode === 'day'
-      ? `${days[0].toLocaleDateString('de-AT', { weekday:'long', day:'2-digit', month:'short' })}`
-      : `KW ${isoWeekNumber(days[0])} · ${days[0].toLocaleDateString('de-AT', { day:'2-digit', month:'short' })} – ${rangeEnd.toLocaleDateString('de-AT', { day:'2-digit', month:'short' })}`;
-  }
-
-  const grid = $('#weekGrid');
-  grid.classList.toggle('compact', viewMode === 'week');
-  // Week mode: 5 equal columns that ALWAYS fit the viewport (minmax(0,1fr)
-  // lets columns shrink below their content width, so no horizontal scroll).
-  grid.style.gridTemplateColumns = viewMode === 'day'
+  gridEl.classList.toggle('compact', viewMode === 'week');
+  gridEl.style.gridTemplateColumns = viewMode === 'day'
     ? '50px minmax(220px, 1fr)'
     : '32px repeat(5, minmax(0, 1fr))';
+
   if (visibleLessons.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1 / -1;" class="empty">Keine Stunden in dieser Ansicht<small>Anderen Tag wählen oder weiter navigieren.</small></div>`;
+    gridEl.innerHTML = `<div style="grid-column: 1 / -1;" class="empty">Keine Stunden in dieser Ansicht<small>Anderen Tag wählen oder weiter navigieren.</small></div>`;
     return;
   }
 
-  const slots = [...new Set(visibleLessons.map(l => l.startTime))].sort((a,b)=>a-b);
+  const slots = [...new Set(visibleLessons.map(l => l.startTime))].sort((a, b) => a - b);
   const buckets = {};
   for (const l of visibleLessons) {
     const k = `${l.date}-${l.startTime}`;
@@ -4034,9 +4195,9 @@ function renderWeek(lessons, monday) {
   let html = '<div class="gh-corner"></div>';
   for (const day of days) {
     const t = sameDay(day, today);
-    html += `<div class="day-header ${t?'today':''}">
-      <div class="wd">${day.toLocaleDateString('de-AT',{weekday:'short'})}</div>
-      <div class="dt">${pad(day.getDate())}.${pad(day.getMonth()+1)}.</div>
+    html += `<div class="day-header ${t ? 'today' : ''}">
+      <div class="wd">${day.toLocaleDateString('de-AT', { weekday: 'short' })}</div>
+      <div class="dt">${pad(day.getDate())}.${pad(day.getMonth() + 1)}.</div>
     </div>`;
   }
   for (const slot of slots) {
@@ -4050,17 +4211,57 @@ function renderWeek(lessons, monday) {
       const t = sameDay(day, today);
       const dk = untisDateInt(day);
       const cell = buckets[`${dk}-${slot}`] || [];
-      html += `<div class="slot ${t?'day-col-today':''}">${cell.map(renderCard).join('')}</div>`;
+      html += `<div class="slot ${t ? 'day-col-today' : ''}">${cell.map(renderCard).join('')}</div>`;
     }
   }
-  grid.innerHTML = html;
-  if (pendingSwipeDir) {
-    const cls = pendingSwipeDir === 'right' ? 'swipe-from-right' : 'swipe-from-left';
-    pendingSwipeDir = null;
-    grid.classList.remove('swipe-from-right', 'swipe-from-left');
-    void grid.offsetWidth;
-    grid.classList.add(cls);
-    grid.addEventListener('animationend', () => grid.classList.remove(cls), { once: true });
+  gridEl.innerHTML = html;
+}
+
+// Updates the header chrome above the pager (lesson count, KW label,
+// date range, planSub). Only ever reflects the *centered* range.
+function updateRangeHeader(monday, lessons) {
+  monday = normalizeRangeStart(monday);
+  const allLessons = Array.isArray(lessons) ? lessons : [];
+  const days = [];
+  for (let i = 0; i < currentViewDays(); i++) days.push(addDays(monday, i));
+  const visibleDates = new Set(days.map(untisDateInt));
+  const visibleLessons = allLessons.filter(l => visibleDates.has(Number(l.date)));
+
+  $('#lessonCount').textContent = visibleLessons.length;
+  $('#supplCount').textContent = '07:00';
+  $('#cancelCount').textContent = 'Heute';
+
+  const rangeEnd = days[days.length - 1];
+  $('#weekLabel').textContent = viewMode === 'day'
+    ? days[0].toLocaleDateString('de-AT', { weekday: 'long' })
+    : `KW ${isoWeekNumber(days[0])}`;
+  $('#weekRange').textContent = viewMode === 'day'
+    ? `${days[0].toLocaleDateString('de-AT', { day: '2-digit', month: 'short' })} · KW ${isoWeekNumber(days[0])}`
+    : `${days[0].toLocaleDateString('de-AT', { day: '2-digit', month: 'short' })} – ${rangeEnd.toLocaleDateString('de-AT', { day: '2-digit', month: 'short' })} · KW ${isoWeekNumber(days[0])}`;
+  const planSubEl = $('#planSub');
+  if (planSubEl) {
+    planSubEl.textContent = viewMode === 'day'
+      ? `${days[0].toLocaleDateString('de-AT', { weekday: 'long', day: '2-digit', month: 'short' })}`
+      : `KW ${isoWeekNumber(days[0])} · ${days[0].toLocaleDateString('de-AT', { day: '2-digit', month: 'short' })} – ${rangeEnd.toLocaleDateString('de-AT', { day: '2-digit', month: 'short' })}`;
+  }
+}
+
+// Back-compat wrapper. Existing callsites pass `(lastLessons, lastMonday)`
+// to force a re-render after a state change (casino toggle, bet result,
+// etc). Sync the data into the cache so the carousel re-renders all
+// three visible pages with the fresh data.
+function renderWeek(lessons, monday) {
+  monday = normalizeRangeStart(monday);
+  lastLessons = lessons;
+  lastMonday = monday;
+  // Mirror into the cache (no fetch state change).
+  putRangeInCache(monday, viewMode, { lessons: Array.isArray(lessons) ? lessons : [] });
+  if (planCarousel) {
+    planCarousel.refresh();
+  } else {
+    // Pre-init fallback — render directly into the static grid.
+    renderWeekIntoGrid($('#weekGrid'), lessons, monday);
+    updateRangeHeader(monday, lessons);
   }
 }
 
@@ -4177,7 +4378,15 @@ $('#logoutBtn').addEventListener('click', () => {
 });
 $('#prevBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); navigateRange('left'); });
 $('#nextBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); navigateRange('right'); });
-$('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = normalizeRangeStart(new Date()); fetchWeek(currentMonday); });
+$('#todayBtn').addEventListener('click', () => {
+  Sound.tap(); Haptic.select();
+  const today = normalizeRangeStart(new Date());
+  // If we're already centered on today's range, do nothing (avoids
+  // a no-op fetch + re-render).
+  if (rangeKey(viewMode, today) === rangeKey(viewMode, currentMonday)) return;
+  if (planCarousel) planCarousel.snapToMonday(today);
+  if (creds) fetchWeek(today);
+});
 $$('#viewToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
     Sound.tap(); Haptic.select();
@@ -4227,8 +4436,10 @@ $$('.dock-btn').forEach(btn => {
 let swipeStart = null;
 appView.addEventListener('touchstart', (e) => {
   if (e.touches.length !== 1) { swipeStart = null; return; }
-  // Ignore swipes that originate inside scrollable / interactive regions
-  if (e.target.closest('.week-grid, .modal-card, .dock, .reels, .reel, input, button.app-switch')) { swipeStart = null; return; }
+  // Ignore swipes that originate inside scrollable / interactive regions.
+  // .plan-pager owns its own horizontal navigation, so it must not also
+  // trigger tab changes.
+  if (e.target.closest('.plan-pager, .week-grid, .modal-card, .dock, .reels, .reel, input, button.app-switch')) { swipeStart = null; return; }
   const t = e.touches[0];
   swipeStart = { x: t.clientX, y: t.clientY, t: Date.now() };
 }, { passive: true });
@@ -4249,31 +4460,394 @@ appView.addEventListener('touchend', (e) => {
   setTab(TAB_NAMES[nextIdx]);
 }, { passive: true });
 
-// ===== Day/Week grid swipe navigation (prev/next range) =====
-(function setupGridSwipe(){
-  const grid = $('#weekGrid');
-  if (!grid) return;
-  let sx = 0, sy = 0, st = 0, tracking = false;
-  grid.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) { tracking = false; return; }
-    if (e.target.closest('.lesson-card, .bet-overlay, button')) { tracking = false; return; }
+// ============================================================
+// PLAN CAROUSEL — native-style infinite swipe controller
+// ------------------------------------------------------------
+// Three .week-grid "pages" (prev / current / next) live inside a
+// horizontally-translated track. The center page keeps its
+// existing DOM identity (#weekGrid) so all legacy click handlers
+// and selectors continue to work. Pages never swap DOM nodes — we
+// recycle by re-rendering content into the three fixed slots when
+// the centered range changes.
+//
+// Touch input is tracked live via `touchmove` with translate3d
+// writes (no rAF during drag — direct property writes are faster
+// and don't add a frame of latency). On release, an rAF spring
+// runs the snap with proper momentum and is fully interruptible:
+// a fresh touchstart cancels in-flight animation and captures
+// the current visual offset.
+//
+// Adjacent ranges are prefetched on every commit so subsequent
+// swipes resolve from cache without a fetch.
+// ============================================================
+let planCarousel = null;
+
+class PlanCarousel {
+  constructor(rootEl, trackEl) {
+    this.root = rootEl;
+    this.track = trackEl;
+    this.pages = {
+      prev: trackEl.querySelector('.plan-pager-page[data-slot="prev"]'),
+      current: trackEl.querySelector('.plan-pager-page[data-slot="current"]'),
+      next: trackEl.querySelector('.plan-pager-page[data-slot="next"]'),
+    };
+    this.grids = {
+      prev: this.pages.prev.querySelector('.week-grid'),
+      current: this.pages.current.querySelector('.week-grid'),
+      next: this.pages.next.querySelector('.week-grid'),
+    };
+
+    // Current horizontal offset (px) relative to the "centered" baseline.
+    // 0 = current page centered; +pageW = prev page centered; -pageW = next.
+    this.x = 0;
+    this.velocity = 0;
+    this.pageW = 0;
+
+    // Drag state
+    this.activeTouchId = null;
+    this.dragging = false;
+    this.committed = false; // committed to horizontal axis after threshold
+    this.startX = 0;
+    this.startY = 0;
+    this.startOffset = 0;
+    this.samples = []; // {x, t} ring buffer for velocity estimation
+    this.lastT = 0;
+
+    // Animation state
+    this.rafId = null;
+    this.pendingCommit = null; // direction (+1/-1) to commit on settle
+
+    // Spring constants (tuned for iOS-like feel)
+    this.STIFFNESS = 240;
+    this.DAMPING = 32;
+    this.MIN_VELOCITY_TO_COMMIT = 380; // px/s
+    this.DISTANCE_RATIO_TO_COMMIT = 0.20;
+    this.DIRECTIONAL_THRESHOLD = 8; // px before we lock to horizontal axis
+
+    this._measure();
+    this._attachEvents();
+    this._applyTransform();
+  }
+
+  // -------- Geometry --------
+  _measure() {
+    // Each page is 33.333% of the track which is 300% wide → one page
+    // width equals the visible root width.
+    this.pageW = this.root.clientWidth || this.track.clientWidth / 3;
+  }
+
+  _applyTransform() {
+    // Track baseline is -33.333% (centers slot "current"). Add px offset.
+    const px = -this.pageW + this.x;
+    this.track.style.transform = `translate3d(${px}px, 0, 0)`;
+  }
+
+  _setSnapping(on) {
+    this.track.classList.toggle('is-snapping', !!on);
+  }
+
+  // -------- Public API --------
+
+  // Recompute layout (call on viewport changes / mode toggles).
+  measure() { this._measure(); this._applyTransform(); }
+
+  // Render content for all three slots based on currentMonday +
+  // viewMode + rangeCache. Updates the page header to reflect the
+  // centered slot. Triggers prefetches for empty neighbours.
+  refresh() {
+    const step = viewStepDays();
+    const slots = [
+      { slot: 'prev', monday: addDays(currentMonday, -step) },
+      { slot: 'current', monday: currentMonday },
+      { slot: 'next', monday: addDays(currentMonday, step) },
+    ];
+    for (const { slot, monday } of slots) {
+      const cached = getRangeFromCache(monday);
+      const lessons = cached?.lessons || [];
+      const gridEl = this.grids[slot];
+      renderWeekIntoGrid(gridEl, lessons, monday);
+      // Loading shimmer while data is in-flight and no cached fallback.
+      const isLoading = !cached || (!cached.lessons && cached.fetching);
+      gridEl.classList.toggle('is-loading', !!isLoading);
+    }
+    // Sync legacy globals + header from the centered range.
+    const centerCached = getRangeFromCache(currentMonday);
+    const centerLessons = centerCached?.lessons || [];
+    lastLessons = centerLessons;
+    lastMonday = normalizeRangeStart(currentMonday);
+    if (centerCached) {
+      // Mirror tab data if present
+      if (centerCached.homeworks) lastHomeworks = centerCached.homeworks;
+      if (centerCached.homeworkLessons) lastHomeworkLessons = centerCached.homeworkLessons;
+      if (centerCached.absences) lastAbsences = centerCached.absences;
+      if (centerCached.exams) lastExams = centerCached.exams;
+    }
+    updateRangeHeader(currentMonday, centerLessons);
+  }
+
+  // Called when a fetch completes for a specific range. If that range
+  // is one of the three visible slots, re-render just that page in
+  // place (no full refresh, no jank).
+  notifyRangeUpdate(monday, mode) {
+    if (mode !== viewMode) return;
+    const step = viewStepDays();
+    const slotMap = {
+      prev: addDays(currentMonday, -step),
+      current: currentMonday,
+      next: addDays(currentMonday, step),
+    };
+    const targetKey = rangeKey(mode, monday);
+    for (const slot of Object.keys(slotMap)) {
+      if (rangeKey(mode, slotMap[slot]) === targetKey) {
+        const cached = getRangeFromCache(slotMap[slot]);
+        const lessons = cached?.lessons || [];
+        renderWeekIntoGrid(this.grids[slot], lessons, slotMap[slot]);
+        this.grids[slot].classList.remove('is-loading');
+        if (slot === 'current') {
+          lastLessons = lessons;
+          lastMonday = normalizeRangeStart(slotMap[slot]);
+          updateRangeHeader(slotMap[slot], lessons);
+        }
+      }
+    }
+  }
+
+  // Programmatic snap to a specific range (used by login,
+  // todayBtn, view-mode toggle). No animation — content swaps in
+  // place at the current baseline.
+  snapToMonday(monday) {
+    this._cancelAnim();
+    this.x = 0;
+    this.velocity = 0;
+    this._setSnapping(false);
+    this._applyTransform();
+    currentMonday = normalizeRangeStart(monday);
+    this.refresh();
+    this._prefetchNeighbours();
+  }
+
+  // Programmatic navigation: animate one page over in the requested
+  // direction (+1 = next, -1 = prev). Cancels any in-flight drag.
+  navigate(direction) {
+    if (direction !== 1 && direction !== -1) return;
+    if (this.dragging) return; // ignore while user is dragging
+    this._cancelAnim();
+    // Animate to ±pageW. After settle, commit and reset.
+    const targetX = -direction * this.pageW;
+    this.pendingCommit = direction;
+    this._springTo(targetX, this.velocity);
+  }
+
+  // -------- Internal: animation --------
+
+  _springTo(targetX, initialVelocity) {
+    this._cancelAnim();
+    this.velocity = initialVelocity || 0;
+    this.lastT = performance.now();
+    const step = (now) => {
+      const dt = Math.min(0.048, (now - this.lastT) / 1000);
+      this.lastT = now;
+      const dx = targetX - this.x;
+      // Critically-damped spring acceleration
+      const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
+      this.velocity += accel * dt;
+      this.x += this.velocity * dt;
+      this._applyTransform();
+      // Settle
+      if (Math.abs(dx) < 0.4 && Math.abs(this.velocity) < 25) {
+        this.x = targetX;
+        this.velocity = 0;
+        this._applyTransform();
+        this.rafId = null;
+        this._onSettle();
+        return;
+      }
+      this.rafId = requestAnimationFrame(step);
+    };
+    this.rafId = requestAnimationFrame(step);
+  }
+
+  _cancelAnim() {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+
+  _onSettle() {
+    if (this.pendingCommit) {
+      const dir = this.pendingCommit;
+      this.pendingCommit = null;
+      this._commit(dir);
+    }
+  }
+
+  // After a successful swipe, advance `currentMonday` by one step
+  // in the swiped direction and re-render all three pages. Reset
+  // the visual offset to baseline atomically (no flash).
+  _commit(direction) {
+    const step = direction * viewStepDays();
+    currentMonday = addDays(currentMonday, step);
+    Haptic.light();
+    // Reset offset and re-render. Disable any active CSS transition
+    // so the reset is instantaneous.
+    this._setSnapping(false);
+    this.x = 0;
+    this.velocity = 0;
+    this._applyTransform();
+    this.refresh();
+    this._prefetchNeighbours();
+  }
+
+  _prefetchNeighbours() {
+    if (!creds) return;
+    const step = viewStepDays();
+    ensureRangeFetched(currentMonday).catch(() => {});
+    ensureRangeFetched(addDays(currentMonday, step)).catch(() => {});
+    ensureRangeFetched(addDays(currentMonday, -step)).catch(() => {});
+  }
+
+  // -------- Internal: input --------
+
+  _attachEvents() {
+    // Touch — primary mobile path.
+    this.root.addEventListener('touchstart', (e) => this._onPointerDown(e), { passive: true });
+    this.root.addEventListener('touchmove', (e) => this._onPointerMove(e), { passive: false });
+    this.root.addEventListener('touchend', (e) => this._onPointerUp(e), { passive: true });
+    this.root.addEventListener('touchcancel', (e) => this._onPointerUp(e), { passive: true });
+
+    // Resize → re-measure (CSS handles the layout, we just keep px math in sync).
+    window.addEventListener('resize', () => this.measure(), { passive: true });
+    window.addEventListener('orientationchange', () => {
+      // Run after the browser settles the new viewport.
+      setTimeout(() => this.measure(), 60);
+    }, { passive: true });
+  }
+
+  _shouldIgnoreTouch(target) {
+    if (!target) return false;
+    return !!target.closest('.lesson-card, .bet-overlay, button, a, input, textarea, select, .modal-card, .reels, .reel');
+  }
+
+  _onPointerDown(e) {
+    if (e.touches.length !== 1) return;
     const t = e.touches[0];
-    sx = t.clientX; sy = t.clientY; st = Date.now();
-    tracking = true;
-  }, { passive: true });
-  grid.addEventListener('touchend', (e) => {
-    if (!tracking) return;
-    tracking = false;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx;
-    const dy = t.clientY - sy;
-    const dt = Date.now() - st;
-    if (dt > 600) return;
-    if (Math.abs(dy) > 60) return;
-    if (Math.abs(dx) < 50) return;
-    Haptic.light(); Sound.tap();
-    navigateRange(dx < 0 ? 'right' : 'left');
-  }, { passive: true });
+    if (this._shouldIgnoreTouch(t.target)) return;
+
+    // Defensive: re-measure on every gesture start in case layout
+    // changed silently (rotation, font-size change, hide/show).
+    this._measure();
+
+    // Interrupt any in-flight animation and adopt the current x as start.
+    // We intentionally do NOT clear pendingCommit here — if the user
+    // touches and releases without dragging further, we want the
+    // original swipe to still commit (iOS Calendar style).
+    this._cancelAnim();
+    this._setSnapping(false);
+
+    this.activeTouchId = t.identifier;
+    this.dragging = true;
+    this.committed = false;
+    this.startX = t.clientX;
+    this.startY = t.clientY;
+    this.startOffset = this.x;
+    this.samples = [{ x: t.clientX, t: performance.now() }];
+  }
+
+  _onPointerMove(e) {
+    if (!this.dragging) return;
+    let touch = null;
+    for (let i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier === this.activeTouchId) { touch = e.touches[i]; break; }
+    }
+    if (!touch) return;
+    const dx = touch.clientX - this.startX;
+    const dy = touch.clientY - this.startY;
+
+    if (!this.committed) {
+      // First few pixels — decide: horizontal swipe or vertical scroll?
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (absY > absX && absY > this.DIRECTIONAL_THRESHOLD) {
+        // Vertical scroll wins — release control entirely.
+        this.dragging = false;
+        return;
+      }
+      if (absX < this.DIRECTIONAL_THRESHOLD) return;
+      this.committed = true;
+    }
+
+    // Once committed, take ownership: prevent vertical scroll AND any
+    // ancestor swipe handler from interfering.
+    if (e.cancelable) e.preventDefault();
+
+    this.x = this.startOffset + dx;
+    this._applyTransform();
+
+    // Track recent samples for velocity estimation.
+    const now = performance.now();
+    this.samples.push({ x: touch.clientX, t: now });
+    if (this.samples.length > 6) this.samples.shift();
+  }
+
+  _onPointerUp(e) {
+    if (!this.dragging) return;
+    this.dragging = false;
+    if (!this.committed) {
+      // Tap without horizontal drag. If we interrupted an in-flight
+      // spring (pendingCommit set or visual offset non-zero), resume
+      // the appropriate target instead of leaving the page stranded.
+      if (this.pendingCommit) {
+        this._springTo(-this.pendingCommit * this.pageW, 0);
+      } else if (Math.abs(this.x) > 0.5) {
+        this._springTo(0, 0);
+      }
+      return;
+    }
+    this.committed = false;
+
+    // Velocity from last 80ms of samples
+    const now = performance.now();
+    let v = 0;
+    if (this.samples.length >= 2) {
+      let oldest = this.samples[0];
+      for (let i = this.samples.length - 1; i >= 0; i--) {
+        if (now - this.samples[i].t > 80) { oldest = this.samples[i]; break; }
+      }
+      const last = this.samples[this.samples.length - 1];
+      const dt = (last.t - oldest.t) / 1000;
+      if (dt > 0) v = (last.x - oldest.x) / dt;
+    }
+
+    // Decide commit:
+    //   - x past distance ratio threshold → commit in that direction
+    //   - OR velocity past threshold → commit by velocity sign
+    //   - else snap back to center
+    let direction = 0;
+    const ratio = this.pageW > 0 ? this.x / this.pageW : 0;
+    if (ratio > this.DISTANCE_RATIO_TO_COMMIT || v > this.MIN_VELOCITY_TO_COMMIT) direction = -1;
+    else if (ratio < -this.DISTANCE_RATIO_TO_COMMIT || v < -this.MIN_VELOCITY_TO_COMMIT) direction = +1;
+
+    if (direction !== 0) {
+      this.pendingCommit = direction;
+      this._springTo(-direction * this.pageW, v);
+      Sound.tap();
+    } else {
+      // The user pulled back below the commit threshold — explicitly
+      // cancel any pendingCommit carried over from an interrupted spring.
+      this.pendingCommit = null;
+      this._springTo(0, v);
+    }
+  }
+}
+
+(function initPlanCarousel() {
+  const root = document.getElementById('planPager');
+  const track = document.getElementById('planPagerTrack');
+  if (!root || !track) return;
+  planCarousel = new PlanCarousel(root, track);
+  // Initial paint from whatever's in the cache (likely empty until login).
+  planCarousel.refresh();
 })();
 
 // ===== Dock swipe-drag navigation (touch only — desktop click stays) =====
