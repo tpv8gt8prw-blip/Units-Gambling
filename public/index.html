@@ -3914,6 +3914,14 @@ function normalizeRangeStart(date, mode = viewMode) {
 function getRangeEnd(start) {
   return addDays(start, currentViewDays() - 1);
 }
+// Optimistic navigation: animate + render immediately from cache, fetch in background.
+function navigateRange(dir) {
+  const step = dir === 'right' ? viewStepDays() : -viewStepDays();
+  currentMonday = addDays(currentMonday, step);
+  pendingSwipeDir = dir;
+  if (lastLessons) renderWeek(lastLessons, currentMonday);
+  if (creds) fetchWeek(currentMonday);
+}
 function updateViewToggle() {
   $$('#viewToggle button').forEach(btn => {
     const active = btn.dataset.view === viewMode;
@@ -4167,8 +4175,8 @@ $('#logoutBtn').addEventListener('click', () => {
   showLogin();
   setStatus(msg, '');
 });
-$('#prevBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); pendingSwipeDir = 'left'; currentMonday = addDays(currentMonday, -viewStepDays()); fetchWeek(currentMonday); });
-$('#nextBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); pendingSwipeDir = 'right'; currentMonday = addDays(currentMonday, viewStepDays()); fetchWeek(currentMonday); });
+$('#prevBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); navigateRange('left'); });
+$('#nextBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); navigateRange('right'); });
 $('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); currentMonday = normalizeRangeStart(new Date()); fetchWeek(currentMonday); });
 $$('#viewToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -4264,9 +4272,7 @@ appView.addEventListener('touchend', (e) => {
     if (Math.abs(dy) > 60) return;
     if (Math.abs(dx) < 50) return;
     Haptic.light(); Sound.tap();
-    if (dx < 0) { pendingSwipeDir = 'right'; currentMonday = addDays(currentMonday, viewStepDays()); }
-    else        { pendingSwipeDir = 'left';  currentMonday = addDays(currentMonday, -viewStepDays()); }
-    fetchWeek(currentMonday);
+    navigateRange(dx < 0 ? 'right' : 'left');
   }, { passive: true });
 })();
 
