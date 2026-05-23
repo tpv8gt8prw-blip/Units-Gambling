@@ -483,26 +483,32 @@
     overflow: hidden;
     border-radius: var(--r-xl);
     box-shadow: var(--shadow);
+    /* Let the browser claim vertical scroll instantly; horizontal pointer
+       moves come straight to us (no gesture-detection delay). */
+    touch-action: pan-y;
   }
-  .grid-stage > .week-grid { box-shadow: none; }
   .grid-stage > .week-grid {
-    transition: transform 300ms ease-out, opacity 300ms ease-out;
+    box-shadow: none;
+    transition: transform 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 300ms ease-out;
+    transform: translate3d(0, 0, 0);
     will-change: transform, opacity;
+    backface-visibility: hidden;
   }
-  /* The outgoing grid lifts out of flow so the incoming grid takes its layout slot. */
+  /* Outgoing lifts out of flow so the incoming grid takes its layout slot. */
   .grid-stage > .week-grid.is-outgoing {
     position: absolute;
     top: 0; left: 0; right: 0;
     pointer-events: none;
   }
-  /* Pre-transition staging (no transition yet — applied before the rAF). */
-  .grid-stage > .week-grid.enter-from-right { transform: translateX(100%); opacity: 0; transition: none; }
-  .grid-stage > .week-grid.enter-from-left  { transform: translateX(-100%); opacity: 0; transition: none; }
-  /* Active = final state for incoming (transition kicks in once class swap happens). */
-  .grid-stage > .week-grid.is-active        { transform: translateX(0); opacity: 1; }
-  /* Final state for outgoing. */
-  .grid-stage > .week-grid.exit-to-left     { transform: translateX(-100%); opacity: 0; }
-  .grid-stage > .week-grid.exit-to-right    { transform: translateX(100%); opacity: 0; }
+  /* Pre-transition staging (no transition yet — applied before the rAF flip). */
+  .grid-stage > .week-grid.enter-from-right { transform: translate3d(100%, 0, 0); opacity: 0; transition: none; }
+  .grid-stage > .week-grid.enter-from-left  { transform: translate3d(-100%, 0, 0); opacity: 0; transition: none; }
+  /* Final states. */
+  .grid-stage > .week-grid.is-active        { transform: translate3d(0, 0, 0); opacity: 1; }
+  .grid-stage > .week-grid.exit-to-left     { transform: translate3d(-100%, 0, 0); opacity: 0; }
+  .grid-stage > .week-grid.exit-to-right    { transform: translate3d(100%, 0, 0); opacity: 0; }
+  /* While the finger is dragging, kill the transition so motion follows the pointer 1:1. */
+  .grid-stage > .week-grid.is-dragging { transition: none !important; }
 
   .swipe-hint {
     text-align: center;
@@ -4073,34 +4079,65 @@ function commitGridHtml(html) {
 /* Synchronized two-layer crossfade. The current grid becomes "outgoing"
    (absolute, lifted out of flow), a fresh clone slots into its layout
    place pre-positioned off-screen. One rAF later, both classes flip so
-   their CSS transitions on transform+opacity run in parallel. */
+   their CSS transitions on transform+opacity run in parallel.
+
+   If the navigation was triggered by a live drag, the outgoing grid is
+   already mid-translate from finger tracking — we continue its motion to
+   off-screen via inline transition so there's no visible snap. */
+let pendingDragOffset = null; // px — set by the live drag handler before navigateRange
 function performCrossfade(direction, newHtml) {
   const stage = $('#gridStage');
   const oldGrid = $('#weekGrid');
   if (!stage || !oldGrid) return;
 
-  // Strip any prior in-flight transition state.
   stage.querySelectorAll('.week-grid.is-outgoing').forEach(n => n.remove());
 
-  const newGrid = oldGrid.cloneNode(false); // attributes incl. inline grid-template-columns
-  newGrid.id = 'weekGrid';
-  newGrid.innerHTML = newHtml;
-  newGrid.classList.remove('is-outgoing', 'is-active', 'enter-from-right', 'enter-from-left', 'exit-to-left', 'exit-to-right');
-  newGrid.classList.add(direction === 'next' ? 'enter-from-right' : 'enter-from-left');
+  const dragOffset = pendingDragOffset;
+  pendingDragOffset = null;
+  const stageW = stage.offsetWidth || window.innerWidth;
+  const oldH = oldGrid.offsetHeight;
 
-  // Lift the old grid out of flow so the new one drops into its slot.
+  const newGrid = oldGrid.cloneNode(false);
+  newGrid.id = 'weekGrid';
+  // Wipe any drag-state inline styles inherited from the clone (grid-template-columns is preserved).
+  newGrid.style.transform = '';
+  newGrid.style.opacity = '';
+  newGrid.style.transition = '';
+  newGrid.style.willChange = '';
+  newGrid.style.height = '';
+  newGrid.classList.remove('is-outgoing', 'is-active', 'is-dragging', 'enter-from-right', 'enter-from-left', 'exit-to-left', 'exit-to-right');
+  newGrid.classList.add(direction === 'next' ? 'enter-from-right' : 'enter-from-left');
+  newGrid.innerHTML = newHtml;
+
   oldGrid.removeAttribute('id');
-  oldGrid.style.height = oldGrid.offsetHeight + 'px';
+  oldGrid.classList.remove('is-dragging');
+  oldGrid.style.height = oldH + 'px';
   oldGrid.classList.add('is-outgoing');
+
+  if (dragOffset != null) {
+    // Continue from the dragged position via inline transition.
+    const target = direction === 'next' ? -stageW : stageW;
+    oldGrid.style.transform = `translate3d(${dragOffset}px, 0, 0)`;
+    oldGrid.style.opacity = String(Math.max(0.4, 1 - Math.abs(dragOffset) / stageW));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      oldGrid.style.transition = 'transform 260ms cubic-bezier(0.25, 1, 0.5, 1), opacity 260ms ease-out';
+      oldGrid.style.transform = `translate3d(${target}px, 0, 0)`;
+      oldGrid.style.opacity = '0';
+    }));
+  } else {
+    oldGrid.style.transform = '';
+    oldGrid.style.opacity = '';
+    oldGrid.style.transition = '';
+  }
 
   stage.insertBefore(newGrid, oldGrid);
 
-  // Double rAF guarantees the browser registers the "from" state before
-  // we flip to the "to" state, so the transition actually runs.
   requestAnimationFrame(() => requestAnimationFrame(() => {
     newGrid.classList.remove('enter-from-right', 'enter-from-left');
     newGrid.classList.add('is-active');
-    oldGrid.classList.add(direction === 'next' ? 'exit-to-left' : 'exit-to-right');
+    if (dragOffset == null) {
+      oldGrid.classList.add(direction === 'next' ? 'exit-to-left' : 'exit-to-right');
+    }
   }));
 
   let cleaned = false;
@@ -4111,7 +4148,7 @@ function performCrossfade(direction, newHtml) {
     newGrid.classList.remove('is-active');
   };
   newGrid.addEventListener('transitionend', finish, { once: true });
-  setTimeout(finish, 450);
+  setTimeout(finish, 500);
 }
 
 function renderCard(l) {
@@ -4235,48 +4272,119 @@ function navigateRange(direction) {
 $('#todayBtn').addEventListener('click', () => { Sound.tap(); Haptic.select(); pendingSwipeAnim = null; currentMonday = normalizeRangeStart(new Date()); fetchWeek(currentMonday); });
 
 /* ============================================================
-   SWIPE NAVIGATION — primary navigation now that prev/next buttons are gone.
-   Attached to the stable #gridStage so swap-out of #weekGrid doesn't unbind.
+   LIVE SWIPE NAVIGATION (Pointer Events)
+   - touch-action: pan-y on the stage eliminates the gesture-detection delay,
+     so the very first pointermove already moves the grid.
+   - The current grid follows the finger 1:1 (inline translate3d).
+   - On release: commit (continue slide + crossfade) or spring back to 0.
 ============================================================ */
 (function setupPlanSwipe() {
   const stage = $('#gridStage');
   if (!stage) return;
-  const THRESHOLD_PX = 60;   // deliberate swipe
-  const FLICK_PX = 30;       // fast flick minimum
-  const FLICK_MS = 320;      // fast flick max duration
-  const H_BIAS = 1.3;        // horizontal must clearly dominate vertical
+  const COMMIT_PX = 70;        // distance to commit a navigation
+  const COMMIT_VELOCITY = 0.5; // px/ms — flick threshold
+  const H_BIAS = 1.3;          // horizontal must clearly dominate vertical
+  const AXIS_LOCK_PX = 6;      // minimum movement before axis is decided
 
-  let sx = 0, sy = 0, st = 0, tracking = false, axis = null;
+  let pid = null;
+  let sx = 0, sy = 0, st = 0;
+  let axis = null;
+  let dragging = false;
+  let active = null;
+  let stageW = 0;
+  let suppressClickUntil = 0;
 
-  stage.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) { tracking = false; return; }
-    const t = e.touches[0];
-    sx = t.clientX; sy = t.clientY; st = Date.now();
-    tracking = true; axis = null;
+  const getGrid = () => $('#weekGrid');
+  const clearInline = (el) => {
+    if (!el) return;
+    el.classList.remove('is-dragging');
+    el.style.transition = '';
+    el.style.transform = '';
+    el.style.opacity = '';
+    el.style.willChange = '';
+  };
+
+  function applyDrag(el, dx) {
+    if (!el) return;
+    const w = stageW || 1;
+    const fade = Math.max(0.55, 1 - Math.abs(dx) / (w * 1.8));
+    el.style.transform = `translate3d(${dx}px, 0, 0)`;
+    el.style.opacity = String(fade);
+  }
+
+  function springBack(el) {
+    if (!el) return;
+    el.classList.remove('is-dragging');
+    el.style.transition = 'transform 220ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 220ms ease-out';
+    el.style.transform = 'translate3d(0, 0, 0)';
+    el.style.opacity = '1';
+    const done = () => clearInline(el);
+    el.addEventListener('transitionend', done, { once: true });
+    setTimeout(done, 320);
+  }
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pid = e.pointerId;
+    sx = e.clientX; sy = e.clientY; st = performance.now();
+    axis = null; dragging = false;
+    active = getGrid();
+    stageW = stage.offsetWidth || window.innerWidth;
+    if (active) active.style.willChange = 'transform, opacity';
   }, { passive: true });
 
-  stage.addEventListener('touchmove', (e) => {
-    if (!tracking) return;
-    const t = e.touches[0];
-    const dx = t.clientX - sx, dy = t.clientY - sy;
-    if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-      axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+  stage.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== pid) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!axis) {
+      if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
+      axis = Math.abs(dx) > Math.abs(dy) * H_BIAS ? 'h' : 'v';
+      if (axis === 'h') {
+        dragging = true;
+        try { stage.setPointerCapture(pid); } catch (_) {}
+        if (active) active.classList.add('is-dragging');
+      } else {
+        // Vertical scroll — let go of any will-change we set.
+        if (active) active.style.willChange = '';
+        active = null;
+      }
     }
+    if (dragging && active) applyDrag(active, dx);
   }, { passive: true });
 
-  stage.addEventListener('touchend', (e) => {
-    if (!tracking) return;
-    tracking = false;
-    if (axis !== 'h') return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - st;
-    if (Math.abs(dx) < Math.abs(dy) * H_BIAS) return;
-    const flick = dt < FLICK_MS && Math.abs(dx) > FLICK_PX;
-    if (Math.abs(dx) < THRESHOLD_PX && !flick) return;
+  function endPointer(e, cancelled) {
+    if (e.pointerId !== pid) return;
+    const wasDragging = dragging;
+    const el = active;
+    const dx = e.clientX - sx;
+    const dt = Math.max(1, performance.now() - st);
+    const v = Math.abs(dx) / dt;
+    try { stage.releasePointerCapture(pid); } catch (_) {}
+    pid = null; dragging = false; active = null; axis = null;
+
+    if (!wasDragging) { if (el) el.style.willChange = ''; return; }
+    suppressClickUntil = performance.now() + 350;
+
+    if (cancelled) { springBack(el); return; }
+    const commit = Math.abs(dx) > COMMIT_PX || v > COMMIT_VELOCITY;
+    if (!commit) { springBack(el); return; }
+    // Hand the live offset to performCrossfade so the slide-out continues
+    // seamlessly from where the finger released — no snap, no delay.
+    pendingDragOffset = dx;
     navigateRange(dx < 0 ? 'next' : 'prev');
-  }, { passive: true });
+  }
 
-  stage.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+  stage.addEventListener('pointerup', (e) => endPointer(e, false), { passive: true });
+  stage.addEventListener('pointercancel', (e) => endPointer(e, true), { passive: true });
+
+  // Swallow the synthetic click that fires after a touch-drag so we don't
+  // accidentally open a lesson modal when the user just swiped.
+  stage.addEventListener('click', (e) => {
+    if (performance.now() < suppressClickUntil) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }, true);
 })();
 $$('#viewToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
