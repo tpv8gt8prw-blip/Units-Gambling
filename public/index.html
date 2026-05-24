@@ -1843,20 +1843,19 @@
       0 2px 10px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 32%), transparent);
     transform: translate3d(0, 0, 0);
     transform-origin: center center;
-    /* filter: blur() — value driven by JS via --pill-blur; gives the pill a
-       wet-glass look during peak deformation. saturate lifts colour slightly. */
-    filter: blur(calc(var(--pill-blur) * 1px)) saturate(1.12);
-    will-change: transform, filter;
+    filter: blur(0.3px) saturate(1.1);
+    transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1), width 200ms ease-out, filter 200ms ease-out;
+    will-change: transform;
     contain: layout style;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     z-index: 1;
     overflow: hidden;
   }
-  /* During live gestures / springs the JS drives every frame — no CSS
-     transition needed (it would fight the rAF loop). */
+  /* Scrub/drag only — JS drives transform each frame, slight blur + dim */
   .dock-indicator.is-liquid-active {
     transition: none;
+    filter: blur(0.5px) saturate(1.1);
     will-change: transform, filter;
   }
   /* Specular sheen that rides inside the pill — intensity tied to strain. */
@@ -6068,6 +6067,7 @@ class DockController {
     this._xfBlur = 0;
     this._pillAlpha = 0.42;
     this._lastWidth = 0;
+    this._clickSnapTimer = null;
     this._motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     this._measure();
@@ -6111,11 +6111,39 @@ class DockController {
     return 0.42; // taps + springs: stay fully opaque, no dim/flash
   }
   _applyTransform() {
+    const x = Math.round(this.x);
+    const gesturing = this.scrubbing || this.appSwiping;
+
+    // Click / spring settle: translate only — no scale, skew, or blur morph.
+    if (!gesturing) {
+      const xf = `translate3d(${x}px,0,0)`;
+      if (this._xf !== xf) {
+        this._xf = xf;
+        this.indicator.style.transform = xf;
+      }
+      if (this._xfOrigin !== 'center center') {
+        this._xfOrigin = 'center center';
+        this.indicator.style.transformOrigin = 'center center';
+      }
+      if (this._xfBr !== 18) {
+        this._xfBr = 18;
+        this.indicator.style.borderRadius = '18px';
+      }
+      if (this._xfStrain !== 0) {
+        this._xfStrain = 0;
+        this.indicator.style.setProperty('--pill-strain', '0');
+      }
+      if (this._xfAlpha !== this._pillAlpha) {
+        this._xfAlpha = this._pillAlpha;
+        this.indicator.style.setProperty('--pill-alpha', this._pillAlpha.toFixed(2));
+      }
+      return;
+    }
+
     const { sx, sy, skew, ty, br } = this.liquid;
     const origin = skew < 0 ? 'right center' : skew > 0 ? 'left center' : 'center center';
     const deform = this._liquidDeformAmount();
     const strain = Math.min(1, deform * 3.2);
-    const x = Math.round(this.x);
     const y = Math.round(ty);
     const xf = `translate3d(${x}px,${y}px,0) scale3d(${sx.toFixed(3)},${sy.toFixed(3)},1) skewX(${skew.toFixed(1)}deg)`;
     if (this._xf !== xf) {
@@ -6138,13 +6166,6 @@ class DockController {
     if (this._xfAlpha !== this._pillAlpha) {
       this._xfAlpha = this._pillAlpha;
       this.indicator.style.setProperty('--pill-alpha', this._pillAlpha.toFixed(2));
-    }
-    // Subtle blur peaks at ~0.6px when pill is most deformed — "wet glass" feel.
-    const blur = Math.min(0.65, deform * 1.1);
-    const blurR = Math.round(blur * 100) / 100;
-    if (Math.abs((this._xfBlur || 0) - blurR) > 0.01) {
-      this._xfBlur = blurR;
-      this.indicator.style.setProperty('--pill-blur', blurR);
     }
   }
   _setLiquidActive(on) {
@@ -6226,7 +6247,7 @@ class DockController {
       if (this._liquidDeformAmount() > 0.001) running = true;
       else this._snapLiquidIfIdle();
 
-      this._setLiquidActive(gesturing || !!this._pressPulse || this._springTarget != null);
+      this._setLiquidActive(gesturing);
 
       this._applyTransform();
 
@@ -6262,6 +6283,39 @@ class DockController {
     this._lastWidth = w;
     void this.indicator.offsetWidth; // force reflow
     this.indicator.style.transition = prev;
+  }
+
+  // Tab click: clean CSS snap — no spring, no liquid stretch.
+  _snapClickToTab(idx) {
+    this._cancelMotion();
+    this._stopMotionLoop();
+    Object.assign(this.liquid, this._neutralLiquid());
+    Object.assign(this._liquidTarget, this._neutralLiquid());
+    this._setLiquidActive(false);
+    this._pillAlpha = 0.42;
+    this.indicator.style.setProperty('--pill-alpha', '0.42');
+    this.indicator.style.setProperty('--pill-strain', '0');
+
+    const target = this._xForIdx(idx);
+    const targetW = this._widthForIdx(idx);
+
+    this.indicator.style.transition = 'none';
+    this._applyTransform();
+    void this.indicator.offsetWidth;
+
+    this.indicator.style.transition =
+      'transform 220ms cubic-bezier(0.32, 0.72, 0, 1), width 200ms ease-out, filter 200ms ease-out';
+    this.x = target;
+    this.indicator.style.width = targetW + 'px';
+    this._lastWidth = targetW;
+    this._applyTransform();
+
+    clearTimeout(this._clickSnapTimer);
+    this._clickSnapTimer = setTimeout(() => {
+      if (!this.scrubbing && !this.appSwiping) {
+        this.indicator.style.transition = '';
+      }
+    }, 260);
   }
 
   // ---- spring (unified motion loop) ----
@@ -6331,40 +6385,13 @@ class DockController {
       this._cancelMotion();
       this.x = target;
       this._applyTransform();
+    } else if (!this._motionOk) {
+      this._setWidthInstant(this._widthForIdx(idx));
+      this._cancelMotion();
+      this.x = target;
+      this._applyTransform();
     } else {
-      if (!this._motionOk) {
-        // Reduced-motion: instant jump, no spring.
-        this._setWidthInstant(this._widthForIdx(idx));
-        this._cancelMotion();
-        this.x = target;
-        this._applyTransform();
-        return;
-      }
-
-      // Spring + liquid deformation — pill flows like mercury to new tab.
-      const dir = Math.sign(target - this.x);
-      const dist = Math.abs(target - this.x);
-
-      // Stretch the pill in the direction of travel. The rAF loop will
-      // naturally relax it once the spring settles.
-      if (dist > 4) {
-        // Seed scrub velocity so _feedLiquidMotion gets realistic numbers.
-        this._scrubVel = dir * Math.min(dist * 5.5, 2400);
-        this._feedLiquidMotion(dir * dist, 0.016, Math.min(0.9, dist / 160));
-      }
-
-      // Snap width immediately (the deformation creates the stretch illusion).
-      const targetW = this._widthForIdx(idx);
-      if (this._lastWidth !== targetW) {
-        this.indicator.style.transition = 'none';
-        this.indicator.style.width = targetW + 'px';
-        this._lastWidth = targetW;
-        void this.indicator.offsetWidth;
-        // Re-enable CSS transition for blur/opacity-only properties.
-        this.indicator.style.transition = '';
-      }
-
-      this._springTo(target);
+      this._snapClickToTab(idx);
     }
   }
 
@@ -6452,8 +6479,11 @@ class DockController {
       this._setStyleActive(this.activeIdx);
     }
     this.indicator.style.width = targetW + 'px';
-    this._scrubVel *= 0.18;
-    this._relaxLiquid();
+    this._lastWidth = targetW;
+    this._scrubVel = 0;
+    Object.assign(this.liquid, this._neutralLiquid());
+    Object.assign(this._liquidTarget, this._neutralLiquid());
+    this._setLiquidActive(false);
     this._springTo(targetX);
     this._setDockInteracting(false);
   }
