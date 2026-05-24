@@ -473,10 +473,11 @@
     display: grid; grid-template-columns: 58px repeat(5, minmax(116px, 1fr));
     gap: 1px; background: var(--sep-2);
     border: 1px solid var(--glass-border);
-    border-radius: var(--r-xl); overflow: hidden;
-    box-shadow: var(--shadow);
+    border-radius: var(--r-xl);
     overflow-x: auto;
+    overflow-y: visible;
     overscroll-behavior-x: contain;
+    box-shadow: var(--shadow);
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   }
   /* ============================================================
@@ -489,17 +490,15 @@
   ============================================================ */
   .plan-pager {
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: visible;
     border-radius: var(--r-xl);
     border: 1px solid var(--glass-border);
     background: var(--sep-2);
     box-shadow: var(--shadow);
     overscroll-behavior-x: contain;
-    /* Allow vertical scroll, block horizontal so our JS owns it */
     touch-action: pan-y;
-    contain: layout paint;
-    -webkit-user-select: none;
-    user-select: none;
+    contain: layout;
   }
   .plan-pager-track {
     display: flex;
@@ -869,52 +868,74 @@
   .legend-swatch.cancelled { border-color: var(--cancel); background: var(--cancel-bg); }
   .legend-swatch.ausflug { border-color: var(--blue); background: rgba(0,122,255,0.12); }
 
-  /* Spin wheel (modal) */
+  /* Spin wheel (modal) — clean white theme */
+  #spinWheelModal .modal-card.modal-card-wheel {
+    max-width: 380px;
+    background: #fff;
+    color: #111;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.18);
+    contain: layout style;
+  }
+  #spinWheelModal .modal-card h2,
+  #spinWheelModal .modal-card .sub { color: #111; }
+  #spinWheelModal .modal-card h2 em { color: var(--accent); }
+  #spinWheelModal .pred-form label { color: #666; }
+  #spinWheelModal .pred-form input {
+    background: #f5f5f7;
+    border-color: #e0e0e5;
+    color: #111;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-user-select: text;
+    user-select: text;
+  }
   .wheel-stage {
     position: relative;
-    width: min(240px, 72vw);
-    height: min(240px, 72vw);
+    width: min(260px, 78vw);
+    height: min(260px, 78vw);
     margin: 8px auto 16px;
   }
   .wheel-pointer {
     position: absolute;
-    top: -6px;
+    top: -8px;
     left: 50%;
     transform: translateX(-50%);
     width: 0; height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 18px solid var(--accent);
+    border-left: 11px solid transparent;
+    border-right: 11px solid transparent;
+    border-top: 20px solid #111;
     z-index: 3;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
   }
   .wheel-disk {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    border: 4px solid rgba(255,255,255,0.35);
-    box-shadow: 0 8px 28px rgba(0,0,0,0.18), inset 0 0 0 2px rgba(0,0,0,0.06);
-    background: conic-gradient(
-      #ff3b30 0deg 90deg,
-      #ff9500 90deg 180deg,
-      #ffd60a 180deg 270deg,
-      #30d158 270deg 360deg
-    );
+    border: 4px solid #fff;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(0,0,0,0.06);
+    background:
+      radial-gradient(circle at 50% 50%, #fafafa 0%, #ececef 68%, #e2e2e8 100%),
+      conic-gradient(
+        #F44336 0deg 90deg,
+        #FF9800 90deg 180deg,
+        #2196F3 180deg 270deg,
+        #4CAF50 270deg 360deg
+      );
     will-change: transform;
     transform: rotate(0deg);
   }
   .wheel-disk.is-spinning {
-    animation: wheelSpinFast 0.22s linear infinite;
+    animation: wheelSpinFast 0.18s linear infinite;
   }
   .wheel-disk.is-settling {
     animation: none;
-    transition: transform 3.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: transform 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
   @keyframes wheelSpinFast {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
-  .modal-card.modal-card-wheel { max-width: 380px; }
   .wheel-labels {
     position: absolute;
     inset: 0;
@@ -923,10 +944,10 @@
   }
   .wheel-labels span {
     position: absolute;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
     color: #fff;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.35);
   }
   .wheel-labels .l0 { top: 22%; left: 50%; transform: translate(-50%, -50%); }
   .wheel-labels .l1 { top: 50%; right: 18%; transform: translate(50%, -50%); }
@@ -936,30 +957,79 @@
     text-align: center;
     padding: 12px;
     border-radius: 12px;
-    background: var(--fill);
+    background: #f5f5f7;
     font-weight: 700;
     font-size: 15px;
     margin-top: 10px;
+    color: #333;
   }
-  .spin-status.is-spinning { color: var(--ink-3); }
-  .spin-status.win { background: var(--win-bg); color: var(--win); }
-  .spin-status.lose { background: var(--cancel-bg); color: var(--cancel); }
-  .spin-history {
+  .spin-status.is-spinning { color: #888; }
+  .spin-result-panel {
+    text-align: center;
+    padding: 16px 14px;
+    border-radius: 14px;
+    background: #f5f5f7;
     margin-top: 12px;
-    font-size: 12px;
-    color: var(--ink-3);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    animation: resultBounce 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .spin-history-item {
-    padding: 8px 10px;
-    border-radius: 8px;
-    background: var(--card);
-    border: 0.5px solid var(--border);
+  .spin-result-panel[hidden] { display: none !important; }
+  .spin-result-panel h3 {
+    font-family: var(--ff-r);
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 6px;
+    color: #111;
+  }
+  .spin-result-panel .result-coins {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 4px;
+  }
+  .spin-result-panel .result-total {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+  }
+  .spin-result-panel.win {
+    background: #e8f5e9;
+  }
+  .spin-result-panel.win h3 { color: #2e7d32; }
+  .spin-result-panel.lose {
+    background: #ffebee;
+  }
+  .spin-result-panel.lose h3 { color: #c62828; }
+  @keyframes resultBounce {
+    0% { transform: scale(0.82); opacity: 0; }
+    55% { transform: scale(1.06); }
+    100% { transform: scale(1); opacity: 1; }
   }
 
   /* Predictions (modal) */
+  #predictionModal .modal-card {
+    contain: layout style;
+    pointer-events: auto;
+  }
+  #predictionModal input,
+  #predictionModal select,
+  #predictionModal textarea,
+  #predictionModal button {
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+  }
+  #predictionModal input[type="number"],
+  #predictionModal input[type="range"] {
+    cursor: text;
+  }
+  #predictionModal .pred-wager-row input[type="number"] {
+    width: 100%;
+    margin-top: 4px;
+  }
   .pred-form-section[hidden] { display: none !important; }
   .pred-list-head {
     font-size: 12px; font-weight: 700; color: var(--ink-3);
@@ -1599,15 +1669,16 @@
      APP VIEW + TAB PANES (iOS-style)
   ============================================================ */
   .app-view { display: none; touch-action: pan-y; }
-  .app-view.visible { display: block; padding-bottom: calc(var(--safe-bottom) + 110px); }
-  #appView .plan-pager { touch-action: pan-x; }
-  #bottomDock { touch-action: manipulation; }
-  /* App open: no pinch-zoom inside the shell (login page stays zoomable). */
-  html.app-open {
-    touch-action: manipulation;
+  .app-view.visible {
+    display: block;
+    padding-bottom: calc(var(--safe-bottom) + 110px);
+    overflow-y: visible;
   }
-  html.app-open .app-view {
-    touch-action: pan-x pan-y;
+  .tab-pane.active { overflow-y: visible; }
+  #bottomDock { touch-action: manipulation; }
+  /* App open: allow vertical scroll; pinch blocked in JS on appView */
+  html.app-open {
+    touch-action: pan-y pinch-zoom;
   }
 
   .tab-pane { display: none; }
@@ -1753,7 +1824,7 @@
   ============================================================ */
   .dock-indicator {
     --pill-strain: 0;
-    --pill-alpha: 0.4;
+    --pill-alpha: 0.42;
     position: absolute;
     top: 8px;
     bottom: 8px;
@@ -1776,7 +1847,7 @@
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     z-index: 1;
-    transition: width 0.16s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform 300ms ease-out, width 280ms ease-out;
     overflow: hidden;
   }
   .dock-indicator.is-liquid-active {
@@ -2866,7 +2937,11 @@
       <button type="submit" class="smbtn primary" id="spinWheelBtn" style="width:100%;padding:12px;">SPIN</button>
     </form>
     <div id="spinWheelStatus" class="spin-status" hidden></div>
-    <div id="spinHistory" class="spin-history"></div>
+    <div id="spinResultPanel" class="spin-result-panel" hidden>
+      <h3 id="spinResultTitle">—</h3>
+      <p class="result-coins" id="spinResultCoins">—</p>
+      <p class="result-total" id="spinResultTotal">—</p>
+    </div>
   </div>
 </div>
 
@@ -4581,9 +4656,9 @@ function initPredictionsWeekTap() {
   if (!el || el._predTapBound) return;
   el._predTapBound = true;
   el.addEventListener('click', (e) => {
+    if (e.target.closest('input, select, textarea, button, label, form')) return;
     const btn = e.target.closest('.pred-day-btn');
     if (!btn || btn.classList.contains('past')) return;
-    e.preventDefault();
     Sound.tap();
     Haptic.select();
     selectPredictionDay(Number(btn.dataset.day));
@@ -4627,6 +4702,37 @@ function closePredictionsModal() {
   $('#predictionModal').classList.remove('open');
 }
 
+function showSpinResult(mult, pay, wager) {
+  const panel = $('#spinResultPanel');
+  const title = $('#spinResultTitle');
+  const coins = $('#spinResultCoins');
+  const total = $('#spinResultTotal');
+  const status = $('#spinWheelStatus');
+  if (!panel || !title) return;
+  if (status) status.hidden = true;
+  const isWin = mult >= 1;
+  const isBigWin = mult >= 2;
+  panel.hidden = false;
+  panel.className = 'spin-result-panel ' + (isBigWin ? 'win' : mult < 1 ? 'lose' : '');
+  if (isBigWin) {
+    title.textContent = `You Won ${mult}×! 🎉`;
+    coins.textContent = `+${fmt(pay)} Coins`;
+  } else if (mult >= 1) {
+    title.textContent = `${mult}× — Gewinn!`;
+    coins.textContent = `+${fmt(pay)} Coins`;
+  } else if (mult > 0) {
+    title.textContent = `${mult}×`;
+    coins.textContent = `${fmt(pay)} Coins zurück`;
+  } else {
+    title.textContent = 'Better luck next time 😭';
+    coins.textContent = `−${fmt(wager)} Coins`;
+  }
+  if (total) total.textContent = `Gesamt: ${fmt(state.coins)} Coins`;
+  panel.style.animation = 'none';
+  void panel.offsetWidth;
+  panel.style.animation = '';
+}
+
 function openSpinWheelModal() {
   if (document.documentElement.dataset.casino !== 'on') {
     showToast('Casino-Modus aktivieren');
@@ -4635,8 +4741,9 @@ function openSpinWheelModal() {
   Sound.tap();
   syncCasinoWagerLimits();
   const status = $('#spinWheelStatus');
+  const panel = $('#spinResultPanel');
   if (status) { status.hidden = true; status.textContent = ''; }
-  renderSpinHistory();
+  if (panel) panel.hidden = true;
   $('#spinWheelModal').classList.add('open');
 }
 
@@ -4687,7 +4794,6 @@ async function loadPredictions() {
     if (Array.isArray(d.spinHistory)) spinHistoryCache = d.spinHistory;
     renderPredictionsList();
     renderPredictionsWeek();
-    renderSpinHistory();
   } catch (err) {
     if (list) list.innerHTML = `<div class="detail-empty">${escapeHtml(err.message)}</div>`;
   }
@@ -4804,22 +4910,6 @@ $('#spinWheelModal')?.addEventListener('click', (e) => {
   if (e.target === $('#spinWheelModal')) closeSpinWheelModal();
 });
 
-function renderSpinHistory() {
-  const el = $('#spinHistory');
-  if (!el) return;
-  if (!spinHistoryCache.length) {
-    el.innerHTML = '<div class="detail-empty" style="font-size:12px;">Noch keine Spins.</div>';
-    return;
-  }
-  el.innerHTML = spinHistoryCache.slice(0, 8).map(s => {
-    const mult = s.multiplier ?? 0;
-    const pay = s.payout ?? 0;
-    const t = (s.at || '').slice(11, 16) || '—';
-    const cls = mult >= 2 ? 'win' : mult < 1 ? 'lose' : '';
-    return `<div class="spin-history-item ${cls}">${t} · ${mult}× · ${fmt(s.wager)} → ${fmt(pay)}</div>`;
-  }).join('');
-}
-
 async function animateWheelToSegment(segIdx) {
   const disk = $('#wheelDisk');
   if (!disk) return;
@@ -4865,6 +4955,8 @@ $('#spinWheelForm')?.addEventListener('submit', async (e) => {
 
   spinInFlight = true;
   if (btn) btn.disabled = true;
+  const resultPanel = $('#spinResultPanel');
+  if (resultPanel) resultPanel.hidden = true;
   status.hidden = false;
   status.className = 'spin-status is-spinning';
   status.textContent = '⏳ Spinning…';
@@ -4893,19 +4985,25 @@ $('#spinWheelForm')?.addEventListener('submit', async (e) => {
     if (net !== 0) animateCoins(net);
 
     if (Array.isArray(d.history)) spinHistoryCache = d.history;
-    renderSpinHistory();
 
-    status.className = 'spin-status ' + (mult >= 2 ? 'win' : mult < 1 ? 'lose' : '');
-    status.textContent = d.message || `${mult}× → ${fmt(pay)} Coins`;
+    showSpinResult(mult, pay, wager);
 
     if (mult >= 2) {
       Haptic.success();
       Sound.winSmall();
-      spawnConfetti(48);
-    } else if (mult < 1) {
-      Haptic.error();
-    } else {
+      spawnConfetti(56);
+      showToast('🎉 YOU WON!');
+    } else if (mult >= 1) {
+      Haptic.success();
       Sound.tap();
+      spawnConfetti(24);
+      showToast('✅ Gewonnen!');
+    } else if (mult > 0) {
+      Sound.tap();
+      showToast(`${mult}× — ${fmt(pay)} Coins`);
+    } else {
+      Haptic.error();
+      showToast('😭 Better luck next time');
     }
 
     scheduleCloudSave();
@@ -6124,7 +6222,7 @@ class DockController {
       if (this._liquidDeformAmount() > 0.001) running = true;
       else this._snapLiquidIfIdle();
 
-      this._setLiquidActive(gesturing || !!this._pressPulse || this._springTarget != null);
+      this._setLiquidActive(gesturing || !!this._pressPulse);
 
       this._applyTransform();
 
@@ -6236,9 +6334,22 @@ class DockController {
       this.x = target;
       this._applyTransform();
     } else {
+      this._cancelSpringOnly();
+      this._pressPulse = null;
       this._relaxLiquid();
+      this._setLiquidActive(false);
+      this._pillAlpha = 0.42;
+      this.indicator.classList.remove('is-liquid-active');
+      this.indicator.style.transition = 'transform 300ms ease-out, width 280ms ease-out';
       this.indicator.style.width = this._widthForIdx(idx) + 'px';
-      this._springTo(target);
+      this._lastWidth = this._widthForIdx(idx);
+      this.x = target;
+      this._applyTransform();
+      setTimeout(() => {
+        if (!this.scrubbing && !this.appSwiping) {
+          this.indicator.style.transition = 'transform 300ms ease-out, width 280ms ease-out';
+        }
+      }, 320);
     }
   }
 
