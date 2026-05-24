@@ -1518,7 +1518,28 @@
        are owned by JS (scrub / tab-swipe). */
     touch-action: pan-y;
     isolation: isolate;
-    will-change: transform;
+    will-change: transform, backdrop-filter, background;
+    transition:
+      background 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+      backdrop-filter 0.22s ease,
+      border-color 0.22s ease,
+      box-shadow 0.22s ease;
+  }
+  /* Whole dock fades to clearer glass while the pill is touched / dragged */
+  .dock.is-interacting {
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(255, 255, 255, 0.04) 42%,
+        rgba(255, 255, 255, 0.01) 100%),
+      rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(30px) saturate(1.7);
+    -webkit-backdrop-filter: blur(30px) saturate(1.7);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.28),
+      0 0 0 0.5px rgba(0, 0, 0, 0.03),
+      0 8px 24px rgba(0, 0, 0, 0.08);
   }
   :root[data-mode="dark"] .dock {
     background:
@@ -1534,6 +1555,21 @@
       0 0 0 0.5px rgba(0, 0, 0, 0.45),
       0 4px 12px rgba(0, 0, 0, 0.18),
       0 14px 36px rgba(0, 0, 0, 0.55);
+  }
+  :root[data-mode="dark"] .dock.is-interacting {
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.07) 0%,
+        rgba(255, 255, 255, 0.02) 42%,
+        transparent 100%),
+      rgba(18, 18, 20, 0.38);
+    backdrop-filter: blur(32px) saturate(1.55);
+    -webkit-backdrop-filter: blur(32px) saturate(1.55);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.1),
+      0 0 0 0.5px rgba(0, 0, 0, 0.35),
+      0 8px 22px rgba(0, 0, 0, 0.42);
   }
   /* Top specular gloss — the curved light highlight that makes
      real liquid glass look wet. Positioned just inside the top
@@ -1590,6 +1626,7 @@
   ============================================================ */
   .dock-indicator {
     --pill-strain: 0;
+    --pill-alpha: 0.94;
     position: absolute;
     top: 8px;
     bottom: 8px;
@@ -1597,20 +1634,15 @@
     width: 0; /* JS sets this to the active button width */
     pointer-events: none;
     border-radius: 18px;
-    /* WhatsApp-style liquid lens — very transparent, refractive */
+    /* Accent pill (orange by default) — not glass */
     background:
       linear-gradient(180deg,
-        rgba(255, 255, 255, 0.2) 0%,
-        rgba(255, 255, 255, 0.07) 42%,
-        rgba(255, 255, 255, 0.02) 100%);
-    backdrop-filter: blur(14px) saturate(1.9) brightness(1.04);
-    -webkit-backdrop-filter: blur(14px) saturate(1.9) brightness(1.04);
-    border: 0.5px solid rgba(255, 255, 255, 0.16);
+        color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 100%), transparent) 0%,
+        color-mix(in srgb, var(--accent-2, var(--accent)) calc(var(--pill-alpha) * 88%), transparent) 100%);
+    border: 0.5px solid color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 55%), transparent);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.38),
-      inset 0 -1px 0 rgba(255, 120, 150, 0.06),
-      0 0 0 0.5px rgba(120, 170, 255, 0.05),
-      0 4px 14px rgba(0, 0, 0, 0.06);
+      inset 0 1px 0 color-mix(in srgb, white calc(var(--pill-alpha) * 35%), transparent),
+      0 2px 10px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 38%), transparent);
     transform: translate3d(0, 0, 0);
     transform-origin: center center;
     will-change: transform, width;
@@ -1618,26 +1650,26 @@
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     z-index: 1;
-    transition: width 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    transition:
+      width 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+      --pill-alpha 0.18s ease,
+      box-shadow 0.18s ease;
     overflow: hidden;
   }
-  /* Chromatic rim / prism fringe (like iOS tab lens) */
   .dock-indicator::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    opacity: calc(0.25 + var(--pill-strain) * 0.75);
+    opacity: calc(var(--pill-strain) * 0.45);
     background: linear-gradient(
       108deg,
-      rgba(255, 95, 95, 0.28) 0%,
-      rgba(255, 255, 255, 0.42) 20%,
-      rgba(110, 195, 255, 0.26) 48%,
-      rgba(255, 220, 130, 0.2) 72%,
-      rgba(190, 130, 255, 0.24) 100%
+      rgba(255, 255, 255, 0.35) 0%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.28) 100%
     );
-    mix-blend-mode: screen;
+    mix-blend-mode: soft-light;
     transition: opacity 0.12s ease;
   }
   .dock-indicator::after {
@@ -1646,43 +1678,31 @@
     left: 8%;
     right: 8%;
     top: 1px;
-    height: 42%;
+    height: 40%;
     border-radius: 999px;
     pointer-events: none;
-    opacity: calc(0.35 + var(--pill-strain) * 0.45);
+    opacity: calc(0.22 + var(--pill-strain) * 0.35);
     background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.55) 0%,
-      rgba(255, 255, 255, 0.12) 55%,
+      rgba(255, 255, 255, 0.42) 0%,
       transparent 100%);
     mix-blend-mode: overlay;
   }
+  /* Touch / swipe — pill slightly more transparent */
   .dock-indicator.is-liquid-active {
+    --pill-alpha: 0.76;
     transition: width 0.1s cubic-bezier(0.32, 0.72, 0, 1);
-    backdrop-filter: blur(16px) saturate(2.05) brightness(1.08);
-    -webkit-backdrop-filter: blur(16px) saturate(2.05) brightness(1.08);
-    border-color: rgba(255, 255, 255, 0.22);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.48),
-      inset 0 -1px 0 rgba(255, 100, 130, 0.1),
-      0 0 0 0.5px rgba(130, 180, 255, 0.1),
-      0 6px 20px rgba(0, 0, 0, 0.1);
+      inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+      0 4px 16px color-mix(in srgb, var(--accent) 32%, transparent);
   }
   :root[data-mode="dark"] .dock-indicator {
-    background:
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.14) 0%,
-        rgba(255, 255, 255, 0.05) 45%,
-        rgba(255, 255, 255, 0.015) 100%);
-    border-color: rgba(255, 255, 255, 0.12);
+    --pill-alpha: 0.9;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.22),
-      inset 0 -1px 0 rgba(255, 90, 120, 0.05),
-      0 0 0 0.5px rgba(100, 150, 255, 0.06),
-      0 4px 16px rgba(0, 0, 0, 0.28);
+      inset 0 1px 0 color-mix(in srgb, white calc(var(--pill-alpha) * 22%), transparent),
+      0 2px 12px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 45%), transparent);
   }
   :root[data-mode="dark"] .dock-indicator.is-liquid-active {
-    backdrop-filter: blur(18px) saturate(2.1) brightness(1.12);
-    -webkit-backdrop-filter: blur(18px) saturate(2.1) brightness(1.12);
+    --pill-alpha: 0.72;
   }
   /* Reduced-motion users skip the width transition too. */
   @media (prefers-reduced-motion: reduce) {
@@ -5354,6 +5374,9 @@ class DockController {
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
   }
+  _setDockInteracting(on) {
+    this.dock.classList.toggle('is-interacting', !!on);
+  }
   _neutralLiquid() {
     return { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
   }
@@ -5458,8 +5481,14 @@ class DockController {
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
     this._pressPulse = { t0: performance.now(), dur: 180 };
+    this._setDockInteracting(true);
     this._setLiquidActive(true);
     this._ensureMotionLoop();
+  }
+  endDockTouch() {
+    if (this.scrubbing || this.appSwiping) return;
+    this._setDockInteracting(false);
+    if (!this._pressPulse) this._setLiquidActive(false);
   }
   _setStyleActive(idx) {
     this.buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
@@ -5491,6 +5520,7 @@ class DockController {
     Object.assign(this._liquidTarget, this._neutralLiquid());
     Object.assign(this.liquid, this._neutralLiquid());
     this._setLiquidActive(false);
+    this._setDockInteracting(false);
     if (!this.scrubbing && !this.appSwiping) this._stopMotionLoop();
   }
 
@@ -5556,6 +5586,7 @@ class DockController {
     this._scrubVel = 0;
     this.indicator.style.transition = 'none';
     Object.assign(this._liquidTarget, { sx: 1.05, sy: 1.05, skew: 0, ty: 0, br: 19 });
+    this._setDockInteracting(true);
     this._setLiquidActive(true);
     this._ensureMotionLoop();
   }
@@ -5623,6 +5654,7 @@ class DockController {
     this._scrubVel *= 0.18;
     this._relaxLiquid();
     this._springTo(targetX);
+    this._setDockInteracting(false);
   }
   _nearestIdx(indicatorX) {
     const w = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
@@ -5655,6 +5687,7 @@ class DockController {
     this._scrubVel = 0;
     this.indicator.style.transition = 'none';
     Object.assign(this._liquidTarget, { sx: 1.04, sy: 1.04, skew: 0, ty: 0, br: 19 });
+    this._setDockInteracting(true);
     this._setLiquidActive(true);
     this._ensureMotionLoop();
   }
@@ -5720,6 +5753,7 @@ class DockController {
       this._relaxLiquid();
       this._springTo(this._xForIdx(fromIdx));
       this.indicator.style.width = this._widthForIdx(fromIdx) + 'px';
+      this._setDockInteracting(false);
       return;
     }
     const w = viewportWidth || window.innerWidth || 1;
@@ -5731,6 +5765,7 @@ class DockController {
     this._relaxLiquid();
     this.indicator.style.width = this._widthForIdx(snapIdx) + 'px';
     this._springTo(targetX, commit ? velocity * 0.0004 : 0);
+    this._setDockInteracting(false);
     if (commit) {
       Haptic.light();
       setTab(TAB_NAMES[targetIdx], { dockSync: true });
@@ -5754,7 +5789,10 @@ class DockController {
     if (e.touches.length !== 1) { pending = null; return; }
     const t = e.touches[0];
     pending = { x: t.clientX, y: t.clientY, scrubbing: false };
-    if (dockController) dockController.pulsePress();
+    if (dockController) {
+      dockController._setDockInteracting(true);
+      dockController.pulsePress();
+    }
   }, { passive: true });
 
   dockEl.addEventListener('touchmove', (e) => {
@@ -5766,6 +5804,7 @@ class DockController {
       // Decide: vertical scroll vs horizontal scrub.
       if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > THRESHOLD) {
         pending = null;
+        if (dockController) dockController.endDockTouch();
         return;
       }
       if (Math.abs(dx) < THRESHOLD) return;
@@ -5779,7 +5818,9 @@ class DockController {
     if (!pending) return;
     const wasScrubbing = pending.scrubbing;
     pending = null;
-    if (wasScrubbing && dockController) dockController.endScrub();
+    if (!dockController) return;
+    if (wasScrubbing) dockController.endScrub();
+    else dockController.endDockTouch();
   };
   dockEl.addEventListener('touchend', release, { passive: true });
   dockEl.addEventListener('touchcancel', release, { passive: true });
