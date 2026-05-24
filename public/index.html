@@ -6104,15 +6104,14 @@ class DockController {
   }
   _pillAlphaTarget() {
     if (this.scrubbing || this.appSwiping) {
-      // Go slightly more transparent the harder the gesture stretches.
-      const s = Math.min(1, this._stretchHint * 0.55 + this._liquidDeformAmount() * 2);
-      return 0.22 - s * 0.04;
+      const s = Math.min(1, this._stretchHint * 0.5 + this._liquidDeformAmount() * 1.6);
+      return 0.42 - s * 0.12;
     }
-    return 0.42; // taps + springs: stay fully opaque, no dim/flash
+    return 0.42;
   }
   _applyTransform() {
-    const x = Math.round(this.x);
     const gesturing = this.scrubbing || this.appSwiping;
+    const x = gesturing ? this.x : Math.round(this.x);
 
     // Click / spring settle: translate only — no scale, skew, or blur morph.
     if (!gesturing) {
@@ -6185,18 +6184,33 @@ class DockController {
     if (!this._motionOk) return;
     this._stretchHint = stretchHint;
     const v = dt > 0 ? deltaX / dt : 0;
-    this._scrubVel = this._scrubVel * 0.58 + v * 0.42;
-    const velMag = Math.min(1, Math.abs(this._scrubVel) / 2000);
-    const mag = Math.min(1, velMag * 0.5 + Math.min(1, stretchHint) * 0.72);
+    this._scrubVel = this._scrubVel * 0.7 + v * 0.3;
+    const velMag = Math.min(1, Math.abs(this._scrubVel) / 1500);
+    const mag = Math.min(1, velMag * 0.42 + Math.min(1, stretchHint) * 0.58);
     const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
     const T = this._liquidTarget;
-    // Liquid blob stretch while sliding (colored pill, not glass)
-    T.sx = 1 + mag * 0.2;
-    T.sy = 1 - mag * 0.075;
-    T.skew = dir * mag * 6.5;
-    T.ty = -mag * 1.8;
-    T.br = 18 + mag * 9;
+    T.sx = 1 + mag * 0.15;
+    T.sy = 1 - mag * 0.055;
+    T.skew = dir * mag * 4.8;
+    T.ty = -mag * 1.35;
+    T.br = 18 + mag * 7;
     this._ensureMotionLoop();
+  }
+  _widthBetweenTabs(x, w) {
+    if (!this.positions.length) return w;
+    const center = x + w / 2;
+    let lo = 0;
+    for (let i = 0; i < this.positions.length - 1; i++) {
+      const mid = (this.positions[i].left + this.positions[i].width / 2
+        + this.positions[i + 1].left + this.positions[i + 1].width / 2) / 2;
+      if (center >= mid) lo = i + 1;
+    }
+    const hi = Math.min(lo + 1, this.positions.length - 1);
+    const c0 = this.positions[lo].left + this.positions[lo].width / 2;
+    const c1 = this.positions[hi].left + this.positions[hi].width / 2;
+    const span = c1 - c0 || 1;
+    const t = Math.max(0, Math.min(1, (center - c0) / span));
+    return this.positions[lo].width + (this.positions[hi].width - this.positions[lo].width) * t;
   }
   _relaxLiquid() {
     Object.assign(this._liquidTarget, this._neutralLiquid());
@@ -6223,15 +6237,18 @@ class DockController {
         const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
         this.velocity += accel * dt;
         this.x += this.velocity * dt;
-        if (Math.abs(dx) < 0.5 && Math.abs(this.velocity) < 28) {
+        if (Math.abs(dx) < 0.5 && Math.abs(this.velocity) < 22) {
           this.x = this._springTarget;
           this.velocity = 0;
           this._springTarget = null;
+          const w = this._widthForIdx(this.activeIdx);
+          this.indicator.style.width = w + 'px';
+          this._lastWidth = w;
         }
       }
 
       const gesturing = this.scrubbing || this.appSwiping;
-      const lk = 1 - Math.exp(-dt * (gesturing ? 105 : 62));
+      const lk = 1 - Math.exp(-dt * (gesturing ? 130 : 62));
       const L = this.liquid;
       const T = this._liquidTarget;
       L.sx += (T.sx - L.sx) * lk;
@@ -6398,12 +6415,13 @@ class DockController {
   // ---- Scrub gesture (drag inside the dock) ----
   beginScrub(clientX) {
     if (this.appSwiping) return;
+    this._measure();
     this._cancelSpringOnly();
     this._pressPulse = null;
     this.scrubbing = true;
     this.scrubStartFingerX = clientX;
     this.scrubStartIndicatorX = this.x;
-    this.scrubLastNearestIdx = this.activeIdx;
+    this.scrubLastNearestIdx = this._nearestIdx(this.x, this._widthForIdx(this.activeIdx));
     this._scrubLastX = clientX;
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
@@ -6425,39 +6443,26 @@ class DockController {
     let nextX = this.scrubStartIndicatorX + delta;
     const minX = this._xForIdx(0);
     const maxX = this._xForIdx(this.positions.length - 1);
-    // Rubber-band at edges (like iOS scrollers).
-    if (nextX < minX) nextX = minX - (minX - nextX) * 0.35;
-    else if (nextX > maxX) nextX = maxX + (nextX - maxX) * 0.35;
+    if (nextX < minX) nextX = minX - (minX - nextX) * 0.28;
+    else if (nextX > maxX) nextX = maxX + (nextX - maxX) * 0.28;
     this.x = nextX;
 
-    // Morph width between tabs while scrubbing (liquid stretch).
-    const nearest = this._nearestIdx(nextX);
-    const targetW = this._widthForIdx(nearest);
     const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
-    const newW = curW + (targetW - curW) * 0.82;
-    if (Math.abs(newW - this._lastWidth) > 0.5) {
+    const idealW = this._widthBetweenTabs(nextX, curW);
+    const widthK = 1 - Math.exp(-dt * 16);
+    const newW = curW + (idealW - curW) * widthK;
+    if (Math.abs(newW - this._lastWidth) > 0.25) {
       this._lastWidth = newW;
       this.indicator.style.width = newW + 'px';
     }
 
+    const nearest = this._nearestIdx(nextX, idealW);
+    const refX = this._xForIdx(this.scrubLastNearestIdx);
     const span = Math.max(1, (this._xForIdx(this.buttons.length - 1) - this._xForIdx(0)));
-    const stretchHint = Math.min(1, Math.abs(nextX - this._xForIdx(this.activeIdx)) / (span * 0.5));
-    this._stretchHint = stretchHint;
-    if (Math.abs(frameDx) < 0.5) {
-      const k = 0.18;
-      const T = this._liquidTarget;
-      const hold = 1 + stretchHint * 0.04;
-      T.sx += (hold - T.sx) * k;
-      T.sy += (hold - T.sy) * k;
-      T.skew += (stretchHint * Math.sign(nextX - this._xForIdx(this.activeIdx)) * 2 - T.skew) * k;
-      T.ty += (0 - T.ty) * k;
-      T.br += ((18 + stretchHint * 3) - T.br) * k;
-      this._scrubVel *= 0.85;
-    } else {
-      this._feedLiquidMotion(frameDx, dt, stretchHint);
-    }
+    const stretchHint = Math.min(1, Math.abs(nextX - refX) / (span * 0.42));
+    this._feedLiquidMotion(frameDx, dt, stretchHint);
     this._ensureMotionLoop();
-    // Live highlight whichever tab the pill is closest to.
+
     if (nearest !== this.scrubLastNearestIdx) {
       this._setStyleActive(nearest);
       this.scrubLastNearestIdx = nearest;
@@ -6467,8 +6472,8 @@ class DockController {
   endScrub() {
     if (!this.scrubbing) return;
     this.scrubbing = false;
-    this.indicator.style.transition = '';
-    const nearest = this._nearestIdx(this.x);
+    this.indicator.style.transition = 'none';
+    const nearest = this._nearestIdx(this.x, this._lastWidth);
     const targetX = this._xForIdx(nearest);
     const targetW = this._widthForIdx(nearest);
     if (nearest !== this.activeIdx) {
@@ -6480,15 +6485,13 @@ class DockController {
     }
     this.indicator.style.width = targetW + 'px';
     this._lastWidth = targetW;
-    this._scrubVel = 0;
-    Object.assign(this.liquid, this._neutralLiquid());
-    Object.assign(this._liquidTarget, this._neutralLiquid());
-    this._setLiquidActive(false);
-    this._springTo(targetX);
+    this._relaxLiquid();
+    const flingV = Math.max(-700, Math.min(700, this._scrubVel * 0.00018));
+    this._springTo(targetX, flingV);
     this._setDockInteracting(false);
   }
-  _nearestIdx(indicatorX) {
-    const w = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
+  _nearestIdx(indicatorX, widthHint) {
+    const w = widthHint ?? (parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx));
     const indicatorCenter = indicatorX + w / 2;
     let best = 0, bestDist = Infinity;
     for (let i = 0; i < this.positions.length; i++) {
