@@ -531,6 +531,387 @@ app.get('/api/leaderboard/get', async (_req, res) => {
   res.json({ ok: true, entries, cloudEnabled: true });
 });
 
+/* ============================================================
+   PREDICTIONS + SPIN THE WHEEL
+   Redis keys:
+     predictions:pending          SET of prediction ids
+     predictions:user:{hash}      SET of ids per account
+     prediction:{id}              JSON blob
+     spinthewheel:user:{hash}     LIST/SET of recent spins (last 20)
+============================================================ */
+const PRED_PENDING_KEY = 'predictions:pending';
+const PRED_PAYOUT_MULT = 2;
+const PRED_HOUR_TOLERANCE = 1;
+const DAY_NAMES = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
+
+function accountHash(creds) {
+  return userKey(creds).replace(/^gs:/, '');
+}
+
+function predUserSetKey(creds) {
+  return `predictions:user:${accountHash(creds)}`;
+}
+
+function spinUserKey(creds) {
+  return `spinthewheel:user:${accountHash(creds)}`;
+}
+
+function predRecordKey(id) {
+  return `prediction:${id}`;
+}
+
+async function cloudSAdd(key, member) {
+  const d = await upstashCmd(['SADD', key, member]);
+  return d && (d.result === 1 || d.result === 0);
+}
+
+async function cloudSRem(key, member) {
+  await upstashCmd(['SREM', key, member]);
+}
+
+async function cloudSMembers(key) {
+  const d = await upstashCmd(['SMEMBERS', key]);
+  return Array.isArray(d?.result) ? d.result.map(String) : [];
+}
+
+function newPredId() {
+  return crypto.randomBytes(12).toString('hex');
+}
+
+function parseLessonDate(l) {
+  if (!l || l.date == null) return null;
+  if (l.date instanceof Date) {
+    const y = l.date.getFullYear();
+    const m = String(l.date.getMonth() + 1).padStart(2, '0');
+    const d = String(l.date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const n = Number(l.date);
+  if (Number.isFinite(n) && n > 19000000) {
+    const s = String(Math.trunc(n));
+    return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  }
+  const s = String(l.date);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return null;
+}
+
+function mondayOfWeek(weekStart) {
+  const d = new Date(weekStart + 'T12:00:00');
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function dayIsoForPrediction(weekStart, dayOfWeek) {
+  const d = mondayOfWeek(weekStart);
+  d.setDate(d.getDate() + Number(dayOfWeek));
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function countDayFromLessons(lessons, dayIso) {
+  let cancelled = 0;
+  let substituted = 0;
+  for (const l of lessons || []) {
+    if (parseLessonDate(l) !== dayIso) continue;
+    const c = classifyLesson(l);
+    if (c.status === 'cancelled' || c.status === 'ausflug') cancelled += 1;
+    else if (c.status === 'suppliert') substituted += 1;
+  }
+  return { cancelled, substituted };
+}
+
+function evaluatePredictionResult(pred, actual) {
+  const hours = Number(pred.hours) || 0;
+  if (pred.claim === 'no_change') {
+    const win = actual.cancelled === 0 && actual.substituted === 0;
+    return { win, actualCount: 0, actualCancelled: actual.cancelled, actualSubstituted: actual.substituted };
+  }
+  const actualCount = pred.claim === 'cancelled' ? actual.cancelled : actual.substituted;
+  const win = Math.abs(actualCount - hours) <= PRED_HOUR_TOLERANCE;
+  return { win, actualCount, actualCancelled: actual.cancelled, actualSubstituted: actual.substituted };
+}
+
+async function loadPrediction(id) {
+  const raw = await cloudGet(predRecordKey(id));
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch (_) { return null; }
+}
+
+async function savePrediction(pred) {
+  await cloudSet(predRecordKey(pred.id), JSON.stringify(pred));
+}
+
+async function applyPredictionPayout(creds, pred, payout) {
+  const key = userKey(creds);
+  const raw = await cloudGet(key);
+  let gameState = null;
+  if (raw) {
+    try { gameState = JSON.parse(raw); } catch (_) {}
+  }
+  if (!gameState || typeof gameState !== 'object') {
+    gameState = { coins: 1000, predTotal: 0, predWon: 0, predLost: 0, predCoinsWon: 0 };
+  }
+  gameState.coins = Math.max(0, Math.round((gameState.coins || 0) + payout));
+  gameState.predTotal = (gameState.predTotal || 0) + 1;
+  if (pred.status === 'won') {
+    gameState.predWon = (gameState.predWon || 0) + 1;
+    gameState.predCoinsWon = (gameState.predCoinsWon || 0) + payout;
+    const dayName = DAY_NAMES[pred.dayOfWeek] || '';
+    if (!gameState.predBestDay) gameState.predBestDay = dayName;
+  } else {
+    gameState.predLost = (gameState.predLost || 0) + 1;
+  }
+  await cloudSet(key, JSON.stringify(gameState));
+  return gameState;
+}
+
+async function evaluateOnePrediction(pred, credsOverride) {
+  if (!pred || pred.status !== 'pending') return pred;
+  const creds = credsOverride || pred._creds;
+  if (!validCreds(creds)) return pred;
+
+  const dayIso = dayIsoForPrediction(pred.weekStart, pred.dayOfWeek);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const dayEnd = new Date(dayIso + 'T23:59:59');
+  if (dayEnd > today) return pred;
+
+  let lessons = [];
+  try {
+    const target = new Date(dayIso + 'T12:00:00');
+    lessons = await withUntis(creds, u => u.getOwnTimetableFor(target));
+    annotateLessons(lessons);
+  } catch (err) {
+    console.error('[Prediction eval Untis]', pred.id, err.message);
+    return pred;
+  }
+
+  const actual = countDayFromLessons(lessons, dayIso);
+  const { win, actualCount, actualCancelled, actualSubstituted } = evaluatePredictionResult(pred, actual);
+  const payout = win ? Math.round(pred.wager * PRED_PAYOUT_MULT) : 0;
+
+  pred.status = win ? 'won' : 'lost';
+  pred.evaluatedAt = new Date().toISOString();
+  pred.actualCount = actualCount;
+  pred.actualCancelled = actualCancelled;
+  pred.actualSubstituted = actualSubstituted;
+  pred.payout = payout;
+  delete pred._creds;
+
+  await savePrediction(pred);
+  await cloudSRem(PRED_PENDING_KEY, pred.id);
+  await applyPredictionPayout(creds, pred, win ? payout : 0);
+  return pred;
+}
+
+app.post('/api/prediction/create', async (req, res) => {
+  const { week, dayOfWeek, claim, wager, hours, ...creds } = req.body || {};
+  if (!validCreds(creds)) return res.status(400).json({ error: 'Login fehlt.' });
+  if (!CLOUD_ENABLED) return res.json({ ok: false, error: 'Cloud nicht aktiv.' });
+
+  const weekStart = String(week || '').slice(0, 10);
+  const day = Number(dayOfWeek);
+  const validClaims = ['cancelled', 'substituted', 'no_change'];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart) || day < 0 || day > 4 || !validClaims.includes(claim)) {
+    return res.status(400).json({ error: 'Ungültige Vorhersage.' });
+  }
+  const hrs = claim === 'no_change' ? 0 : Math.min(8, Math.max(1, Number(hours) || 1));
+  const bet = Math.round(Number(wager) || 0);
+  if (bet < 1) return res.status(400).json({ error: 'Einsatz mindestens 1 Coin.' });
+
+  const gsKey = userKey(creds);
+  const raw = await cloudGet(gsKey);
+  let gameState = { coins: 1000 };
+  if (raw) { try { gameState = JSON.parse(raw); } catch (_) {} }
+  if ((gameState.coins || 0) < bet) {
+    return res.status(400).json({ error: 'Nicht genug Coins.' });
+  }
+
+  const dayIso = dayIsoForPrediction(weekStart, day);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const predDay = new Date(dayIso + 'T00:00:00');
+  if (predDay < now) {
+    return res.status(400).json({ error: 'Tag liegt in der Vergangenheit.' });
+  }
+
+  gameState.coins = Math.round(gameState.coins - bet);
+  await cloudSet(gsKey, JSON.stringify(gameState));
+
+  const id = newPredId();
+  const pred = {
+    id,
+    username: creds.username,
+    school: creds.school,
+    server: creds.server,
+    weekStart,
+    dayOfWeek: day,
+    dayIso,
+    claim,
+    hours: hrs,
+    wager: bet,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    payout: 0,
+    _creds: { server: creds.server, school: creds.school, username: creds.username, password: creds.password },
+  };
+
+  await savePrediction(pred);
+  await cloudSAdd(predUserSetKey(creds), id);
+  await cloudSAdd(PRED_PENDING_KEY, id);
+
+  res.json({ ok: true, prediction: sanitizePrediction(pred), state: gameState });
+});
+
+function sanitizePrediction(p) {
+  if (!p) return null;
+  const { _creds, password, ...rest } = p;
+  return rest;
+}
+
+app.post('/api/prediction/list', async (req, res) => {
+  const creds = req.body || {};
+  if (!validCreds(creds)) return res.status(400).json({ error: 'Login fehlt.' });
+  if (!CLOUD_ENABLED) return res.json({ ok: true, predictions: [], cloudEnabled: false });
+
+  const ids = await cloudSMembers(predUserSetKey(creds));
+  const preds = [];
+  for (const id of ids) {
+    const p = await loadPrediction(id);
+    if (p) preds.push(p);
+  }
+
+  for (const p of preds) {
+    if (p.status === 'pending') {
+      await evaluateOnePrediction(p, creds);
+    }
+  }
+
+  const refreshed = [];
+  for (const id of ids) {
+    const p = await loadPrediction(id);
+    if (p) refreshed.push(sanitizePrediction(p));
+  }
+  refreshed.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  const gsRaw = await cloudGet(userKey(creds));
+  let gameState = null;
+  if (gsRaw) try { gameState = JSON.parse(gsRaw); } catch (_) {}
+
+  res.json({ ok: true, predictions: refreshed, state: gameState, cloudEnabled: true });
+});
+
+app.post('/api/prediction/evaluate', async (req, res) => {
+  const { secret, ...creds } = req.body || {};
+  const cronOk = secret && process.env.CRON_SECRET && secret === process.env.CRON_SECRET;
+
+  if (!cronOk && !validCreds(creds)) {
+    return res.status(401).json({ error: 'Nicht autorisiert.' });
+  }
+  if (!CLOUD_ENABLED) return res.json({ ok: false, cloudEnabled: false });
+
+  const ids = cronOk
+    ? await cloudSMembers(PRED_PENDING_KEY)
+    : await cloudSMembers(predUserSetKey(creds));
+
+  let evaluated = 0;
+  for (const id of ids) {
+    const p = await loadPrediction(id);
+    if (!p || p.status !== 'pending') continue;
+    const useCreds = cronOk ? p._creds : creds;
+    if (!validCreds(useCreds)) continue;
+    await evaluateOnePrediction(p, useCreds);
+    evaluated += 1;
+  }
+  res.json({ ok: true, evaluated, cloudEnabled: true });
+});
+
+/* Spin the wheel — risk coins for random multiplier */
+const SPIN_MULTIPLIERS = [
+  { m: 0, w: 18 },
+  { m: 0.5, w: 22 },
+  { m: 1, w: 20 },
+  { m: 1.5, w: 16 },
+  { m: 2, w: 12 },
+  { m: 3, w: 8 },
+  { m: 5, w: 4 },
+];
+
+function pickSpinMultiplier() {
+  const total = SPIN_MULTIPLIERS.reduce((s, x) => s + x.w, 0);
+  let r = Math.random() * total;
+  for (const x of SPIN_MULTIPLIERS) {
+    r -= x.w;
+    if (r <= 0) return x.m;
+  }
+  return 1;
+}
+
+app.post('/api/spinthewheel', async (req, res) => {
+  const { wager, ...creds } = req.body || {};
+  if (!validCreds(creds)) return res.status(400).json({ error: 'Login fehlt.' });
+  if (!CLOUD_ENABLED) return res.json({ ok: false, error: 'Cloud nicht aktiv.' });
+
+  const bet = Math.round(Number(wager) || 0);
+  if (bet < 1) return res.status(400).json({ error: 'Einsatz mindestens 1 Coin.' });
+
+  const gsKey = userKey(creds);
+  const raw = await cloudGet(gsKey);
+  let gameState = { coins: 1000 };
+  if (raw) { try { gameState = JSON.parse(raw); } catch (_) {} }
+  if ((gameState.coins || 0) < bet) {
+    return res.status(400).json({ error: 'Nicht genug Coins.' });
+  }
+
+  const mult = pickSpinMultiplier();
+  const payout = Math.round(bet * mult);
+  const net = payout - bet;
+  gameState.coins = Math.max(0, Math.round(gameState.coins - bet + payout));
+  gameState.spinTotal = (gameState.spinTotal || 0) + 1;
+  await cloudSet(gsKey, JSON.stringify(gameState));
+
+  const spin = { at: new Date().toISOString(), wager: bet, multiplier: mult, payout, net };
+  const spinKey = spinUserKey(creds);
+  const prev = await cloudGet(spinKey);
+  let history = [];
+  if (prev) try { history = JSON.parse(prev); } catch (_) {}
+  if (!Array.isArray(history)) history = [];
+  history.unshift(spin);
+  await cloudSet(spinKey, JSON.stringify(history.slice(0, 20)));
+
+  res.json({ ok: true, spin, state: gameState });
+});
+
+/* Daily evaluation scheduler (23:55 server local time) */
+let lastCronDay = '';
+function schedulePredictionCron() {
+  if (!CLOUD_ENABLED) return;
+  setInterval(async () => {
+    const now = new Date();
+    const dayKey = now.toISOString().slice(0, 10);
+    const hm = now.getHours() * 60 + now.getMinutes();
+    if (hm === 23 * 60 + 55 && lastCronDay !== dayKey) {
+      lastCronDay = dayKey;
+      try {
+        const ids = await cloudSMembers(PRED_PENDING_KEY);
+        for (const id of ids) {
+          const p = await loadPrediction(id);
+          if (p && p.status === 'pending' && p._creds) {
+            await evaluateOnePrediction(p, p._creds);
+          }
+        }
+        console.log('[Prediction cron] evaluated', ids.length, 'pending');
+      } catch (err) {
+        console.error('[Prediction cron]', err.message);
+      }
+    }
+  }, 30000);
+}
+schedulePredictionCron();
+
 app.get('/api/cloud-status', async (_req, res) => {
   const status = {
     ok: true,
