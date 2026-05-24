@@ -2783,7 +2783,7 @@
 
   <footer>
     <span>Substi</span>
-    <span>v3.0 · powered by SiteBuilt</span>
+    <span>v4.0 · powered by SiteBuilt</span>
   </footer>
 </div>
 
@@ -6104,11 +6104,11 @@ class DockController {
   }
   _pillAlphaTarget() {
     if (this.scrubbing || this.appSwiping) {
+      // Go slightly more transparent the harder the gesture stretches.
       const s = Math.min(1, this._stretchHint * 0.55 + this._liquidDeformAmount() * 2);
-      return 0.2 - s * 0.04;
+      return 0.22 - s * 0.04;
     }
-    if (this._pressPulse) return 0.32;
-    return 0.4;
+    return 0.42; // taps + springs: stay fully opaque, no dim/flash
   }
   _applyTransform() {
     const { sx, sy, skew, ty, br } = this.liquid;
@@ -6209,22 +6209,6 @@ class DockController {
         }
       }
 
-      if (this._pressPulse) {
-        running = true;
-        const { t0, dur } = this._pressPulse;
-        const p = Math.min(1, (now - t0) / dur);
-        const s = p < 0.35 ? p / 0.35 : 1 - (p - 0.35) / 0.65;
-        const ease = 1 - s;
-        const T = this._liquidTarget;
-        const grow = 1 + ease * 0.085;
-        T.sx = grow;
-        T.sy = grow;
-        T.ty = ease * 1.5;
-        T.skew = 0;
-        T.br = 18 + ease * 3;
-        if (p >= 1) this._pressPulse = null;
-      }
-
       const gesturing = this.scrubbing || this.appSwiping;
       const lk = 1 - Math.exp(-dt * (gesturing ? 105 : 62));
       const L = this.liquid;
@@ -6259,17 +6243,11 @@ class DockController {
     if (this._motionLoopId != null) cancelAnimationFrame(this._motionLoopId);
     this._motionLoopId = null;
   }
-  pulsePress() {
-    if (!this._motionOk || this.scrubbing || this.appSwiping) return;
-    this._pressPulse = { t0: performance.now(), dur: 100 };
-    this._setDockInteracting(true);
-    this._setLiquidActive(true);
-    this._ensureMotionLoop();
-  }
+  pulsePress() { /* no-op — tap feedback now handled by spring deformation */ }
   endDockTouch() {
     if (this.scrubbing || this.appSwiping) return;
     this._setDockInteracting(false);
-    if (!this._pressPulse) this._setLiquidActive(false);
+    // Let the rAF loop clear is-liquid-active once the spring settles.
   }
   _setStyleActive(idx) {
     this.buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
@@ -6617,10 +6595,9 @@ class DockController {
     if (e.touches.length !== 1) { pending = null; return; }
     const t = e.touches[0];
     pending = { x: t.clientX, y: t.clientY, scrubbing: false };
-    if (dockController) {
-      dockController._setDockInteracting(true);
-      dockController.pulsePress();
-    }
+    // No pulsePress here — taps go through setActiveTab which runs the
+    // spring + directional stretch. pulsePress would make the pill grow
+    // and go lighter, which looks wrong for a plain tab switch.
   }, { passive: true });
 
   dockEl.addEventListener('touchmove', (e) => {
