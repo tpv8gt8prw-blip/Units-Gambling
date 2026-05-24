@@ -230,7 +230,11 @@
     margin: -6px 0 14px;
   }
   .plan-header-controls .toggle-section { flex: 0 0 auto; }
-  .plan-header-controls .leader-section { flex: 0 0 auto; min-height: 36px; display: flex; align-items: center; }
+  .plan-header-controls .leader-section {
+    flex: 1 1 auto; min-height: 36px;
+    display: flex; align-items: center; justify-content: flex-end;
+    flex-wrap: wrap; gap: 8px;
+  }
   .plan-lb-btn {
     display: none;
     align-items: center; gap: 6px;
@@ -865,26 +869,7 @@
   .legend-swatch.cancelled { border-color: var(--cancel); background: var(--cancel-bg); }
   .legend-swatch.ausflug { border-color: var(--blue); background: rgba(0,122,255,0.12); }
 
-  /* Casino-only games (Plan tab) */
-  .casino-games { display: none; margin-bottom: 18px; }
-  [data-casino="on"] .casino-games { display: block; }
-
-  .spinthewheel-section,
-  .predictions-panel {
-    margin-bottom: 14px;
-    padding: 14px;
-    border-radius: var(--radius);
-    background: var(--fill-2);
-    border: 0.5px solid var(--border);
-  }
-  .casino-section-head { margin-bottom: 12px; }
-  .casino-section-head h2 {
-    font-family: var(--ff-r); font-size: 17px; font-weight: 800;
-    margin: 0 0 4px; letter-spacing: -0.02em;
-  }
-  .casino-section-head .sub { font-size: 12px; color: var(--ink-3); }
-
-  /* Spin wheel */
+  /* Spin wheel (modal) */
   .wheel-stage {
     position: relative;
     width: min(240px, 72vw);
@@ -919,16 +904,17 @@
     transform: rotate(0deg);
   }
   .wheel-disk.is-spinning {
-    animation: wheelSpinBlur 0.28s linear infinite;
+    animation: wheelSpinFast 0.22s linear infinite;
   }
   .wheel-disk.is-settling {
     animation: none;
-    transition: transform 2.6s cubic-bezier(0.15, 0.85, 0.2, 1);
+    transition: transform 3.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
-  @keyframes wheelSpinBlur {
+  @keyframes wheelSpinFast {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+  .modal-card.modal-card-wheel { max-width: 380px; }
   .wheel-labels {
     position: absolute;
     inset: 0;
@@ -973,44 +959,45 @@
     border: 0.5px solid var(--border);
   }
 
-  /* Predictions panel (Plan tab) */
-  .predictions-panel {
-    margin-bottom: 0;
+  /* Predictions (modal) */
+  .pred-form-section[hidden] { display: none !important; }
+  .pred-list-head {
+    font-size: 12px; font-weight: 700; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin: 16px 0 8px;
   }
-  .predictions-head {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
-  }
-  .predictions-head h2 {
-    font-family: var(--ff-r); font-size: 17px; font-weight: 800;
-    margin: 0; letter-spacing: -0.02em;
-  }
-  .predictions-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pred-week-btns,
   .predictions-week {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
   .pred-day-btn {
     display: flex; flex-direction: column; align-items: center; gap: 4px;
-    padding: 10px 6px; border-radius: 12px;
-    background: var(--card); border: 0.5px solid var(--border);
+    padding: 12px 8px; border-radius: 10px;
+    background: transparent; border: 2px solid var(--border);
     font-size: 11px; font-weight: 650; color: var(--ink-2);
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    transition: transform .12s ease, background .12s ease, border-color .12s ease;
-    position: relative;
-    z-index: 2;
+    transition: transform .12s ease, background .12s ease, border-color .12s ease, color .12s ease;
   }
   .pred-day-btn:active { transform: scale(0.96); }
   .pred-day-btn.past { opacity: 0.45; pointer-events: none; }
   .pred-day-btn.selected {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 14%, var(--card));
-    color: var(--accent);
+    background: var(--accent);
+    color: #fff;
   }
+  .pred-day-btn.selected .d,
+  .pred-day-btn.selected .pred-day-meta { color: #fff; }
   .pred-day-btn .d { font-size: 13px; font-weight: 800; color: var(--ink); }
-  .predictions-list { display: flex; flex-direction: column; gap: 8px; }
+  .pred-day-meta { font-size: 10px; color: var(--ink-3); line-height: 1.2; }
+  .pred-wager-row { display: flex; flex-direction: column; gap: 8px; }
+  .pred-wager-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .predictions-list {
+    display: flex; flex-direction: column; gap: 8px;
+    max-height: 200px; overflow-y: auto; margin-bottom: 12px;
+  }
   .pred-card {
     padding: 12px 14px; border-radius: 12px;
     background: var(--card); border: 0.5px solid var(--border);
@@ -2501,52 +2488,19 @@
           </div>
         </div>
         <div class="leader-section">
+          <button type="button" class="plan-lb-btn" id="openPredictions" aria-label="Predictions öffnen">
+            <span class="ico" aria-hidden="true">🎯</span>
+            <span class="lbl">Predictions</span>
+          </button>
+          <button type="button" class="plan-lb-btn" id="openSpinWheel" aria-label="Spin the Wheel öffnen">
+            <span class="ico" aria-hidden="true">🎡</span>
+            <span class="lbl">Spin</span>
+          </button>
           <button type="button" class="plan-lb-btn" id="openLeaderboard" aria-label="Leaderboard öffnen">
             <span class="ico" aria-hidden="true">🏆</span>
             <span class="lbl">Leaderboard</span>
           </button>
         </div>
-      </div>
-
-      <div class="casino-games" id="casinoGames">
-        <section class="spinthewheel-section" id="spinWheelSection" aria-label="Spin the Wheel">
-          <div class="casino-section-head">
-            <h2>🎡 Spin the Wheel</h2>
-            <div class="sub">Riskiere Coins · 4 Ergebnisse: 0×, ½×, 1×, 2×</div>
-          </div>
-          <div class="wheel-stage">
-            <div class="wheel-pointer" aria-hidden="true"></div>
-            <div class="wheel-disk" id="wheelDisk"></div>
-            <div class="wheel-labels" aria-hidden="true">
-              <span class="l0">0×</span>
-              <span class="l1">½×</span>
-              <span class="l2">1×</span>
-              <span class="l3">2×</span>
-            </div>
-          </div>
-          <form class="pred-form spin-form" id="spinWheelForm">
-            <div>
-              <label for="spinWager">Coins riskieren (max. <span id="spinWagerMax">—</span>)</label>
-              <input id="spinWager" type="number" min="1" step="1" value="100" required>
-            </div>
-            <button type="submit" class="smbtn primary" id="spinWheelBtn" style="width:100%;padding:12px;">Spin!</button>
-          </form>
-          <div id="spinWheelStatus" class="spin-status" hidden></div>
-          <div id="spinHistory" class="spin-history"></div>
-        </section>
-
-        <section class="predictions-panel" id="predictionsPanel" aria-label="Predictions">
-          <div class="predictions-head">
-            <h2>🎯 Predictions</h2>
-            <div class="predictions-actions">
-              <button type="button" class="smbtn primary" id="refreshPredictions">↻ Aktualisieren</button>
-            </div>
-          </div>
-          <div class="predictions-week" id="predictionsWeek"></div>
-          <div class="predictions-list" id="predictionsList">
-            <div class="detail-empty">Casino-Modus: Wähle einen Tag für deine Vorhersage.</div>
-          </div>
-        </section>
       </div>
 
       <div class="tt-head">
@@ -2852,30 +2806,67 @@
 <div class="modal-bg" id="predictionModal">
   <div class="modal-card">
     <button class="modal-close" id="predictionClose">✕</button>
-    <h2>Prediction<em>.</em></h2>
-    <div class="sub" id="predictionModalSub">—</div>
-    <form class="pred-form" id="predictionForm">
+    <h2>Week Predictions<em>.</em></h2>
+    <div class="sub" id="predictionModalSub">Wähle einen Tag</div>
+    <div class="pred-week-btns predictions-week" id="predictionsWeek"></div>
+    <div id="predictionFormSection" class="pred-form-section" hidden>
+      <form class="pred-form" id="predictionForm">
+        <div>
+          <label for="predClaim">Was erwartest du?</label>
+          <select id="predClaim" name="claim" required>
+            <option value="cancelled">Stunden entfallen</option>
+            <option value="substituted">Stunden suppliert</option>
+            <option value="no_change">Keine Änderungen</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div>
+            <label for="predHours">Stunden (1–8)</label>
+            <input id="predHours" name="hours" type="number" min="1" max="8" value="2" required>
+          </div>
+          <div class="pred-wager-row">
+            <label for="predWagerSlider">Coins · <span id="predWagerVal">100</span> / <span id="predWagerMax">—</span></label>
+            <input id="predWagerSlider" type="range" min="1" max="100" value="100">
+            <input id="predWager" name="wager" type="number" min="1" step="1" value="100" required>
+          </div>
+        </div>
+        <button type="submit" class="smbtn primary" style="width:100%;padding:12px;">Place Prediction</button>
+      </form>
+      <div id="predictionFormMsg" class="planner-status" hidden></div>
+    </div>
+    <div class="pred-list-head">Deine Vorhersagen</div>
+    <div class="predictions-list" id="predictionsList">
+      <div class="detail-empty">Noch keine Vorhersagen.</div>
+    </div>
+    <button type="button" class="smbtn" id="refreshPredictions" style="width:100%;">↻ Aktualisieren</button>
+  </div>
+</div>
+
+<!-- ===================== SPIN WHEEL MODAL ===================== -->
+<div class="modal-bg" id="spinWheelModal">
+  <div class="modal-card modal-card-wheel">
+    <button class="modal-close" id="spinWheelClose">✕</button>
+    <h2>Spin the Wheel<em>.</em></h2>
+    <div class="sub">Riskiere Coins · 0× · ½× · 1× · 2×</div>
+    <div class="wheel-stage">
+      <div class="wheel-pointer" aria-hidden="true"></div>
+      <div class="wheel-disk" id="wheelDisk"></div>
+      <div class="wheel-labels" aria-hidden="true">
+        <span class="l0">0×</span>
+        <span class="l1">½×</span>
+        <span class="l2">1×</span>
+        <span class="l3">2×</span>
+      </div>
+    </div>
+    <form class="pred-form spin-form" id="spinWheelForm">
       <div>
-        <label for="predClaim">Was erwartest du?</label>
-        <select id="predClaim" required>
-          <option value="cancelled">Stunden entfallen</option>
-          <option value="substituted">Stunden suppliert</option>
-          <option value="no_change">Keine Änderungen</option>
-        </select>
+        <label for="spinWager">Coins riskieren (max. <span id="spinWagerMax">—</span>)</label>
+        <input id="spinWager" type="number" min="1" step="1" value="100" required>
       </div>
-      <div class="row2">
-        <div>
-          <label for="predHours">Stunden (1–8)</label>
-          <input id="predHours" type="number" min="1" max="8" value="2" required>
-        </div>
-        <div>
-          <label for="predWager">Coins (max. <span id="predWagerMax">—</span>)</label>
-          <input id="predWager" type="number" min="1" step="1" value="100" required>
-        </div>
-      </div>
-      <button type="submit" class="smbtn primary" style="width:100%;padding:12px;">Place Prediction</button>
+      <button type="submit" class="smbtn primary" id="spinWheelBtn" style="width:100%;padding:12px;">SPIN</button>
     </form>
-    <div id="predictionFormMsg" class="planner-status" hidden></div>
+    <div id="spinWheelStatus" class="spin-status" hidden></div>
+    <div id="spinHistory" class="spin-history"></div>
   </div>
 </div>
 
@@ -3421,12 +3412,7 @@ function setCasino(m, rerender = false) {
   document.documentElement.dataset.casino = m;
   LS.set('casino', m);
   $$('#casinoToggle button').forEach(b => b.classList.toggle('active', b.dataset.casino === m));
-  if (m === 'on') {
-    syncCasinoWagerLimits();
-    renderPredictionsWeek();
-    if (creds) loadPredictions();
-    renderSpinHistory();
-  }
+  if (m === 'on') syncCasinoWagerLimits();
   if (rerender && lastLessons && lastMonday) {
     setStatus(ttMsg, '');
     renderWeek(lastLessons, lastMonday);
@@ -4492,7 +4478,7 @@ const PRED_CLAIM_LABELS = {
   no_change: 'Keine Änderungen',
 };
 let predictionsCache = [];
-let predictionModalDay = 0;
+let predictionModalDay = -1;
 let predictionWeekMonday = null;
 let spinHistoryCache = [];
 let wheelRotationDeg = 0;
@@ -4510,21 +4496,31 @@ function getPredictionWeekMonday() {
 }
 
 function syncCasinoWagerLimits() {
-  const max = Math.max(0, Math.round(state.coins || 0));
+  const max = Math.max(1, Math.round(state.coins || 0));
   const spinMax = $('#spinWagerMax');
   const predMax = $('#predWagerMax');
   if (spinMax) spinMax.textContent = fmt(max);
   if (predMax) predMax.textContent = fmt(max);
   const spinIn = $('#spinWager');
   const predIn = $('#predWager');
+  const predSlider = $('#predWagerSlider');
+  const predVal = $('#predWagerVal');
   if (spinIn) {
-    spinIn.max = String(Math.max(1, max));
-    if (Number(spinIn.value) > max) spinIn.value = String(Math.max(1, max));
+    spinIn.max = String(max);
+    if (Number(spinIn.value) > max) spinIn.value = String(max);
+    if (Number(spinIn.value) < 1) spinIn.value = '1';
   }
   if (predIn) {
-    predIn.max = String(Math.max(1, max));
-    if (Number(predIn.value) > max) predIn.value = String(Math.max(1, max));
+    predIn.max = String(max);
+    const v = Math.min(max, Math.max(1, Number(predIn.value) || 1));
+    predIn.value = String(v);
   }
+  if (predSlider) {
+    predSlider.max = String(max);
+    predSlider.min = '1';
+    predSlider.value = predIn ? predIn.value : '1';
+  }
+  if (predVal && predIn) predVal.textContent = fmt(Number(predIn.value));
 }
 
 function multToWheelSegment(mult) {
@@ -4546,6 +4542,17 @@ function mergeCloudState(cloudState) {
   refreshAccountTab();
 }
 
+function getDayPredictionMeta(dayIdx) {
+  const week = predictionWeekMonday || getPredictionWeekMonday();
+  const forDay = predictionsCache.filter(p => p.weekStart === week && Number(p.dayOfWeek) === dayIdx);
+  const count = forDay.length;
+  let lastTxt = '';
+  const settled = forDay.find(p => p.status === 'won' || p.status === 'lost');
+  if (settled) lastTxt = settled.status === 'won' ? 'Gewonnen' : 'Verloren';
+  else if (forDay.some(p => p.status === 'pending')) lastTxt = 'Ausstehend';
+  return { count, lastTxt };
+}
+
 function renderPredictionsWeek() {
   const el = $('#predictionsWeek');
   if (!el) return;
@@ -4557,8 +4564,14 @@ function renderPredictionsWeek() {
     const past = d < today;
     const dateLbl = `${d.getDate()}.${d.getMonth() + 1}.`;
     const sel = i === predictionModalDay ? ' selected' : '';
+    const meta = getDayPredictionMeta(i);
+    const metaLine = meta.count
+      ? `${meta.count} Tip${meta.count > 1 ? 'ps' : 'p'}${meta.lastTxt ? ' · ' + meta.lastTxt : ''}`
+      : 'Tippen';
     return `<button type="button" class="pred-day-btn${past ? ' past' : ''}${sel}" data-day="${i}">
-      <span class="d">${short}</span><span>${dateLbl}</span>
+      <span class="d">${short}</span>
+      <span>${dateLbl}</span>
+      <span class="pred-day-meta">${escapeHtml(metaLine)}</span>
     </button>`;
   }).join('');
 }
@@ -4573,26 +4586,63 @@ function initPredictionsWeekTap() {
     e.preventDefault();
     Sound.tap();
     Haptic.select();
-    openPredictionModal(Number(btn.dataset.day));
+    selectPredictionDay(Number(btn.dataset.day));
   });
 }
 
-function openPredictionModal(dayIdx) {
-  if (document.documentElement.dataset.casino !== 'on') {
-    showToast('Casino-Modus aktivieren für Predictions');
-    return;
-  }
+function selectPredictionDay(dayIdx) {
   predictionModalDay = dayIdx;
   syncCasinoWagerLimits();
-  $$('#predictionsWeek .pred-day-btn').forEach(b => {
-    b.classList.toggle('selected', Number(b.dataset.day) === dayIdx);
-  });
+  renderPredictionsWeek();
+  const formSec = $('#predictionFormSection');
+  if (formSec) formSec.hidden = false;
   $('#predictionModalSub').textContent =
     `${PRED_DAY_LABELS[dayIdx]} · Woche ab ${predictionWeekMonday || getPredictionWeekMonday()}`;
   const noCh = $('#predClaim').value === 'no_change';
   $('#predHours').disabled = noCh;
   $('#predictionFormMsg').hidden = true;
+}
+
+function openPredictionsModal() {
+  if (document.documentElement.dataset.casino !== 'on') {
+    showToast('Casino-Modus aktivieren');
+    return;
+  }
+  Sound.tap();
+  predictionModalDay = -1;
+  predictionWeekMonday = getPredictionWeekMonday();
+  $('#predictionModalSub').textContent = `Woche ab ${predictionWeekMonday}`;
+  const formSec = $('#predictionFormSection');
+  if (formSec) formSec.hidden = true;
+  $('#predictionFormMsg').hidden = true;
   $('#predictionModal').classList.add('open');
+  if (creds) loadPredictions();
+  else {
+    renderPredictionsWeek();
+    renderPredictionsList();
+  }
+}
+
+function closePredictionsModal() {
+  $('#predictionModal').classList.remove('open');
+}
+
+function openSpinWheelModal() {
+  if (document.documentElement.dataset.casino !== 'on') {
+    showToast('Casino-Modus aktivieren');
+    return;
+  }
+  Sound.tap();
+  syncCasinoWagerLimits();
+  const status = $('#spinWheelStatus');
+  if (status) { status.hidden = true; status.textContent = ''; }
+  renderSpinHistory();
+  $('#spinWheelModal').classList.add('open');
+}
+
+function closeSpinWheelModal() {
+  Sound.tap();
+  $('#spinWheelModal').classList.remove('open');
 }
 
 function renderPredictionsList() {
@@ -4670,6 +4720,11 @@ $('#predictionForm')?.addEventListener('submit', async (e) => {
     showToast('Casino-Modus aktivieren');
     return;
   }
+  if (predictionModalDay < 0 || predictionModalDay > 4) {
+    showToast('Bitte zuerst einen Tag wählen');
+    Haptic.warning();
+    return;
+  }
   const claim = $('#predClaim').value;
   const hours = claim === 'no_change' ? 0 : Number($('#predHours').value);
   const wager = Math.round(Number($('#predWager').value));
@@ -4707,28 +4762,46 @@ $('#predictionForm')?.addEventListener('submit', async (e) => {
     syncCasinoWagerLimits();
     Sound.tap(); Haptic.success();
     const dayName = PRED_DAY_LABELS[predictionModalDay] || 'Tag';
-    msg.textContent = `Vorhersage für ${dayName} platziert!`;
-    showToast(`🎯 Vorhersage für ${dayName}! · ${fmt(wager)} Coins`);
-    $('#predictionModal').classList.remove('open');
+    msg.textContent = `✅ Vorhersage für ${dayName} platziert!`;
+    showToast(`✅ Prediction placed for ${dayName}!`);
     await loadPredictions();
     scheduleCloudSave();
     pushLeaderboard();
   } catch (err) {
     msg.textContent = err.message;
+    showToast('❌ ' + err.message);
     Haptic.error();
   }
 });
 
-$('#predictionClose')?.addEventListener('click', () => {
-  Sound.tap();
-  $('#predictionModal').classList.remove('open');
+$('#predWagerSlider')?.addEventListener('input', () => {
+  const v = Number($('#predWagerSlider').value);
+  if ($('#predWager')) $('#predWager').value = String(v);
+  if ($('#predWagerVal')) $('#predWagerVal').textContent = fmt(v);
 });
+$('#predWager')?.addEventListener('input', () => {
+  const max = Math.max(1, Math.round(state.coins || 0));
+  let v = Math.round(Number($('#predWager').value) || 1);
+  v = Math.min(max, Math.max(1, v));
+  $('#predWager').value = String(v);
+  if ($('#predWagerSlider')) $('#predWagerSlider').value = String(v);
+  if ($('#predWagerVal')) $('#predWagerVal').textContent = fmt(v);
+});
+
+$('#openPredictions')?.addEventListener('click', () => openPredictionsModal());
+$('#predictionClose')?.addEventListener('click', () => { Sound.tap(); closePredictionsModal(); });
 $('#predictionModal')?.addEventListener('click', (e) => {
-  if (e.target === $('#predictionModal')) $('#predictionModal').classList.remove('open');
+  if (e.target === $('#predictionModal')) closePredictionsModal();
 });
 $('#refreshPredictions')?.addEventListener('click', () => {
   Sound.tap();
   loadPredictions();
+});
+
+$('#openSpinWheel')?.addEventListener('click', () => openSpinWheelModal());
+$('#spinWheelClose')?.addEventListener('click', () => closeSpinWheelModal());
+$('#spinWheelModal')?.addEventListener('click', (e) => {
+  if (e.target === $('#spinWheelModal')) closeSpinWheelModal();
 });
 
 function renderSpinHistory() {
@@ -4755,11 +4828,17 @@ async function animateWheelToSegment(segIdx) {
   let delta = targetMod - currentMod;
   if (delta <= 0) delta += 360;
   delta += 5 * 360;
-  wheelRotationDeg += delta;
+
   disk.classList.remove('is-spinning');
-  disk.classList.add('is-settling');
+  disk.style.transition = 'none';
   disk.style.transform = `rotate(${wheelRotationDeg}deg)`;
-  await waitMs(2700);
+  void disk.offsetWidth;
+
+  wheelRotationDeg += delta;
+  disk.classList.add('is-settling');
+  disk.style.transition = '';
+  disk.style.transform = `rotate(${wheelRotationDeg}deg)`;
+  await waitMs(3600);
   disk.classList.remove('is-settling');
 }
 
@@ -4844,7 +4923,6 @@ $('#spinWheelForm')?.addEventListener('submit', async (e) => {
 });
 
 initPredictionsWeekTap();
-renderPredictionsWeek();
 
 /* ============================================================
    TIMETABLE
@@ -5318,10 +5396,6 @@ $('#loginBtn').addEventListener('click', async () => {
     const cloudResult = await loadFromCloud();
     if (cloudResult === 'empty') saveToCloud();
     await fetchWeek(currentMonday);
-    if (document.documentElement.dataset.casino === 'on') {
-      renderPredictionsWeek();
-      loadPredictions();
-    }
   } catch (err) {
     console.error('[Login]', err);
     setStatus(msg, `Fehler: ${escapeHtml(err.message)}`, true);
@@ -5393,8 +5467,7 @@ function setTab(name, opts) {
     $$('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   }
   // Per-tab on-show refresh
-  if (name === 'plan' && creds) {
-    renderPredictionsWeek();
+  if (name === 'plan' && creds && $('#predictionModal')?.classList.contains('open')) {
     loadPredictions();
   }
   if (name === 'homework') renderHomeworkAll();
