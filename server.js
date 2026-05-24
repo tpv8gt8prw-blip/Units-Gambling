@@ -801,7 +801,12 @@ app.post('/api/prediction/list', async (req, res) => {
   let gameState = null;
   if (gsRaw) try { gameState = JSON.parse(gsRaw); } catch (_) {}
 
-  res.json({ ok: true, predictions: refreshed, state: gameState, cloudEnabled: true });
+  let spinHistory = [];
+  const spinRaw = await cloudGet(spinUserKey(creds));
+  if (spinRaw) try { spinHistory = JSON.parse(spinRaw); } catch (_) {}
+  if (!Array.isArray(spinHistory)) spinHistory = [];
+
+  res.json({ ok: true, predictions: refreshed, spinHistory, state: gameState, cloudEnabled: true });
 });
 
 app.post('/api/prediction/evaluate', async (req, res) => {
@@ -829,15 +834,12 @@ app.post('/api/prediction/evaluate', async (req, res) => {
   res.json({ ok: true, evaluated, cloudEnabled: true });
 });
 
-/* Spin the wheel — risk coins for random multiplier */
+/* Spin the wheel — 4 segments: 0×, ½×, 1×, 2× */
 const SPIN_MULTIPLIERS = [
-  { m: 0, w: 18 },
-  { m: 0.5, w: 22 },
-  { m: 1, w: 20 },
-  { m: 1.5, w: 16 },
+  { m: 0, w: 28 },
+  { m: 0.5, w: 32 },
+  { m: 1, w: 28 },
   { m: 2, w: 12 },
-  { m: 3, w: 8 },
-  { m: 5, w: 4 },
 ];
 
 function pickSpinMultiplier() {
@@ -880,10 +882,30 @@ app.post('/api/spinthewheel', async (req, res) => {
   if (prev) try { history = JSON.parse(prev); } catch (_) {}
   if (!Array.isArray(history)) history = [];
   history.unshift(spin);
-  await cloudSet(spinKey, JSON.stringify(history.slice(0, 20)));
+  history = history.slice(0, 20);
+  await cloudSet(spinKey, JSON.stringify(history));
 
-  res.json({ ok: true, spin, state: gameState });
+  let message;
+  if (mult === 0) message = `0× — ${bet} Coins verloren`;
+  else if (mult >= 2) message = `Du hast ${mult}× gewonnen! +${fmtCoins(payout)} Coins!`;
+  else if (net > 0) message = `${mult}× — +${fmtCoins(net)} Coins`;
+  else if (net < 0) message = `${mult}× — ${fmtCoins(net)} Coins`;
+  else message = `${mult}× — Einsatz zurück`;
+
+  res.json({
+    ok: true,
+    multiplier: mult,
+    resultCoins: payout,
+    message,
+    spin,
+    history,
+    state: gameState,
+  });
 });
+
+function fmtCoins(n) {
+  return Math.round(Number(n) || 0).toLocaleString('de-DE');
+}
 
 /* Daily evaluation scheduler (23:55 server local time) */
 let lastCronDay = '';

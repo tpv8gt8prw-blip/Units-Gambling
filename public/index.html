@@ -865,13 +865,117 @@
   .legend-swatch.cancelled { border-color: var(--cancel); background: var(--cancel-bg); }
   .legend-swatch.ausflug { border-color: var(--blue); background: rgba(0,122,255,0.12); }
 
-  /* Predictions panel (Plan tab) */
+  /* Casino-only games (Plan tab) */
+  .casino-games { display: none; margin-bottom: 18px; }
+  [data-casino="on"] .casino-games { display: block; }
+
+  .spinthewheel-section,
   .predictions-panel {
-    margin: 0 0 18px;
+    margin-bottom: 14px;
     padding: 14px;
     border-radius: var(--radius);
     background: var(--fill-2);
     border: 0.5px solid var(--border);
+  }
+  .casino-section-head { margin-bottom: 12px; }
+  .casino-section-head h2 {
+    font-family: var(--ff-r); font-size: 17px; font-weight: 800;
+    margin: 0 0 4px; letter-spacing: -0.02em;
+  }
+  .casino-section-head .sub { font-size: 12px; color: var(--ink-3); }
+
+  /* Spin wheel */
+  .wheel-stage {
+    position: relative;
+    width: min(240px, 72vw);
+    height: min(240px, 72vw);
+    margin: 8px auto 16px;
+  }
+  .wheel-pointer {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 18px solid var(--accent);
+    z-index: 3;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  }
+  .wheel-disk {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.35);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.18), inset 0 0 0 2px rgba(0,0,0,0.06);
+    background: conic-gradient(
+      #ff3b30 0deg 90deg,
+      #ff9500 90deg 180deg,
+      #ffd60a 180deg 270deg,
+      #30d158 270deg 360deg
+    );
+    will-change: transform;
+    transform: rotate(0deg);
+  }
+  .wheel-disk.is-spinning {
+    animation: wheelSpinBlur 0.28s linear infinite;
+  }
+  .wheel-disk.is-settling {
+    animation: none;
+    transition: transform 2.6s cubic-bezier(0.15, 0.85, 0.2, 1);
+  }
+  @keyframes wheelSpinBlur {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .wheel-labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: 50%;
+  }
+  .wheel-labels span {
+    position: absolute;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  }
+  .wheel-labels .l0 { top: 22%; left: 50%; transform: translate(-50%, -50%); }
+  .wheel-labels .l1 { top: 50%; right: 18%; transform: translate(50%, -50%); }
+  .wheel-labels .l2 { bottom: 18%; left: 50%; transform: translate(-50%, 50%); }
+  .wheel-labels .l3 { top: 50%; left: 18%; transform: translate(-50%, -50%); }
+  .spin-status {
+    text-align: center;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--fill);
+    font-weight: 700;
+    font-size: 15px;
+    margin-top: 10px;
+  }
+  .spin-status.is-spinning { color: var(--ink-3); }
+  .spin-status.win { background: var(--win-bg); color: var(--win); }
+  .spin-status.lose { background: var(--cancel-bg); color: var(--cancel); }
+  .spin-history {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--ink-3);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .spin-history-item {
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--card);
+    border: 0.5px solid var(--border);
+  }
+
+  /* Predictions panel (Plan tab) */
+  .predictions-panel {
+    margin-bottom: 0;
   }
   .predictions-head {
     display: flex; align-items: center; justify-content: space-between;
@@ -891,10 +995,20 @@
     padding: 10px 6px; border-radius: 12px;
     background: var(--card); border: 0.5px solid var(--border);
     font-size: 11px; font-weight: 650; color: var(--ink-2);
-    transition: transform .12s ease, background .12s ease;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    position: relative;
+    z-index: 2;
   }
   .pred-day-btn:active { transform: scale(0.96); }
   .pred-day-btn.past { opacity: 0.45; pointer-events: none; }
+  .pred-day-btn.selected {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, var(--card));
+    color: var(--accent);
+  }
   .pred-day-btn .d { font-size: 13px; font-weight: 800; color: var(--ink); }
   .predictions-list { display: flex; flex-direction: column; gap: 8px; }
   .pred-card {
@@ -1497,8 +1611,10 @@
   /* ============================================================
      APP VIEW + TAB PANES (iOS-style)
   ============================================================ */
-  .app-view { display: none; }
+  .app-view { display: none; touch-action: pan-y; }
   .app-view.visible { display: block; padding-bottom: calc(var(--safe-bottom) + 110px); }
+  #appView .plan-pager { touch-action: pan-x; }
+  #bottomDock { touch-action: manipulation; }
   /* App open: no pinch-zoom inside the shell (login page stays zoomable). */
   html.app-open {
     touch-action: manipulation;
@@ -2392,19 +2508,46 @@
         </div>
       </div>
 
-      <section class="predictions-panel" id="predictionsPanel" aria-label="Predictions">
-        <div class="predictions-head">
-          <h2>🎯 Predictions</h2>
-          <div class="predictions-actions">
-            <button type="button" class="smbtn" id="openSpinWheel">🎡 Spin</button>
-            <button type="button" class="smbtn primary" id="refreshPredictions">↻</button>
+      <div class="casino-games" id="casinoGames">
+        <section class="spinthewheel-section" id="spinWheelSection" aria-label="Spin the Wheel">
+          <div class="casino-section-head">
+            <h2>🎡 Spin the Wheel</h2>
+            <div class="sub">Riskiere Coins · 4 Ergebnisse: 0×, ½×, 1×, 2×</div>
           </div>
-        </div>
-        <div class="predictions-week" id="predictionsWeek"></div>
-        <div class="predictions-list" id="predictionsList">
-          <div class="detail-empty">Lade Vorhersagen…</div>
-        </div>
-      </section>
+          <div class="wheel-stage">
+            <div class="wheel-pointer" aria-hidden="true"></div>
+            <div class="wheel-disk" id="wheelDisk"></div>
+            <div class="wheel-labels" aria-hidden="true">
+              <span class="l0">0×</span>
+              <span class="l1">½×</span>
+              <span class="l2">1×</span>
+              <span class="l3">2×</span>
+            </div>
+          </div>
+          <form class="pred-form spin-form" id="spinWheelForm">
+            <div>
+              <label for="spinWager">Coins riskieren (max. <span id="spinWagerMax">—</span>)</label>
+              <input id="spinWager" type="number" min="1" step="1" value="100" required>
+            </div>
+            <button type="submit" class="smbtn primary" id="spinWheelBtn" style="width:100%;padding:12px;">Spin!</button>
+          </form>
+          <div id="spinWheelStatus" class="spin-status" hidden></div>
+          <div id="spinHistory" class="spin-history"></div>
+        </section>
+
+        <section class="predictions-panel" id="predictionsPanel" aria-label="Predictions">
+          <div class="predictions-head">
+            <h2>🎯 Predictions</h2>
+            <div class="predictions-actions">
+              <button type="button" class="smbtn primary" id="refreshPredictions">↻ Aktualisieren</button>
+            </div>
+          </div>
+          <div class="predictions-week" id="predictionsWeek"></div>
+          <div class="predictions-list" id="predictionsList">
+            <div class="detail-empty">Casino-Modus: Wähle einen Tag für deine Vorhersage.</div>
+          </div>
+        </section>
+      </div>
 
       <div class="tt-head">
         <div class="nav">
@@ -2726,30 +2869,13 @@
           <input id="predHours" type="number" min="1" max="8" value="2" required>
         </div>
         <div>
-          <label for="predWager">Coins</label>
+          <label for="predWager">Coins (max. <span id="predWagerMax">—</span>)</label>
           <input id="predWager" type="number" min="1" step="1" value="100" required>
         </div>
       </div>
       <button type="submit" class="smbtn primary" style="width:100%;padding:12px;">Place Prediction</button>
     </form>
     <div id="predictionFormMsg" class="planner-status" hidden></div>
-  </div>
-</div>
-
-<!-- ===================== SPIN WHEEL MODAL ===================== -->
-<div class="modal-bg" id="spinWheelModal">
-  <div class="modal-card">
-    <button class="modal-close" id="spinWheelClose">✕</button>
-    <h2>Spin the Wheel<em>.</em></h2>
-    <div class="sub">Risk Coins · Multiplikator 0×–5×</div>
-    <form class="pred-form" id="spinWheelForm">
-      <div>
-        <label for="spinWager">Coins setzen</label>
-        <input id="spinWager" type="number" min="1" step="1" value="100" required>
-      </div>
-      <button type="submit" class="smbtn primary" style="width:100%;padding:12px;">Drehen</button>
-    </form>
-    <div id="spinWheelResult" class="spin-result" hidden></div>
   </div>
 </div>
 
@@ -3184,6 +3310,7 @@ function updateWalletUI(opts = {}) {
   $('#wXpFill').style.width = `${Math.min(100, (state.xp / need) * 100)}%`;
   $('#wStreak').textContent = state.streak;
   if ($('#modalBalance')) $('#modalBalance').textContent = fmt(state.coins);
+  if (document.documentElement.dataset.casino === 'on') syncCasinoWagerLimits();
 }
 function animateCoins(delta) {
   animateWalletCoinsTo(state.coins, {
@@ -3294,6 +3421,12 @@ function setCasino(m, rerender = false) {
   document.documentElement.dataset.casino = m;
   LS.set('casino', m);
   $$('#casinoToggle button').forEach(b => b.classList.toggle('active', b.dataset.casino === m));
+  if (m === 'on') {
+    syncCasinoWagerLimits();
+    renderPredictionsWeek();
+    if (creds) loadPredictions();
+    renderSpinHistory();
+  }
   if (rerender && lastLessons && lastMonday) {
     setStatus(ttMsg, '');
     renderWeek(lastLessons, lastMonday);
@@ -4362,9 +4495,46 @@ const PRED_CLAIM_LABELS = {
 let predictionsCache = [];
 let predictionModalDay = 0;
 let predictionWeekMonday = null;
+let spinHistoryCache = [];
+let wheelRotationDeg = 0;
+let spinInFlight = false;
+
+const WHEEL_SEGMENTS = [
+  { mult: 0, label: '0×' },
+  { mult: 0.5, label: '½×' },
+  { mult: 1, label: '1×' },
+  { mult: 2, label: '2×' },
+];
 
 function getPredictionWeekMonday() {
   return isoDate(getMonday(new Date()));
+}
+
+function syncCasinoWagerLimits() {
+  const max = Math.max(0, Math.round(state.coins || 0));
+  const spinMax = $('#spinWagerMax');
+  const predMax = $('#predWagerMax');
+  if (spinMax) spinMax.textContent = fmt(max);
+  if (predMax) predMax.textContent = fmt(max);
+  const spinIn = $('#spinWager');
+  const predIn = $('#predWager');
+  if (spinIn) {
+    spinIn.max = String(Math.max(1, max));
+    if (Number(spinIn.value) > max) spinIn.value = String(Math.max(1, max));
+  }
+  if (predIn) {
+    predIn.max = String(Math.max(1, max));
+    if (Number(predIn.value) > max) predIn.value = String(Math.max(1, max));
+  }
+}
+
+function multToWheelSegment(mult) {
+  const i = WHEEL_SEGMENTS.findIndex(s => s.mult === mult);
+  return i >= 0 ? i : 0;
+}
+
+function waitMs(ms) {
+  return new Promise(r => setTimeout(r, ms));
 }
 
 function mergeCloudState(cloudState) {
@@ -4373,6 +4543,7 @@ function mergeCloudState(cloudState) {
   state.playedLessons = state.playedLessons || {};
   LS.setJSON('game', state);
   updateWalletUI();
+  syncCasinoWagerLimits();
   refreshAccountTab();
 }
 
@@ -4386,24 +4557,41 @@ function renderPredictionsWeek() {
     const d = addDays(mon, i);
     const past = d < today;
     const dateLbl = `${d.getDate()}.${d.getMonth() + 1}.`;
-    return `<button type="button" class="pred-day-btn${past ? ' past' : ''}" data-day="${i}">
+    const sel = i === predictionModalDay ? ' selected' : '';
+    return `<button type="button" class="pred-day-btn${past ? ' past' : ''}${sel}" data-day="${i}">
       <span class="d">${short}</span><span>${dateLbl}</span>
     </button>`;
   }).join('');
-  el.querySelectorAll('.pred-day-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.classList.contains('past')) return;
-      Sound.tap(); Haptic.select();
-      openPredictionModal(Number(btn.dataset.day));
-    });
+}
+
+function initPredictionsWeekTap() {
+  const el = $('#predictionsWeek');
+  if (!el || el._predTapBound) return;
+  el._predTapBound = true;
+  el.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pred-day-btn');
+    if (!btn || btn.classList.contains('past')) return;
+    e.preventDefault();
+    Sound.tap();
+    Haptic.select();
+    openPredictionModal(Number(btn.dataset.day));
   });
 }
 
 function openPredictionModal(dayIdx) {
+  if (document.documentElement.dataset.casino !== 'on') {
+    showToast('Casino-Modus aktivieren für Predictions');
+    return;
+  }
   predictionModalDay = dayIdx;
+  syncCasinoWagerLimits();
+  $$('#predictionsWeek .pred-day-btn').forEach(b => {
+    b.classList.toggle('selected', Number(b.dataset.day) === dayIdx);
+  });
   $('#predictionModalSub').textContent =
     `${PRED_DAY_LABELS[dayIdx]} · Woche ab ${predictionWeekMonday || getPredictionWeekMonday()}`;
-  $('#predHours').disabled = false;
+  const noCh = $('#predClaim').value === 'no_change';
+  $('#predHours').disabled = noCh;
   $('#predictionFormMsg').hidden = true;
   $('#predictionModal').classList.add('open');
 }
@@ -4447,8 +4635,10 @@ async function loadPredictions() {
     if (!r.ok) throw new Error(d.error || 'Laden fehlgeschlagen');
     if (d.state) mergeCloudState(d.state);
     predictionsCache = d.predictions || [];
+    if (Array.isArray(d.spinHistory)) spinHistoryCache = d.spinHistory;
     renderPredictionsList();
     renderPredictionsWeek();
+    renderSpinHistory();
   } catch (err) {
     if (list) list.innerHTML = `<div class="detail-empty">${escapeHtml(err.message)}</div>`;
   }
@@ -4477,11 +4667,31 @@ $('#predClaim')?.addEventListener('change', () => {
 $('#predictionForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!creds) return;
+  if (document.documentElement.dataset.casino !== 'on') {
+    showToast('Casino-Modus aktivieren');
+    return;
+  }
   const claim = $('#predClaim').value;
   const hours = claim === 'no_change' ? 0 : Number($('#predHours').value);
-  const wager = Number($('#predWager').value);
+  const wager = Math.round(Number($('#predWager').value));
+  const maxCoins = Math.round(state.coins || 0);
   const msg = $('#predictionFormMsg');
   msg.hidden = false;
+  if (!claim) {
+    msg.textContent = 'Bitte Vorhersage-Typ wählen.';
+    Haptic.error();
+    return;
+  }
+  if (claim !== 'no_change' && (hours < 1 || hours > 8)) {
+    msg.textContent = 'Stunden müssen zwischen 1 und 8 liegen.';
+    Haptic.error();
+    return;
+  }
+  if (wager < 1 || wager > maxCoins) {
+    msg.textContent = `Coins zwischen 1 und ${fmt(maxCoins)}.`;
+    Haptic.error();
+    return;
+  }
   msg.textContent = 'Speichere…';
   try {
     const r = await apiPost('/api/prediction/create', {
@@ -4495,9 +4705,11 @@ $('#predictionForm')?.addEventListener('submit', async (e) => {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Fehler');
     if (d.state) mergeCloudState(d.state);
+    syncCasinoWagerLimits();
     Sound.tap(); Haptic.success();
-    msg.textContent = 'Vorhersage platziert!';
-    showToast(`🎯 Prediction platziert · ${fmt(wager)} Coins`);
+    const dayName = PRED_DAY_LABELS[predictionModalDay] || 'Tag';
+    msg.textContent = `Vorhersage für ${dayName} platziert!`;
+    showToast(`🎯 Vorhersage für ${dayName}! · ${fmt(wager)} Coins`);
     $('#predictionModal').classList.remove('open');
     await loadPredictions();
     scheduleCloudSave();
@@ -4520,45 +4732,120 @@ $('#refreshPredictions')?.addEventListener('click', () => {
   loadPredictions();
 });
 
-$('#openSpinWheel')?.addEventListener('click', () => {
-  Sound.tap();
-  $('#spinWheelResult').hidden = true;
-  $('#spinWheelModal').classList.add('open');
-});
-$('#spinWheelClose')?.addEventListener('click', () => {
-  Sound.tap();
-  $('#spinWheelModal').classList.remove('open');
-});
-$('#spinWheelModal')?.addEventListener('click', (e) => {
-  if (e.target === $('#spinWheelModal')) $('#spinWheelModal').classList.remove('open');
-});
+function renderSpinHistory() {
+  const el = $('#spinHistory');
+  if (!el) return;
+  if (!spinHistoryCache.length) {
+    el.innerHTML = '<div class="detail-empty" style="font-size:12px;">Noch keine Spins.</div>';
+    return;
+  }
+  el.innerHTML = spinHistoryCache.slice(0, 8).map(s => {
+    const mult = s.multiplier ?? 0;
+    const pay = s.payout ?? 0;
+    const t = (s.at || '').slice(11, 16) || '—';
+    const cls = mult >= 2 ? 'win' : mult < 1 ? 'lose' : '';
+    return `<div class="spin-history-item ${cls}">${t} · ${mult}× · ${fmt(s.wager)} → ${fmt(pay)}</div>`;
+  }).join('');
+}
+
+async function animateWheelToSegment(segIdx) {
+  const disk = $('#wheelDisk');
+  if (!disk) return;
+  const targetMod = ((315 - segIdx * 90) % 360 + 360) % 360;
+  const currentMod = ((wheelRotationDeg % 360) + 360) % 360;
+  let delta = targetMod - currentMod;
+  if (delta <= 0) delta += 360;
+  delta += 5 * 360;
+  wheelRotationDeg += delta;
+  disk.classList.remove('is-spinning');
+  disk.classList.add('is-settling');
+  disk.style.transform = `rotate(${wheelRotationDeg}deg)`;
+  await waitMs(2700);
+  disk.classList.remove('is-settling');
+}
+
 $('#spinWheelForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!creds) return;
-  const wager = Number($('#spinWager').value);
-  const out = $('#spinWheelResult');
-  out.hidden = false;
-  out.textContent = 'Dreht…';
+  if (!creds || spinInFlight) return;
+  if (document.documentElement.dataset.casino !== 'on') {
+    showToast('Casino-Modus aktivieren');
+    return;
+  }
+  const wager = Math.round(Number($('#spinWager').value));
+  const maxCoins = Math.round(state.coins || 0);
+  const status = $('#spinWheelStatus');
+  const btn = $('#spinWheelBtn');
+  const disk = $('#wheelDisk');
+
+  if (wager < 1 || wager > maxCoins) {
+    status.hidden = false;
+    status.className = 'spin-status lose';
+    status.textContent = `Einsatz: 1–${fmt(maxCoins)} Coins`;
+    Haptic.error();
+    return;
+  }
+
+  spinInFlight = true;
+  if (btn) btn.disabled = true;
+  status.hidden = false;
+  status.className = 'spin-status is-spinning';
+  status.textContent = '⏳ Spinning…';
+  if (disk) {
+    disk.classList.remove('is-settling');
+    disk.classList.add('is-spinning');
+  }
+
+  const coinsBefore = state.coins;
   try {
     const r = await apiPost('/api/spinthewheel', { ...creds, wager });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Fehler');
+
+    const mult = d.multiplier ?? d.spin?.multiplier ?? 0;
+    const pay = d.resultCoins ?? d.spin?.payout ?? 0;
+    const seg = multToWheelSegment(mult);
+
+    await animateWheelToSegment(seg);
+
     if (d.state) mergeCloudState(d.state);
-    const mult = d.spin?.multiplier ?? 0;
-    const pay = d.spin?.payout ?? 0;
-    out.textContent = mult === 0
-      ? `💀 ${mult}× — alles verloren`
-      : `🎡 ${mult}× → ${fmt(pay)} Coins`;
-    if (mult >= 2) { Haptic.success(); Sound.winSmall(); }
-    else if (mult < 1) Haptic.error();
-    else Sound.tap();
+    else updateWalletUI();
+    syncCasinoWagerLimits();
+
+    const net = (d.spin?.net != null) ? d.spin.net : (pay - wager);
+    if (net !== 0) animateCoins(net);
+
+    if (Array.isArray(d.history)) spinHistoryCache = d.history;
+    renderSpinHistory();
+
+    status.className = 'spin-status ' + (mult >= 2 ? 'win' : mult < 1 ? 'lose' : '');
+    status.textContent = d.message || `${mult}× → ${fmt(pay)} Coins`;
+
+    if (mult >= 2) {
+      Haptic.success();
+      Sound.winSmall();
+      spawnConfetti(48);
+    } else if (mult < 1) {
+      Haptic.error();
+    } else {
+      Sound.tap();
+    }
+
     scheduleCloudSave();
     pushLeaderboard();
   } catch (err) {
-    out.textContent = err.message;
+    if (disk) disk.classList.remove('is-spinning', 'is-settling');
+    status.className = 'spin-status lose';
+    status.textContent = err.message;
+    if (state.coins !== coinsBefore) updateWalletUI();
     Haptic.error();
+  } finally {
+    spinInFlight = false;
+    if (btn) btn.disabled = false;
   }
 });
+
+initPredictionsWeekTap();
+renderPredictionsWeek();
 
 /* ============================================================
    TIMETABLE
@@ -5112,74 +5399,7 @@ $$('.dock-btn').forEach(btn => {
   });
 });
 
-// ===== App-view tab swipe with LIVE indicator tracking =====
-// The user drags horizontally on the content area; the dock pill
-// follows the finger PROPORTIONALLY (so a half-swipe puts the pill
-// halfway to the next tab — physically connected). On release, we
-// commit if the drag exceeded the threshold or the flick was fast.
-let swipeStart = null;
-appView.addEventListener('touchstart', (e) => {
-  if (e.touches.length !== 1) { swipeStart = null; return; }
-  // Ignore swipes that originate inside scrollable / interactive regions.
-  // .plan-pager owns its own horizontal navigation, so it must not also
-  // trigger tab changes.
-  if (e.target.closest('.plan-pager, .week-grid, .modal-card, .dock, .reels, .reel, input, button.app-switch')) { swipeStart = null; return; }
-  const t = e.touches[0];
-  swipeStart = {
-    x: t.clientX,
-    y: t.clientY,
-    t: performance.now(),
-    tracking: false,
-    lastX: t.clientX,
-    lastT: performance.now(),
-    velocity: 0,
-  };
-}, { passive: true });
-
-appView.addEventListener('touchmove', (e) => {
-  if (!swipeStart || e.touches.length !== 1) return;
-  const t = e.touches[0];
-  const dx = t.clientX - swipeStart.x;
-  const dy = t.clientY - swipeStart.y;
-
-  if (!swipeStart.tracking) {
-    // Decide: vertical scroll (let browser handle) vs horizontal tab swipe.
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
-      swipeStart = null;
-      return;
-    }
-    if (Math.abs(dx) < 12) return;
-    swipeStart.tracking = true;
-    if (dockController) dockController.beginAppSwipe();
-  }
-
-  if (dockController) dockController.updateAppSwipe(dx, window.innerWidth);
-
-  // Velocity estimate over the last move sample.
-  const now = performance.now();
-  const dt = (now - swipeStart.lastT) / 1000;
-  if (dt > 0) swipeStart.velocity = (t.clientX - swipeStart.lastX) / dt;
-  swipeStart.lastX = t.clientX;
-  swipeStart.lastT = now;
-}, { passive: true });
-
-appView.addEventListener('touchend', (e) => {
-  if (!swipeStart) return;
-  const tracking = swipeStart.tracking;
-  const t = e.changedTouches[0];
-  const dx = t.clientX - swipeStart.x;
-  const v = swipeStart.velocity;
-  swipeStart = null;
-  if (!tracking) return;
-  if (dockController) dockController.endAppSwipe(dx, v, window.innerWidth);
-}, { passive: true });
-
-appView.addEventListener('touchcancel', () => {
-  if (!swipeStart) return;
-  const tracking = swipeStart.tracking;
-  swipeStart = null;
-  if (tracking && dockController) dockController.endAppSwipe(0, 0, window.innerWidth);
-}, { passive: true });
+// Tab-Wechsel nur über Dock (Klick + Scrub) — kein App-weites Tab-Swipe.
 
 // ============================================================
 // PLAN CAROUSEL — native-style infinite swipe controller
