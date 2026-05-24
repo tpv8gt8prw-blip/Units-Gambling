@@ -3433,7 +3433,6 @@ function setCasino(m, rerender = false) {
   }
 }
 $$('#casinoToggle button').forEach(b => b.addEventListener('click', () => { Sound.tap(); Haptic.select(); setCasino(b.dataset.casino, true); }));
-setCasino(LS.get('casino') || 'off');
 
 // Header sound icon was moved into the Account tab as a switch — keep as no-op so legacy call sites stay safe.
 function updateSoundIcon() { /* no-op */ }
@@ -5297,20 +5296,39 @@ document.getElementById('planPager')?.addEventListener('click', handleLessonGrid
    AUTH EVENTS
 ============================================================ */
 $('#loginBtn').addEventListener('click', async () => {
-  initAudio(); Sound.tap(); Haptic.medium();
-  const server = $('#server').value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  const school = $('#school').value.trim();
-  const username = $('#user').value.trim();
-  const password = $('#pass').value;
-  if (!server || !school || !username || !password) { setStatus(msg, 'Bitte alle Felder ausfüllen.', true); Haptic.warning(); return; }
-  LS.set('server', server); LS.set('school', school); LS.set('user', username);
-  creds = { server, school, username, password };
-  currentMonday = normalizeRangeStart(new Date());
-const cloudResult = await loadFromCloud();
-  if (cloudResult === 'empty') saveToCloud();
-  fetchWeek(currentMonday);
-  renderPredictionsWeek();
-  loadPredictions();
+  const btn = $('#loginBtn');
+  try {
+    initAudio(); Sound.tap(); Haptic.medium();
+    const server = $('#server').value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const school = $('#school').value.trim();
+    const username = $('#user').value.trim();
+    const password = $('#pass').value;
+    if (!server || !school || !username || !password) {
+      setStatus(msg, 'Bitte alle Felder ausfüllen.', true);
+      Haptic.warning();
+      return;
+    }
+    LS.set('server', server);
+    LS.set('school', school);
+    LS.set('user', username);
+    creds = { server, school, username, password };
+    currentMonday = normalizeRangeStart(new Date());
+    btn.disabled = true;
+    setStatus(msg, `<span class="spinner"></span>verbinde…`);
+    const cloudResult = await loadFromCloud();
+    if (cloudResult === 'empty') saveToCloud();
+    await fetchWeek(currentMonday);
+    if (document.documentElement.dataset.casino === 'on') {
+      renderPredictionsWeek();
+      loadPredictions();
+    }
+  } catch (err) {
+    console.error('[Login]', err);
+    setStatus(msg, `Fehler: ${escapeHtml(err.message)}`, true);
+    Haptic.error();
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 });
 $('#logoutBtn').addEventListener('click', () => {
   Sound.tap(); Haptic.light();
@@ -6428,7 +6446,8 @@ class DockController {
 // Restore last tab on init (will only matter once appView is visible)
 setTab(currentTab, { force: true });
 
-// Init
+// Init (casino restore must run after creds / prediction state exist)
+setCasino(LS.get('casino') || 'off');
 updateWalletUI();
 updateSwitches();
 updateViewToggle();
