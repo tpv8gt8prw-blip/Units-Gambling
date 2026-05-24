@@ -834,22 +834,37 @@ app.post('/api/prediction/evaluate', async (req, res) => {
   res.json({ ok: true, evaluated, cloudEnabled: true });
 });
 
-/* Spin the wheel — 4 segments: 0×, ½×, 1×, 2× */
-const SPIN_MULTIPLIERS = [
-  { m: 0, w: 28 },
-  { m: 0.5, w: 32 },
-  { m: 1, w: 28 },
-  { m: 2, w: 12 },
+/* Spin the wheel — 4 segments (extensible table) */
+const SPIN_OUTCOMES = [
+  { id: 'zero', multiplier: 0, weight: 32, label: 'Niete' },
+  { id: 'half', multiplier: 0.5, weight: 30, label: '−50%' },
+  { id: 'x2', multiplier: 2, weight: 28, label: '×2' },
+  { id: 'x3', multiplier: 3, weight: 10, label: '×3' },
 ];
 
-function pickSpinMultiplier() {
-  const total = SPIN_MULTIPLIERS.reduce((s, x) => s + x.w, 0);
+function pickSpinOutcome() {
+  const total = SPIN_OUTCOMES.reduce((s, x) => s + x.weight, 0);
   let r = Math.random() * total;
-  for (const x of SPIN_MULTIPLIERS) {
-    r -= x.w;
-    if (r <= 0) return x.m;
+  for (const x of SPIN_OUTCOMES) {
+    r -= x.weight;
+    if (r <= 0) return x;
   }
-  return 1;
+  return SPIN_OUTCOMES[0];
+}
+
+function spinOutcomeMessage(outcome, bet, payout, net) {
+  switch (outcome.id) {
+    case 'zero':
+      return `Niete — ${fmtCoins(bet)} Coins verloren`;
+    case 'half':
+      return `−50% — ${fmtCoins(Math.abs(net))} Coins verloren`;
+    case 'x2':
+      return `×2 — +${fmtCoins(payout)} Coins!`;
+    case 'x3':
+      return `×3 — +${fmtCoins(payout)} Coins! 🎉`;
+    default:
+      return net >= 0 ? `+${fmtCoins(net)} Coins` : `${fmtCoins(net)} Coins`;
+  }
 }
 
 app.post('/api/spinthewheel', async (req, res) => {
@@ -868,14 +883,24 @@ app.post('/api/spinthewheel', async (req, res) => {
     return res.status(400).json({ error: 'Nicht genug Coins.' });
   }
 
-  const mult = pickSpinMultiplier();
+  const outcome = pickSpinOutcome();
+  const mult = outcome.multiplier;
   const payout = Math.round(bet * mult);
   const net = payout - bet;
   gameState.coins = Math.max(0, Math.round(gameState.coins - bet + payout));
   gameState.spinTotal = (gameState.spinTotal || 0) + 1;
   await cloudSet(gsKey, JSON.stringify(gameState));
 
-  const spin = { at: new Date().toISOString(), wager: bet, multiplier: mult, payout, net };
+  const segmentIndex = SPIN_OUTCOMES.findIndex(o => o.id === outcome.id);
+  const spin = {
+    at: new Date().toISOString(),
+    wager: bet,
+    outcomeId: outcome.id,
+    multiplier: mult,
+    payout,
+    net,
+    label: outcome.label,
+  };
   const spinKey = spinUserKey(creds);
   const prev = await cloudGet(spinKey);
   let history = [];
@@ -885,15 +910,12 @@ app.post('/api/spinthewheel', async (req, res) => {
   history = history.slice(0, 20);
   await cloudSet(spinKey, JSON.stringify(history));
 
-  let message;
-  if (mult === 0) message = `0× — ${bet} Coins verloren`;
-  else if (mult >= 2) message = `Du hast ${mult}× gewonnen! +${fmtCoins(payout)} Coins!`;
-  else if (net > 0) message = `${mult}× — +${fmtCoins(net)} Coins`;
-  else if (net < 0) message = `${mult}× — ${fmtCoins(net)} Coins`;
-  else message = `${mult}× — Einsatz zurück`;
+  const message = spinOutcomeMessage(outcome, bet, payout, net);
 
   res.json({
     ok: true,
+    outcomeId: outcome.id,
+    segmentIndex: segmentIndex >= 0 ? segmentIndex : 0,
     multiplier: mult,
     resultCoins: payout,
     message,

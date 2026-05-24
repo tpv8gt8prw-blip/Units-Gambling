@@ -908,6 +908,25 @@
     z-index: 3;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
   }
+  .wheel-rotor {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    will-change: transform;
+    transform: rotate(0deg);
+  }
+  .wheel-rotor.is-spinning {
+    animation: wheelSpinFast 0.14s linear infinite;
+  }
+  .wheel-rotor.is-settling {
+    animation: none;
+    transition: transform 3.2s cubic-bezier(0.12, 0.82, 0.22, 1);
+  }
+  @keyframes wheelSpinFast {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
   .wheel-disk {
     width: 100%;
     height: 100%;
@@ -922,19 +941,6 @@
         #2196F3 180deg 270deg,
         #4CAF50 270deg 360deg
       );
-    will-change: transform;
-    transform: rotate(0deg);
-  }
-  .wheel-disk.is-spinning {
-    animation: wheelSpinFast 0.18s linear infinite;
-  }
-  .wheel-disk.is-settling {
-    animation: none;
-    transition: transform 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-  @keyframes wheelSpinFast {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
   }
   .wheel-labels {
     position: absolute;
@@ -1645,13 +1651,64 @@
       backdrop-filter: none; -webkit-backdrop-filter: none;
       box-shadow: none;
     }
-    /* The pager carries the chrome on mobile; flatten its shadow a touch
-       so the page surface feels close to the viewport. */
     .plan-pager {
       box-shadow: 0 1px 0 var(--sep-2);
       backdrop-filter: none; -webkit-backdrop-filter: none;
     }
     .lesson-card { box-shadow: none; }
+    .modal-bg {
+      backdrop-filter: blur(4px) saturate(1.05);
+      -webkit-backdrop-filter: blur(4px) saturate(1.05);
+    }
+    .modal-card {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.22);
+    }
+    .dock {
+      backdrop-filter: blur(10px) saturate(1.15);
+      -webkit-backdrop-filter: blur(10px) saturate(1.15);
+      box-shadow:
+        0 1px 0 inset rgba(255, 255, 255, 0.35),
+        0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+    :root[data-mode="dark"] .dock {
+      box-shadow:
+        0 1px 0 inset rgba(255, 255, 255, 0.1),
+        0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+    .dock::before,
+    .dock::after {
+      display: none;
+    }
+    .dock-indicator {
+      filter: none;
+      box-shadow:
+        inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
+        0 1px 6px color-mix(in srgb, var(--accent) 22%, transparent);
+    }
+    .dock-indicator.is-liquid-active {
+      filter: none;
+    }
+    .dock-indicator::before,
+    .dock-indicator::after {
+      display: none;
+    }
+    .tab-pane.active {
+      animation: none;
+    }
+    .wheel-disk {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+    .wheel-rotor.is-settling {
+      transition-duration: 2.8s;
+    }
+    .dock-indicator {
+      will-change: transform;
+    }
+    .dock-indicator.is-liquid-active {
+      will-change: transform;
+    }
   }
   @media (min-width: 641px) {
     #prevBtn, #nextBtn { display: inline-flex; }
@@ -2927,15 +2984,17 @@
   <div class="modal-card modal-card-wheel">
     <button class="modal-close" id="spinWheelClose">✕</button>
     <h2>Spin the Wheel<em>.</em></h2>
-    <div class="sub">Riskiere Coins · 0× · ½× · 1× · 2×</div>
+    <div class="sub">Niete · −50% · ×2 · ×3</div>
     <div class="wheel-stage">
       <div class="wheel-pointer" aria-hidden="true"></div>
-      <div class="wheel-disk" id="wheelDisk"></div>
-      <div class="wheel-labels" aria-hidden="true">
-        <span class="l0">0×</span>
-        <span class="l1">½×</span>
-        <span class="l2">1×</span>
-        <span class="l3">2×</span>
+      <div class="wheel-rotor" id="wheelRotor">
+        <div class="wheel-disk" id="wheelDisk"></div>
+        <div class="wheel-labels" aria-hidden="true">
+          <span class="l0">Niete</span>
+          <span class="l1">−50%</span>
+          <span class="l2">×2</span>
+          <span class="l3">×3</span>
+        </div>
       </div>
     </div>
     <form class="pred-form spin-form" id="spinWheelForm">
@@ -4569,11 +4628,37 @@ let wheelRotationDeg = 0;
 let spinInFlight = false;
 
 const WHEEL_SEGMENTS = [
-  { mult: 0, label: '0×' },
-  { mult: 0.5, label: '½×' },
-  { mult: 1, label: '1×' },
-  { mult: 2, label: '2×' },
+  { id: 'zero', mult: 0, label: 'Niete' },
+  { id: 'half', mult: 0.5, label: '−50%' },
+  { id: 'x2', mult: 2, label: '×2' },
+  { id: 'x3', mult: 3, label: '×3' },
 ];
+
+function segmentIndexFromOutcome(d) {
+  if (typeof d.segmentIndex === 'number' && d.segmentIndex >= 0 && d.segmentIndex < WHEEL_SEGMENTS.length) {
+    return d.segmentIndex;
+  }
+  const id = d.outcomeId || d.spin?.outcomeId;
+  if (id) {
+    const i = WHEEL_SEGMENTS.findIndex(s => s.id === id);
+    if (i >= 0) return i;
+  }
+  const mult = d.multiplier ?? d.spin?.multiplier;
+  const i = WHEEL_SEGMENTS.findIndex(s => s.mult === mult);
+  return i >= 0 ? i : 0;
+}
+
+function segmentCenterDeg(segIdx) {
+  return segIdx * 90 + 45;
+}
+
+function computeWheelTargetRotation(currentDeg, segIdx, extraFullRotations) {
+  const targetMod = (360 - segmentCenterDeg(segIdx) + 360) % 360;
+  const currentMod = ((currentDeg % 360) + 360) % 360;
+  let delta = targetMod - currentMod;
+  if (delta <= 0) delta += 360;
+  return currentDeg + extraFullRotations * 360 + delta;
+}
 
 function getPredictionWeekMonday() {
   return isoDate(getMonday(new Date()));
@@ -4610,6 +4695,33 @@ function syncCasinoWagerLimits() {
 function multToWheelSegment(mult) {
   const i = WHEEL_SEGMENTS.findIndex(s => s.mult === mult);
   return i >= 0 ? i : 0;
+}
+
+async function playWheelSpinAnimation(segIdx) {
+  const rotor = $('#wheelRotor');
+  if (!rotor) return;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mobile = window.matchMedia('(max-width: 640px)').matches;
+  const minSpinMs = reduced ? 500 : (mobile ? 1600 : 2000);
+  const extraRots = reduced ? 1 : (mobile ? 5 : 7);
+  const settleMs = reduced ? 700 : 3200;
+
+  rotor.classList.remove('is-settling');
+  rotor.style.transition = 'none';
+  rotor.style.transform = `rotate(${wheelRotationDeg}deg)`;
+  rotor.classList.add('is-spinning');
+
+  await waitMs(minSpinMs);
+
+  rotor.classList.remove('is-spinning');
+  void rotor.offsetWidth;
+
+  wheelRotationDeg = computeWheelTargetRotation(wheelRotationDeg, segIdx, extraRots);
+  rotor.classList.add('is-settling');
+  rotor.style.transform = `rotate(${wheelRotationDeg}deg)`;
+  await waitMs(settleMs);
+  rotor.classList.remove('is-settling');
+  rotor.style.transition = '';
 }
 
 function waitMs(ms) {
@@ -4711,7 +4823,8 @@ function closePredictionsModal() {
   $('#predictionModal').classList.remove('open');
 }
 
-function showSpinResult(mult, pay, wager) {
+function showSpinResult(opts) {
+  const { outcomeId, multiplier: mult, payout: pay, wager, net, message } = opts;
   const panel = $('#spinResultPanel');
   const title = $('#spinResultTitle');
   const coins = $('#spinResultCoins');
@@ -4719,22 +4832,31 @@ function showSpinResult(mult, pay, wager) {
   const status = $('#spinWheelStatus');
   if (!panel || !title) return;
   if (status) status.hidden = true;
-  const isWin = mult >= 1;
-  const isBigWin = mult >= 2;
+  const seg = WHEEL_SEGMENTS.find(s => s.id === outcomeId) || WHEEL_SEGMENTS[0];
+  const isBigWin = outcomeId === 'x3' || mult >= 3;
+  const isWin = mult >= 2;
+  const isLoss = outcomeId === 'zero' || mult === 0;
+  const isHalf = outcomeId === 'half';
   panel.hidden = false;
-  panel.className = 'spin-result-panel ' + (isBigWin ? 'win' : mult < 1 ? 'lose' : '');
-  if (isBigWin) {
-    title.textContent = `You Won ${mult}×! 🎉`;
-    coins.textContent = `+${fmt(pay)} Coins`;
-  } else if (mult >= 1) {
-    title.textContent = `${mult}× — Gewinn!`;
-    coins.textContent = `+${fmt(pay)} Coins`;
-  } else if (mult > 0) {
-    title.textContent = `${mult}×`;
-    coins.textContent = `${fmt(pay)} Coins zurück`;
-  } else {
-    title.textContent = 'Better luck next time 😭';
+  panel.className = 'spin-result-panel ' + (isBigWin || isWin ? 'win' : (isLoss || isHalf) ? 'lose' : '');
+  if (message) {
+    title.textContent = message.split(' — ')[0];
+    coins.textContent = message.includes('—') ? message.split(' — ').slice(1).join(' — ') : message;
+  } else if (isLoss) {
+    title.textContent = 'Niete';
     coins.textContent = `−${fmt(wager)} Coins`;
+  } else if (isHalf) {
+    title.textContent = '−50% Coins';
+    coins.textContent = `−${fmt(Math.abs(net || Math.round(wager / 2)))} Coins`;
+  } else if (outcomeId === 'x3') {
+    title.textContent = '×3 Coins! 🎉';
+    coins.textContent = `+${fmt(pay)} Coins`;
+  } else if (outcomeId === 'x2') {
+    title.textContent = '×2 Coins!';
+    coins.textContent = `+${fmt(pay)} Coins`;
+  } else {
+    title.textContent = seg.label;
+    coins.textContent = `${fmt(pay)} Coins`;
   }
   if (total) total.textContent = `Gesamt: ${fmt(state.coins)} Coins`;
   panel.style.animation = 'none';
@@ -4919,28 +5041,6 @@ $('#spinWheelModal')?.addEventListener('click', (e) => {
   if (e.target === $('#spinWheelModal')) closeSpinWheelModal();
 });
 
-async function animateWheelToSegment(segIdx) {
-  const disk = $('#wheelDisk');
-  if (!disk) return;
-  const targetMod = ((315 - segIdx * 90) % 360 + 360) % 360;
-  const currentMod = ((wheelRotationDeg % 360) + 360) % 360;
-  let delta = targetMod - currentMod;
-  if (delta <= 0) delta += 360;
-  delta += 5 * 360;
-
-  disk.classList.remove('is-spinning');
-  disk.style.transition = 'none';
-  disk.style.transform = `rotate(${wheelRotationDeg}deg)`;
-  void disk.offsetWidth;
-
-  wheelRotationDeg += delta;
-  disk.classList.add('is-settling');
-  disk.style.transition = '';
-  disk.style.transform = `rotate(${wheelRotationDeg}deg)`;
-  await waitMs(3600);
-  disk.classList.remove('is-settling');
-}
-
 $('#spinWheelForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!creds || spinInFlight) return;
@@ -4952,7 +5052,7 @@ $('#spinWheelForm')?.addEventListener('submit', async (e) => {
   const maxCoins = Math.round(state.coins || 0);
   const status = $('#spinWheelStatus');
   const btn = $('#spinWheelBtn');
-  const disk = $('#wheelDisk');
+  const rotor = $('#wheelRotor');
 
   if (wager < 1 || wager > maxCoins) {
     status.hidden = false;
@@ -4968,62 +5068,68 @@ $('#spinWheelForm')?.addEventListener('submit', async (e) => {
   if (resultPanel) resultPanel.hidden = true;
   status.hidden = false;
   status.className = 'spin-status is-spinning';
-  status.textContent = '⏳ Spinning…';
-  if (disk) {
-    disk.classList.remove('is-settling');
-    disk.classList.add('is-spinning');
+  status.textContent = '⏳ Dreht…';
+  if (rotor) {
+    rotor.classList.remove('is-settling');
+    rotor.classList.add('is-spinning');
   }
 
   const coinsBefore = state.coins;
   try {
-    const r = await apiPost('/api/spinthewheel', { ...creds, wager });
+    const apiMinMs = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 400 : 1400;
+    const [r] = await Promise.all([
+      apiPost('/api/spinthewheel', { ...creds, wager }),
+      waitMs(apiMinMs),
+    ]);
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Fehler');
 
     const mult = d.multiplier ?? d.spin?.multiplier ?? 0;
     const pay = d.resultCoins ?? d.spin?.payout ?? 0;
-    const seg = multToWheelSegment(mult);
+    const outcomeId = d.outcomeId || d.spin?.outcomeId || WHEEL_SEGMENTS[segmentIndexFromOutcome(d)].id;
+    const seg = segmentIndexFromOutcome(d);
+    const net = (d.spin?.net != null) ? d.spin.net : (pay - wager);
 
-    await animateWheelToSegment(seg);
+    await playWheelSpinAnimation(seg);
 
     if (d.state) mergeCloudState(d.state);
     else updateWalletUI();
     syncCasinoWagerLimits();
 
-    const net = (d.spin?.net != null) ? d.spin.net : (pay - wager);
     if (net !== 0) animateCoins(net);
 
     if (Array.isArray(d.history)) spinHistoryCache = d.history;
 
-    showSpinResult(mult, pay, wager);
+    showSpinResult({ outcomeId, multiplier: mult, payout: pay, wager, net, message: d.message });
 
-    if (mult >= 2) {
+    if (outcomeId === 'x3' || mult >= 3) {
       Haptic.success();
       Sound.winSmall();
       spawnConfetti(56);
-      showToast('🎉 YOU WON!');
-    } else if (mult >= 1) {
+      showToast('🎉 ×3 — Mega Gewinn!');
+    } else if (outcomeId === 'x2' || mult >= 2) {
       Haptic.success();
+      Sound.winSmall();
+      spawnConfetti(32);
+      showToast('✅ ×2 Coins!');
+    } else if (outcomeId === 'half') {
       Sound.tap();
-      spawnConfetti(24);
-      showToast('✅ Gewonnen!');
-    } else if (mult > 0) {
-      Sound.tap();
-      showToast(`${mult}× — ${fmt(pay)} Coins`);
-    } else {
       Haptic.error();
-      showToast('😭 Better luck next time');
+      showToast('−50% Coins verloren');
+    } else if (outcomeId === 'zero' || mult === 0) {
+      Haptic.error();
+      showToast('Niete — kein Gewinn');
     }
 
     scheduleCloudSave();
     pushLeaderboard();
   } catch (err) {
-    if (disk) disk.classList.remove('is-spinning', 'is-settling');
     status.className = 'spin-status lose';
     status.textContent = err.message;
     if (state.coins !== coinsBefore) updateWalletUI();
     Haptic.error();
   } finally {
+    if (rotor) rotor.classList.remove('is-spinning', 'is-settling');
     spinInFlight = false;
     if (btn) btn.disabled = false;
   }
@@ -6069,6 +6175,7 @@ class DockController {
     this._lastWidth = 0;
     this._clickSnapTimer = null;
     this._motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this._liteMotion = window.matchMedia('(max-width: 640px)').matches;
 
     this._measure();
     // Apply initial position without animation.
@@ -6189,11 +6296,19 @@ class DockController {
     const mag = Math.min(1, velMag * 0.42 + Math.min(1, stretchHint) * 0.58);
     const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
     const T = this._liquidTarget;
-    T.sx = 1 + mag * 0.15;
-    T.sy = 1 - mag * 0.055;
-    T.skew = dir * mag * 4.8;
-    T.ty = -mag * 1.35;
-    T.br = 18 + mag * 7;
+    if (this._liteMotion) {
+      T.sx = 1 + mag * 0.06;
+      T.sy = 1 - mag * 0.022;
+      T.skew = dir * mag * 2.2;
+      T.ty = -mag * 0.55;
+      T.br = 18 + mag * 2.5;
+    } else {
+      T.sx = 1 + mag * 0.15;
+      T.sy = 1 - mag * 0.055;
+      T.skew = dir * mag * 4.8;
+      T.ty = -mag * 1.35;
+      T.br = 18 + mag * 7;
+    }
     this._ensureMotionLoop();
   }
   _widthBetweenTabs(x, w) {
@@ -6320,8 +6435,9 @@ class DockController {
     this._applyTransform();
     void this.indicator.offsetWidth;
 
-    this.indicator.style.transition =
-      'transform 220ms cubic-bezier(0.32, 0.72, 0, 1), width 200ms ease-out, filter 200ms ease-out';
+    this.indicator.style.transition = this._liteMotion
+      ? 'transform 220ms cubic-bezier(0.32, 0.72, 0, 1), width 200ms ease-out'
+      : 'transform 220ms cubic-bezier(0.32, 0.72, 0, 1), width 200ms ease-out, filter 200ms ease-out';
     this.x = target;
     this.indicator.style.width = targetW + 'px';
     this._lastWidth = targetW;
@@ -6374,6 +6490,7 @@ class DockController {
     }
   }
   _handleResize() {
+    this._liteMotion = window.matchMedia('(max-width: 640px)').matches;
     this._measure();
     if (!this.scrubbing && !this.appSwiping) {
       this._setWidthInstant(this._widthForIdx(this.activeIdx));
