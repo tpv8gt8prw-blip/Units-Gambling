@@ -1520,26 +1520,24 @@
     isolation: isolate;
     will-change: transform, backdrop-filter, background;
     transition:
-      background 0.22s cubic-bezier(0.32, 0.72, 0, 1),
-      backdrop-filter 0.22s ease,
-      border-color 0.22s ease,
-      box-shadow 0.22s ease;
+      background 0.14s cubic-bezier(0.32, 0.72, 0, 1),
+      backdrop-filter 0.14s ease,
+      border-color 0.14s ease,
+      box-shadow 0.14s ease;
   }
-  /* Whole dock fades to clearer glass while the pill is touched / dragged */
+  /* Clean iOS glass — dock fades out while pill is grabbed */
   .dock.is-interacting {
-    background:
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.12) 0%,
-        rgba(255, 255, 255, 0.04) 42%,
-        rgba(255, 255, 255, 0.01) 100%),
-      rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(30px) saturate(1.7);
-    -webkit-backdrop-filter: blur(30px) saturate(1.7);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(40px) saturate(1.35);
+    -webkit-backdrop-filter: blur(40px) saturate(1.35);
+    border-color: rgba(255, 255, 255, 0.09);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.28),
-      0 0 0 0.5px rgba(0, 0, 0, 0.03),
-      0 8px 24px rgba(0, 0, 0, 0.08);
+      0 1px 0 inset rgba(255, 255, 255, 0.2),
+      0 0 0 0.5px rgba(0, 0, 0, 0.02),
+      0 6px 20px rgba(0, 0, 0, 0.06);
+  }
+  .dock.is-interacting::before {
+    opacity: 0.45;
   }
   :root[data-mode="dark"] .dock {
     background:
@@ -1557,19 +1555,17 @@
       0 14px 36px rgba(0, 0, 0, 0.55);
   }
   :root[data-mode="dark"] .dock.is-interacting {
-    background:
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.07) 0%,
-        rgba(255, 255, 255, 0.02) 42%,
-        transparent 100%),
-      rgba(18, 18, 20, 0.38);
-    backdrop-filter: blur(32px) saturate(1.55);
-    -webkit-backdrop-filter: blur(32px) saturate(1.55);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(22, 22, 24, 0.42);
+    backdrop-filter: blur(44px) saturate(1.3);
+    -webkit-backdrop-filter: blur(44px) saturate(1.3);
+    border-color: rgba(255, 255, 255, 0.07);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.1),
-      0 0 0 0.5px rgba(0, 0, 0, 0.35),
-      0 8px 22px rgba(0, 0, 0, 0.42);
+      0 1px 0 inset rgba(255, 255, 255, 0.08),
+      0 0 0 0.5px rgba(0, 0, 0, 0.32),
+      0 6px 18px rgba(0, 0, 0, 0.38);
+  }
+  :root[data-mode="dark"] .dock.is-interacting::before {
+    opacity: 0.35;
   }
   /* Top specular gloss — the curved light highlight that makes
      real liquid glass look wet. Positioned just inside the top
@@ -1588,6 +1584,7 @@
       rgba(255, 255, 255, 0.00) 100%);
     pointer-events: none;
     filter: blur(0.5px);
+    transition: opacity 0.14s ease;
     /* Above the indicator pill (so the pill picks up the wet shine)
        but below the buttons (so icons stay crisp). */
     z-index: 2;
@@ -1626,34 +1623,32 @@
   ============================================================ */
   .dock-indicator {
     --pill-strain: 0;
-    --pill-alpha: 0.94;
+    --pill-alpha: 0.52;
     position: absolute;
     top: 8px;
     bottom: 8px;
     left: 0;
-    width: 0; /* JS sets this to the active button width */
+    width: 0;
     pointer-events: none;
     border-radius: 18px;
-    /* Accent pill (orange by default) — not glass */
     background:
       linear-gradient(180deg,
         color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 100%), transparent) 0%,
-        color-mix(in srgb, var(--accent-2, var(--accent)) calc(var(--pill-alpha) * 88%), transparent) 100%);
-    border: 0.5px solid color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 55%), transparent);
+        color-mix(in srgb, var(--accent-2, var(--accent)) calc(var(--pill-alpha) * 82%), transparent) 100%);
+    border: 0.5px solid color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 42%), transparent);
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white calc(var(--pill-alpha) * 35%), transparent),
-      0 2px 10px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 38%), transparent);
+      inset 0 1px 0 color-mix(in srgb, white calc(var(--pill-alpha) * 28%), transparent),
+      0 2px 8px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 28%), transparent);
     transform: translate3d(0, 0, 0);
     transform-origin: center center;
     will-change: transform, width;
-    contain: layout style;
+    contain: layout style paint;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     z-index: 1;
     transition:
-      width 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-      --pill-alpha 0.18s ease,
-      box-shadow 0.18s ease;
+      width 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+      box-shadow 0.12s ease;
     overflow: hidden;
   }
   .dock-indicator::before {
@@ -1687,22 +1682,11 @@
       transparent 100%);
     mix-blend-mode: overlay;
   }
-  /* Touch / swipe — pill slightly more transparent */
   .dock-indicator.is-liquid-active {
-    --pill-alpha: 0.76;
-    transition: width 0.1s cubic-bezier(0.32, 0.72, 0, 1);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
-      0 4px 16px color-mix(in srgb, var(--accent) 32%, transparent);
+    transition: width 0.06s cubic-bezier(0.32, 0.72, 0, 1);
   }
   :root[data-mode="dark"] .dock-indicator {
-    --pill-alpha: 0.9;
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white calc(var(--pill-alpha) * 22%), transparent),
-      0 2px 12px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 45%), transparent);
-  }
-  :root[data-mode="dark"] .dock-indicator.is-liquid-active {
-    --pill-alpha: 0.72;
+    --pill-alpha: 0.48;
   }
   /* Reduced-motion users skip the width transition too. */
   @media (prefers-reduced-motion: reduce) {
@@ -1726,10 +1710,11 @@
     letter-spacing: 0.01em;
     border-radius: 14px;
     position: relative;
-    z-index: 3; /* above indicator pill (1) and gloss (2) */
+    z-index: 3;
+    transform: translateZ(0);
     transition:
-      color .22s var(--ease-out),
-      transform .18s cubic-bezier(0.34, 1.36, 0.64, 1);
+      color .14s var(--ease-out),
+      transform .14s cubic-bezier(0.34, 1.36, 0.64, 1);
     -webkit-tap-highlight-color: transparent;
   }
   .dock-btn .icon-svg {
@@ -1755,11 +1740,21 @@
   /* Active state — text color + icon scale + label opacity boost.
      The pill bg is handled by .dock-indicator (positioned by JS). */
   .dock-btn.active {
-    color: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   }
   .dock-btn.active .icon-svg {
-    transform: scale(1.10);
+    transform: scale(1.08);
     opacity: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.14));
+  }
+  .dock.is-interacting .dock-btn:not(.active) {
+    color: var(--ink-2);
+    opacity: 0.88;
+  }
+  :root[data-mode="dark"] .dock.is-interacting .dock-btn:not(.active) {
+    color: rgba(255, 255, 255, 0.58);
   }
   .dock-btn.active .lbl {
     opacity: 1;
@@ -5302,8 +5297,8 @@ class DockController {
 
     // Spring tuning — slightly stiffer than the plan-pager for a
     // crisper, more "snappy" indicator feel.
-    this.STIFFNESS = 285;
-    this.DAMPING = 31;
+    this.STIFFNESS = 360;
+    this.DAMPING = 34;
 
     // Scrub state
     this.scrubbing = false;
@@ -5364,12 +5359,19 @@ class DockController {
   _applyTransform() {
     const { sx, sy, skew, ty, br } = this.liquid;
     const origin = skew < 0 ? 'right center' : skew > 0 ? 'left center' : 'center center';
-    const strain = Math.min(1, this._liquidDeformAmount() * 2.8);
+    const strain = Math.min(1, this._liquidDeformAmount() * 3.2);
+    const gesturing = this.scrubbing || this.appSwiping || this._pressPulse;
+    const alphaBase = 0.52;
+    const alphaMin = gesturing ? 0.34 : 0.48;
+    const alpha = alphaBase - strain * (alphaBase - alphaMin);
     this.indicator.style.transformOrigin = origin;
     this.indicator.style.borderRadius = br + 'px';
     this.indicator.style.setProperty('--pill-strain', strain.toFixed(3));
+    this.indicator.style.setProperty('--pill-alpha', alpha.toFixed(3));
+    const x = Math.round(this.x * 100) / 100;
+    const y = Math.round(ty * 100) / 100;
     this.indicator.style.transform =
-      `translate3d(${this.x}px, ${ty}px, 0) scale3d(${sx}, ${sy}, 1) skewX(${skew}deg)`;
+      `translate3d(${x}px, ${y}px, 0) scale3d(${sx}, ${sy}, 1) skewX(${skew}deg)`;
   }
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
@@ -5388,16 +5390,16 @@ class DockController {
     if (!this._motionOk) return;
     const v = dt > 0 ? deltaX / dt : 0;
     this._scrubVel = this._scrubVel * 0.58 + v * 0.42;
-    const velMag = Math.min(1, Math.abs(this._scrubVel) / 2400);
-    const mag = Math.min(1, velMag * 0.55 + Math.min(1, stretchHint) * 0.62);
+    const velMag = Math.min(1, Math.abs(this._scrubVel) / 2000);
+    const mag = Math.min(1, velMag * 0.5 + Math.min(1, stretchHint) * 0.72);
     const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
     const T = this._liquidTarget;
-    // Directional liquid stretch (fast, viscous — like WhatsApp tab lens)
-    T.sx = 1 + mag * 0.13;
-    T.sy = 1 - mag * 0.055;
-    T.skew = dir * mag * 5.5;
-    T.ty = -mag * 2.2;
-    T.br = 18 + mag * 5;
+    // Liquid blob stretch while sliding (colored pill, not glass)
+    T.sx = 1 + mag * 0.2;
+    T.sy = 1 - mag * 0.075;
+    T.skew = dir * mag * 6.5;
+    T.ty = -mag * 1.8;
+    T.br = 18 + mag * 9;
     this._ensureMotionLoop();
   }
   _relaxLiquid() {
@@ -5425,7 +5427,7 @@ class DockController {
         const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
         this.velocity += accel * dt;
         this.x += this.velocity * dt;
-        if (Math.abs(dx) < 0.35 && Math.abs(this.velocity) < 16) {
+        if (Math.abs(dx) < 0.4 && Math.abs(this.velocity) < 22) {
           this.x = this._springTarget;
           this.velocity = 0;
           this._springTarget = null;
@@ -5448,7 +5450,7 @@ class DockController {
         if (p >= 1) this._pressPulse = null;
       }
 
-      const lk = 1 - Math.exp(-dt * (this.scrubbing || this.appSwiping ? 52 : 36));
+      const lk = 1 - Math.exp(-dt * (this.scrubbing || this.appSwiping ? 72 : 48));
       const L = this.liquid;
       const T = this._liquidTarget;
       L.sx += (T.sx - L.sx) * lk;
@@ -5480,7 +5482,7 @@ class DockController {
   }
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
-    this._pressPulse = { t0: performance.now(), dur: 180 };
+    this._pressPulse = { t0: performance.now(), dur: 130 };
     this._setDockInteracting(true);
     this._setLiquidActive(true);
     this._ensureMotionLoop();
@@ -5611,7 +5613,7 @@ class DockController {
     const nearest = this._nearestIdx(nextX);
     const targetW = this._widthForIdx(nearest);
     const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
-    this.indicator.style.width = (curW + (targetW - curW) * 0.45) + 'px';
+    this.indicator.style.width = (curW + (targetW - curW) * 0.62) + 'px';
 
     const span = Math.max(1, (this._xForIdx(this.buttons.length - 1) - this._xForIdx(0)));
     const stretchHint = Math.min(1, Math.abs(nextX - this._xForIdx(this.activeIdx)) / (span * 0.55));
