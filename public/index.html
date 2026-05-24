@@ -1623,7 +1623,7 @@
   ============================================================ */
   .dock-indicator {
     --pill-strain: 0;
-    --pill-alpha: 0.52;
+    --pill-alpha: 0.4;
     position: absolute;
     top: 8px;
     bottom: 8px;
@@ -1646,9 +1646,7 @@
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     z-index: 1;
-    transition:
-      width 0.2s cubic-bezier(0.32, 0.72, 0, 1),
-      box-shadow 0.12s ease;
+    transition: width 0.16s cubic-bezier(0.32, 0.72, 0, 1);
     overflow: hidden;
   }
   .dock-indicator::before {
@@ -1686,7 +1684,7 @@
     transition: width 0.06s cubic-bezier(0.32, 0.72, 0, 1);
   }
   :root[data-mode="dark"] .dock-indicator {
-    --pill-alpha: 0.48;
+    --pill-alpha: 0.36;
   }
   /* Reduced-motion users skip the width transition too. */
   @media (prefers-reduced-motion: reduce) {
@@ -5297,8 +5295,8 @@ class DockController {
 
     // Spring tuning — slightly stiffer than the plan-pager for a
     // crisper, more "snappy" indicator feel.
-    this.STIFFNESS = 360;
-    this.DAMPING = 34;
+    this.STIFFNESS = 430;
+    this.DAMPING = 38;
 
     // Scrub state
     this.scrubbing = false;
@@ -5322,6 +5320,9 @@ class DockController {
     this._scrubLastX = 0;
     this._scrubLastT = 0;
     this._scrubVel = 0;
+    this._stretchHint = 0;
+    this._pillAlpha = 0.4;
+    this._xf = '';
     this._motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     this._measure();
@@ -5356,22 +5357,40 @@ class DockController {
     const p = this.positions[idx];
     return p ? p.width : 0;
   }
+  _pillAlphaTarget() {
+    if (this.scrubbing || this.appSwiping) {
+      const s = Math.min(1, this._stretchHint * 0.55 + this._liquidDeformAmount() * 2);
+      return 0.2 - s * 0.04;
+    }
+    if (this._pressPulse) return 0.32;
+    return 0.4;
+  }
   _applyTransform() {
     const { sx, sy, skew, ty, br } = this.liquid;
     const origin = skew < 0 ? 'right center' : skew > 0 ? 'left center' : 'center center';
     const strain = Math.min(1, this._liquidDeformAmount() * 3.2);
-    const gesturing = this.scrubbing || this.appSwiping || this._pressPulse;
-    const alphaBase = 0.52;
-    const alphaMin = gesturing ? 0.34 : 0.48;
-    const alpha = alphaBase - strain * (alphaBase - alphaMin);
-    this.indicator.style.transformOrigin = origin;
-    this.indicator.style.borderRadius = br + 'px';
-    this.indicator.style.setProperty('--pill-strain', strain.toFixed(3));
-    this.indicator.style.setProperty('--pill-alpha', alpha.toFixed(3));
-    const x = Math.round(this.x * 100) / 100;
-    const y = Math.round(ty * 100) / 100;
-    this.indicator.style.transform =
-      `translate3d(${x}px, ${y}px, 0) scale3d(${sx}, ${sy}, 1) skewX(${skew}deg)`;
+    const x = Math.round(this.x * 10) / 10;
+    const y = Math.round(ty * 10) / 10;
+    const xf = `translate3d(${x}px,${y}px,0) scale3d(${sx.toFixed(3)},${sy.toFixed(3)},1) skewX(${skew.toFixed(2)}deg)`;
+    if (this._xf !== xf) {
+      this._xf = xf;
+      this.indicator.style.transform = xf;
+    }
+    if (this.indicator.style.transformOrigin !== origin) {
+      this.indicator.style.transformOrigin = origin;
+    }
+    const brPx = Math.round(br * 10) / 10 + 'px';
+    if (this.indicator.style.borderRadius !== brPx) {
+      this.indicator.style.borderRadius = brPx;
+    }
+    const strainS = strain.toFixed(2);
+    if (this.indicator.style.getPropertyValue('--pill-strain') !== strainS) {
+      this.indicator.style.setProperty('--pill-strain', strainS);
+    }
+    const alphaS = this._pillAlpha.toFixed(2);
+    if (this.indicator.style.getPropertyValue('--pill-alpha') !== alphaS) {
+      this.indicator.style.setProperty('--pill-alpha', alphaS);
+    }
   }
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
@@ -5388,6 +5407,7 @@ class DockController {
   }
   _feedLiquidMotion(deltaX, dt, stretchHint = 0) {
     if (!this._motionOk) return;
+    this._stretchHint = stretchHint;
     const v = dt > 0 ? deltaX / dt : 0;
     this._scrubVel = this._scrubVel * 0.58 + v * 0.42;
     const velMag = Math.min(1, Math.abs(this._scrubVel) / 2000);
@@ -5427,7 +5447,7 @@ class DockController {
         const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
         this.velocity += accel * dt;
         this.x += this.velocity * dt;
-        if (Math.abs(dx) < 0.4 && Math.abs(this.velocity) < 22) {
+        if (Math.abs(dx) < 0.5 && Math.abs(this.velocity) < 28) {
           this.x = this._springTarget;
           this.velocity = 0;
           this._springTarget = null;
@@ -5450,20 +5470,24 @@ class DockController {
         if (p >= 1) this._pressPulse = null;
       }
 
-      const lk = 1 - Math.exp(-dt * (this.scrubbing || this.appSwiping ? 72 : 48));
+      const gesturing = this.scrubbing || this.appSwiping;
+      const lk = 1 - Math.exp(-dt * (gesturing ? 98 : 58));
       const L = this.liquid;
       const T = this._liquidTarget;
       L.sx += (T.sx - L.sx) * lk;
       L.sy += (T.sy - L.sy) * lk;
       L.skew += (T.skew - L.skew) * lk;
       L.ty += (T.ty - L.ty) * lk;
-      L.br += (T.br - L.br) * lk;
+      L.br += (T.br - L.br) * lk * 0.9;
+
+      const alphaK = 1 - Math.exp(-dt * (gesturing ? 110 : 70));
+      const alphaTarget = this._pillAlphaTarget();
+      this._pillAlpha += (alphaTarget - this._pillAlpha) * alphaK;
 
       if (this._liquidDeformAmount() > 0.001) running = true;
       else this._snapLiquidIfIdle();
 
-      const gesturing = this.scrubbing || this.appSwiping || this._springTarget != null;
-      this._setLiquidActive(gesturing && this._liquidDeformAmount() > 0.008);
+      this._setLiquidActive(gesturing || !!this._pressPulse || this._springTarget != null);
 
       this._applyTransform();
 
@@ -5482,7 +5506,7 @@ class DockController {
   }
   pulsePress() {
     if (!this._motionOk || this.scrubbing || this.appSwiping) return;
-    this._pressPulse = { t0: performance.now(), dur: 130 };
+    this._pressPulse = { t0: performance.now(), dur: 100 };
     this._setDockInteracting(true);
     this._setLiquidActive(true);
     this._ensureMotionLoop();
@@ -5521,6 +5545,9 @@ class DockController {
     this._pressPulse = null;
     Object.assign(this._liquidTarget, this._neutralLiquid());
     Object.assign(this.liquid, this._neutralLiquid());
+    this._stretchHint = 0;
+    this._pillAlpha = 0.4;
+    this._xf = '';
     this._setLiquidActive(false);
     this._setDockInteracting(false);
     if (!this.scrubbing && !this.appSwiping) this._stopMotionLoop();
@@ -5587,7 +5614,7 @@ class DockController {
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
     this.indicator.style.transition = 'none';
-    Object.assign(this._liquidTarget, { sx: 1.05, sy: 1.05, skew: 0, ty: 0, br: 19 });
+    this._stretchHint = 0;
     this._setDockInteracting(true);
     this._setLiquidActive(true);
     this._ensureMotionLoop();
@@ -5613,10 +5640,11 @@ class DockController {
     const nearest = this._nearestIdx(nextX);
     const targetW = this._widthForIdx(nearest);
     const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
-    this.indicator.style.width = (curW + (targetW - curW) * 0.62) + 'px';
+    this.indicator.style.width = (curW + (targetW - curW) * 0.78) + 'px';
 
     const span = Math.max(1, (this._xForIdx(this.buttons.length - 1) - this._xForIdx(0)));
-    const stretchHint = Math.min(1, Math.abs(nextX - this._xForIdx(this.activeIdx)) / (span * 0.55));
+    const stretchHint = Math.min(1, Math.abs(nextX - this._xForIdx(this.activeIdx)) / (span * 0.5));
+    this._stretchHint = stretchHint;
     if (Math.abs(frameDx) < 0.5) {
       const k = 0.18;
       const T = this._liquidTarget;
@@ -5688,7 +5716,7 @@ class DockController {
     this._scrubLastT = performance.now();
     this._scrubVel = 0;
     this.indicator.style.transition = 'none';
-    Object.assign(this._liquidTarget, { sx: 1.04, sy: 1.04, skew: 0, ty: 0, br: 19 });
+    this._stretchHint = 0;
     this._setDockInteracting(true);
     this._setLiquidActive(true);
     this._ensureMotionLoop();
@@ -5711,7 +5739,8 @@ class DockController {
       this._feedLiquidMotion(frameDx, dt, 0.15);
       return;
     }
-    const progress = Math.min(1, Math.abs(dx) / (w * 0.6));
+    const progress = Math.min(1, Math.abs(dx) / (w * 0.55));
+    this._stretchHint = progress;
     const startX = this.appSwipeFromX;
     const endX = this._xForIdx(targetIdx);
     const startW = this.appSwipeFromW;
