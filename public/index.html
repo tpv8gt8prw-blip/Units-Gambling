@@ -868,10 +868,10 @@
   .legend-swatch.cancelled { border-color: var(--cancel); background: var(--cancel-bg); }
   .legend-swatch.ausflug { border-color: var(--blue); background: rgba(0,122,255,0.12); }
 
-  /* Spin wheel (modal) — clean white theme */
+  /* Spin wheel (modal) — casino wheel layout */
   #spinWheelModal .modal-card.modal-card-wheel {
-    max-width: 380px;
-    background: #fff;
+    max-width: 400px;
+    background: linear-gradient(180deg, #fff 0%, #f7f7fa 100%);
     color: #111;
     border-color: rgba(0, 0, 0, 0.08);
     box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.18);
@@ -890,23 +890,97 @@
     -webkit-user-select: text;
     user-select: text;
   }
+  .wheel-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+  }
+  .wheel-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 650;
+    color: #555;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.04);
+  }
+  .wheel-legend .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .wheel-wrap {
+    position: relative;
+    width: min(288px, 84vw);
+    margin: 4px auto 18px;
+    padding: 10px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #fff, #ececf2);
+    box-shadow:
+      0 1px 0 inset rgba(255,255,255,0.9),
+      0 12px 32px rgba(0,0,0,0.12),
+      0 0 0 1px rgba(0,0,0,0.06);
+  }
+  .wheel-ring {
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 3px solid rgba(0,0,0,0.08);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.65);
+    pointer-events: none;
+    z-index: 2;
+  }
   .wheel-stage {
     position: relative;
-    width: min(260px, 78vw);
-    height: min(260px, 78vw);
-    margin: 8px auto 16px;
+    width: 100%;
+    aspect-ratio: 1;
+    margin: 0;
   }
   .wheel-pointer {
     position: absolute;
-    top: -8px;
+    top: -4px;
     left: 50%;
     transform: translateX(-50%);
     width: 0; height: 0;
-    border-left: 11px solid transparent;
-    border-right: 11px solid transparent;
-    border-top: 20px solid #111;
-    z-index: 3;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 22px solid #1a1a1a;
+    z-index: 5;
+    filter: drop-shadow(0 3px 8px rgba(0,0,0,0.2));
+  }
+  .wheel-pointer::after {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: -20px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+  .wheel-hub {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    z-index: 4;
+    pointer-events: none;
+    background: linear-gradient(145deg, #fff, #e8e8ee);
+    border: 3px solid #fff;
+    box-shadow:
+      0 2px 10px rgba(0,0,0,0.15),
+      inset 0 1px 0 rgba(255,255,255,0.9);
   }
   .wheel-rotor {
     position: relative;
@@ -917,29 +991,40 @@
     transform: rotate(0deg);
   }
   .wheel-rotor.is-spinning {
-    animation: wheelSpinFast 0.14s linear infinite;
+    animation: wheelSpinFast 0.11s linear infinite;
   }
   .wheel-rotor.is-settling {
     animation: none;
-    transition: transform 3.2s cubic-bezier(0.12, 0.82, 0.22, 1);
+    transition: transform 3.6s cubic-bezier(0.08, 0.82, 0.12, 1);
+  }
+  .wheel-rotor.is-winner-pulse {
+    animation: wheelWinPulse 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
   }
   @keyframes wheelSpinFast {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+  @keyframes wheelWinPulse {
+    0% { filter: brightness(1); }
+    40% { filter: brightness(1.12); }
+    100% { filter: brightness(1); }
+  }
   .wheel-disk {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    border: 4px solid #fff;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(0,0,0,0.06);
+    border: 5px solid #fff;
+    box-shadow:
+      0 6px 24px rgba(0, 0, 0, 0.14),
+      inset 0 0 0 1px rgba(0,0,0,0.08),
+      inset 0 0 20px rgba(255,255,255,0.35);
     background:
-      radial-gradient(circle at 50% 50%, #fafafa 0%, #ececef 68%, #e2e2e8 100%),
+      radial-gradient(circle at 50% 50%, #fafafa 0%, #ececef 62%, #dddde5 100%),
       conic-gradient(
-        #F44336 0deg 90deg,
-        #FF9800 90deg 180deg,
-        #2196F3 180deg 270deg,
-        #4CAF50 270deg 360deg
+        #E53935 0deg 90deg,
+        #FB8C00 90deg 180deg,
+        #1E88E5 180deg 270deg,
+        #43A047 270deg 360deg
       );
   }
   .wheel-labels {
@@ -950,10 +1035,11 @@
   }
   .wheel-labels span {
     position: absolute;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 800;
     color: #fff;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    letter-spacing: -0.02em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.45), 0 0 12px rgba(0,0,0,0.2);
   }
   .wheel-labels .l0 { top: 22%; left: 50%; transform: translate(-50%, -50%); }
   .wheel-labels .l1 { top: 50%; right: 18%; transform: translate(50%, -50%); }
@@ -1498,7 +1584,33 @@
   /* ============================================================
      LEADERBOARD
   ============================================================ */
-  .lb-list { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+  #leaderboardModal .modal-card {
+    max-height: min(88vh, 720px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #leaderboardModal .modal-card h2,
+  #leaderboardModal .modal-card > .sub { flex-shrink: 0; }
+  .lb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 4px;
+    flex: 1 1 auto;
+    min-height: 120px;
+    max-height: min(58vh, 480px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    contain: layout style;
+    scroll-behavior: smooth;
+  }
+  .lb-list.is-loading {
+    pointer-events: none;
+    opacity: 0.72;
+  }
   .lb-row {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr) auto;
@@ -1509,6 +1621,8 @@
     border-radius: var(--r-lg);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
     position: relative;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 52px;
   }
   .lb-row .rank {
     font-family: var(--ff-r); font-size: 17px; font-weight: 750;
@@ -1567,9 +1681,11 @@
   .lb-row.me {
     border: 2px solid var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft);
+    padding-top: 16px;
+    margin-top: 4px;
   }
   .lb-row.me .you-chip {
-    position: absolute; top: -10px; right: 12px;
+    position: absolute; top: -9px; right: 12px;
     background: var(--accent); color: white;
     font-size: 10px; font-weight: 800; letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -1665,34 +1781,38 @@
       -webkit-backdrop-filter: none;
       box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.22);
     }
-    .dock {
+    html:not([data-liquid-glass="on"]) .dock {
       backdrop-filter: blur(10px) saturate(1.15);
       -webkit-backdrop-filter: blur(10px) saturate(1.15);
       box-shadow:
         0 1px 0 inset rgba(255, 255, 255, 0.35),
         0 4px 14px rgba(0, 0, 0, 0.12);
     }
-    :root[data-mode="dark"] .dock {
+    html:not([data-liquid-glass="on"]) :root[data-mode="dark"] .dock {
       box-shadow:
         0 1px 0 inset rgba(255, 255, 255, 0.1),
         0 4px 14px rgba(0, 0, 0, 0.35);
     }
-    .dock::before,
-    .dock::after {
+    html:not([data-liquid-glass="on"]) .dock::before,
+    html:not([data-liquid-glass="on"]) .dock::after {
       display: none;
     }
-    .dock-indicator {
+    html:not([data-liquid-glass="on"]) .dock-indicator {
       filter: none;
       box-shadow:
         inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
         0 1px 6px color-mix(in srgb, var(--accent) 22%, transparent);
     }
-    .dock-indicator.is-liquid-active {
+    html:not([data-liquid-glass="on"]) .dock-indicator.is-liquid-active {
       filter: none;
     }
-    .dock-indicator::before,
-    .dock-indicator::after {
+    html:not([data-liquid-glass="on"]) .dock-indicator::before,
+    html:not([data-liquid-glass="on"]) .dock-indicator::after {
       display: none;
+    }
+    html[data-liquid-glass="on"] .dock {
+      backdrop-filter: blur(22px) saturate(1.75) contrast(1.08);
+      -webkit-backdrop-filter: blur(22px) saturate(1.75) contrast(1.08);
     }
     .tab-pane.active {
       animation: none;
@@ -1906,30 +2026,126 @@
 
   .dock.visible { display: flex; }
 
-  /* PROGRESSIVE BLUR - Beim Scrollen noch glassiger */
-  body.dock-scroll-active .dock {
-    backdrop-filter: blur(28px) saturate(2.0) brightness(1.04);
-    -webkit-backdrop-filter: blur(28px) saturate(2.0) brightness(1.04);
+  /* ===== Classic dock (Android + Liquid Glass aus) ===== */
+  html:not([data-liquid-glass="on"]) .dock {
+    padding: 8px;
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.58) 0%,
+        rgba(255, 255, 255, 0.22) 100%),
+      var(--glass);
+    backdrop-filter: blur(16px) saturate(1.28);
+    -webkit-backdrop-filter: blur(16px) saturate(1.28);
+    border-radius: 28px;
+    border: 0.5px solid var(--glass-border);
     box-shadow:
-      0 1px 0 inset rgba(255,255,255,0.90),
-      1px 0 0 inset rgba(255,255,255,0.28),
-      -1px 0 0 inset rgba(255,255,255,0.28),
-      0 0 0 0.5px rgba(255,255,255,0.38),
-      0 4px 12px rgba(0,0,0,0.06),
-      0 12px 32px rgba(0,0,0,0.14),
-      0 24px 56px rgba(0,0,0,0.18);
+      0 1px 0 inset rgba(255, 255, 255, 0.42),
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 14px 32px rgba(0, 0, 0, 0.12);
+    will-change: transform;
   }
-  :root[data-mode="dark"] body.dock-scroll-active .dock {
-    backdrop-filter: blur(28px) saturate(2.0) brightness(1.04);
-    -webkit-backdrop-filter: blur(28px) saturate(2.0) brightness(1.04);
+  html:not([data-liquid-glass="on"]):root[data-mode="dark"] .dock,
+  :root[data-mode="dark"] html:not([data-liquid-glass="on"]) .dock {
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(255, 255, 255, 0.02) 100%),
+      rgba(28, 28, 30, 0.68);
     box-shadow:
-      0 1px 0 inset rgba(255,255,255,0.30),
-      1px 0 0 inset rgba(255,255,255,0.10),
-      -1px 0 0 inset rgba(255,255,255,0.10),
-      0 0 0 0.5px rgba(255,255,255,0.14),
-      0 4px 12px rgba(0,0,0,0.18),
-      0 12px 32px rgba(0,0,0,0.32),
-      0 24px 56px rgba(0,0,0,0.48);
+      0 1px 0 inset rgba(255, 255, 255, 0.14),
+      0 4px 12px rgba(0, 0, 0, 0.22),
+      0 14px 32px rgba(0, 0, 0, 0.42);
+  }
+  html:not([data-liquid-glass="on"]) .dock::before,
+  html:not([data-liquid-glass="on"]) .dock::after {
+    display: none;
+  }
+  html:not([data-liquid-glass="on"]) .dock-indicator {
+    filter: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html:not([data-liquid-glass="on"]) body.dock-scroll-active .dock {
+    backdrop-filter: blur(16px) saturate(1.28);
+    -webkit-backdrop-filter: blur(16px) saturate(1.28);
+  }
+
+  /* ===== iOS Liquid Glass (nur Apple + Toggle an) ===== */
+  @keyframes dockGlossShimmer {
+    0%, 100% { opacity: 0.82; transform: translate3d(0, 0, 0) scaleX(1); }
+    50% { opacity: 1; transform: translate3d(1.5%, 0, 0) scaleX(1.02); }
+  }
+  @keyframes dockIndicatorGleam {
+    0%, 100% { opacity: calc(0.22 + var(--pill-strain) * 0.38); }
+    50% { opacity: calc(0.42 + var(--pill-strain) * 0.48); }
+  }
+  html[data-liquid-glass="on"] .dock {
+    padding: 10px;
+    border-radius: 32px;
+  }
+  html[data-liquid-glass="on"] .dock::before {
+    animation: dockGlossShimmer 5.2s ease-in-out infinite;
+  }
+  html[data-liquid-glass="on"] .dock-indicator {
+    background:
+      linear-gradient(145deg,
+        rgba(255, 255, 255, 0.42) 0%,
+        rgba(255, 255, 255, 0.12) 42%,
+        color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 100%), transparent) 100%);
+    backdrop-filter: blur(22px) saturate(1.55) brightness(1.06);
+    -webkit-backdrop-filter: blur(22px) saturate(1.55) brightness(1.06);
+    border: 0.5px solid rgba(255, 255, 255, 0.42);
+    box-shadow:
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.62),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+      0 2px 12px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 42%), transparent),
+      0 10px 28px rgba(0, 0, 0, 0.14);
+    filter: none;
+  }
+  html[data-liquid-glass="on"] .dock-indicator.is-liquid-active {
+    box-shadow:
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.72),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+      0 4px 18px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 52%), transparent),
+      0 14px 36px rgba(0, 0, 0, 0.18);
+  }
+  html[data-liquid-glass="on"] .dock-indicator::after {
+    animation: dockIndicatorGleam 2.8s ease-in-out infinite;
+  }
+  html[data-liquid-glass="on"] .dock-btn.active {
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  }
+  html[data-liquid-glass="on"] .dock-btn.active .icon-svg {
+    transform: scale(1.12);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  }
+
+  /* PROGRESSIVE BLUR - Beim Scrollen noch glassiger */
+  html[data-liquid-glass="on"] body.dock-scroll-active .dock {
+    backdrop-filter: blur(32px) saturate(2.05) brightness(1.05) contrast(1.1);
+    -webkit-backdrop-filter: blur(32px) saturate(2.05) brightness(1.05) contrast(1.1);
+    box-shadow:
+      0 1px 0 inset rgba(255,255,255,0.92),
+      1px 0 0 inset rgba(255,255,255,0.30),
+      -1px 0 0 inset rgba(255,255,255,0.30),
+      0 0 0 0.5px rgba(255,255,255,0.40),
+      0 6px 16px rgba(0,0,0,0.08),
+      0 14px 36px rgba(0,0,0,0.16),
+      0 28px 64px rgba(0,0,0,0.20);
+  }
+  html[data-liquid-glass="on"] :root[data-mode="dark"] body.dock-scroll-active .dock,
+  :root[data-mode="dark"] html[data-liquid-glass="on"] body.dock-scroll-active .dock {
+    backdrop-filter: blur(32px) saturate(2.05) brightness(1.04) contrast(1.12);
+    -webkit-backdrop-filter: blur(32px) saturate(2.05) brightness(1.04) contrast(1.12);
+    box-shadow:
+      0 1px 0 inset rgba(255,255,255,0.32),
+      1px 0 0 inset rgba(255,255,255,0.12),
+      -1px 0 0 inset rgba(255,255,255,0.12),
+      0 0 0 0.5px rgba(255,255,255,0.16),
+      0 6px 16px rgba(0,0,0,0.22),
+      0 14px 36px rgba(0,0,0,0.36),
+      0 28px 64px rgba(0,0,0,0.52);
   }
 
   /* ============================================================
@@ -2019,6 +2235,10 @@
     .dock-indicator {
       filter: none;
       transition: none;
+    }
+    html[data-liquid-glass="on"] .dock::before,
+    html[data-liquid-glass="on"] .dock-indicator::after {
+      animation: none !important;
     }
   }
 
@@ -2853,6 +3073,13 @@
             </div>
             <button class="app-switch" id="hapticSwitch" aria-label="Haptic"></button>
           </div>
+          <div class="account-row" id="liquidGlassRow" hidden>
+            <div>
+              <div class="lbl">Liquid Glass Dock</div>
+              <div class="sub">iOS 26 Glas-Optik mit Gloss & Reflexion</div>
+            </div>
+            <button class="app-switch" id="liquidGlassSwitch" aria-label="Liquid Glass Dock"></button>
+          </div>
         </div>
       </div>
 
@@ -3043,17 +3270,27 @@
   <div class="modal-card modal-card-wheel">
     <button class="modal-close" id="spinWheelClose">✕</button>
     <h2>Spin the Wheel<em>.</em></h2>
-    <div class="sub">Niete · −50% · ×2 · ×3</div>
-    <div class="wheel-stage">
-      <div class="wheel-pointer" aria-hidden="true"></div>
-      <div class="wheel-rotor" id="wheelRotor">
-        <div class="wheel-disk" id="wheelDisk"></div>
-        <div class="wheel-labels" aria-hidden="true">
-          <span class="l0">Niete</span>
-          <span class="l1">−50%</span>
-          <span class="l2">×2</span>
-          <span class="l3">×3</span>
+    <div class="sub">Drehe & gewinne Coins — oder verliere deinen Einsatz</div>
+    <ul class="wheel-legend" aria-hidden="true">
+      <li><span class="dot" style="background:#E53935"></span> Niete</li>
+      <li><span class="dot" style="background:#FB8C00"></span> −50%</li>
+      <li><span class="dot" style="background:#1E88E5"></span> ×2 Coins</li>
+      <li><span class="dot" style="background:#43A047"></span> ×3 Coins</li>
+    </ul>
+    <div class="wheel-wrap">
+      <div class="wheel-ring" aria-hidden="true"></div>
+      <div class="wheel-stage">
+        <div class="wheel-pointer" aria-hidden="true"></div>
+        <div class="wheel-rotor" id="wheelRotor">
+          <div class="wheel-disk" id="wheelDisk"></div>
+          <div class="wheel-labels" aria-hidden="true">
+            <span class="l0">Niete</span>
+            <span class="l1">−50%</span>
+            <span class="l2">×2</span>
+            <span class="l3">×3</span>
+          </div>
         </div>
+        <div class="wheel-hub" aria-hidden="true"></div>
       </div>
     </div>
     <form class="pred-form spin-form" id="spinWheelForm">
@@ -3630,9 +3867,34 @@ $('#dockIcoHw').innerHTML = Icons.homework('lg');
 $('#dockIcoAbsences').innerHTML = Icons.absent('lg');
 $('#dockIcoAccount').innerHTML = Icons.account('lg');
 
+function isApplePlatform() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
+  return false;
+}
+function getLiquidGlassPref() {
+  const saved = LS.get('liquidGlass');
+  if (saved === 'on' || saved === 'off') return saved;
+  return isApplePlatform() ? 'on' : 'off';
+}
+function applyLiquidGlass() {
+  const apple = isApplePlatform();
+  const wantOn = apple && getLiquidGlassPref() === 'on';
+  document.documentElement.dataset.liquidGlass = wantOn ? 'on' : 'off';
+  const row = $('#liquidGlassRow');
+  if (row) row.hidden = !apple;
+  const sw = $('#liquidGlassSwitch');
+  if (sw) sw.classList.toggle('on', getLiquidGlassPref() === 'on');
+  if (dockController) {
+    dockController._liteMotion = !wantOn && window.matchMedia('(max-width: 640px)').matches;
+    dockController.measure?.();
+  }
+}
 function updateSwitches() {
   $('#soundSwitch').classList.toggle('on', state.soundEnabled);
   $('#hapticSwitch').classList.toggle('on', state.hapticEnabled);
+  applyLiquidGlass();
 }
 $('#soundSwitch').addEventListener('click', () => {
   state.soundEnabled = !state.soundEnabled;
@@ -3645,6 +3907,14 @@ $('#hapticSwitch').addEventListener('click', () => {
   if (state.hapticEnabled) Haptic.medium();
   Sound.tap();
   updateSwitches(); saveState();
+});
+$('#liquidGlassSwitch')?.addEventListener('click', () => {
+  const next = getLiquidGlassPref() === 'on' ? 'off' : 'on';
+  LS.set('liquidGlass', next);
+  applyLiquidGlass();
+  Haptic.select();
+  Sound.tap();
+  showToast(next === 'on' ? 'Liquid Glass aktiviert' : 'Klassischer Dock');
 });
 
 /* ============================================================
@@ -4574,6 +4844,8 @@ async function pushLeaderboard() {
   }
 }
 let lbLoading = false;
+let lbFetchGen = 0;
+let lbLastRenderKey = '';
 async function fetchLeaderboard() {
   if (lbLoading) return null;
   lbLoading = true;
@@ -4592,6 +4864,7 @@ function renderLeaderboard(data) {
   const el = $('#leaderboardList');
   const sub = $('#leaderboardSub');
   if (!el) return;
+  el.classList.remove('is-loading');
   if (!data || data.cloudEnabled === false) {
     if (sub) sub.textContent = 'Cloud-Sync ist nicht aktiviert';
     el.innerHTML = `<div class="lb-empty">
@@ -4637,7 +4910,12 @@ function renderLeaderboard(data) {
     ? `Top ${entries.length} · Platz #${selfRank}${predBit}`
     : `Top ${entries.length} · Du noch nicht in Top 100${predBit}`;
   const medal = (i) => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-  el.innerHTML = entries.map((e, i) => {
+  const renderKey = entries.map(e => `${e.username}|${e.school}|${e.coins}`).join(';');
+  if (renderKey === lbLastRenderKey && el.children.length > 1) return;
+  lbLastRenderKey = renderKey;
+  requestAnimationFrame(() => {
+    if (!el.isConnected) return;
+    el.innerHTML = entries.map((e, i) => {
     const isSelf = lbIsSelf(e);
     const cls = ['lb-row', medal(i), isSelf ? 'me' : ''].filter(Boolean).join(' ');
     const where = [
@@ -4653,21 +4931,37 @@ function renderLeaderboard(data) {
       </div>
       <div class="coins">${fmt(e.coins)}</div>
     </div>`;
-  }).join('');
+    }).join('');
+  });
 }
 async function openLeaderboardModal() {
   Sound.tap(); Haptic.select();
   const el = $('#leaderboardList');
-  if (el) el.innerHTML = '<div class="lb-empty"><div class="ttl">Lade…</div></div>';
+  const gen = ++lbFetchGen;
+  if (el && !el.querySelector('.lb-row')) {
+    el.classList.add('is-loading');
+    el.innerHTML = '<div class="lb-empty"><div class="ttl">Lade…</div></div>';
+  } else if (el) {
+    el.classList.add('is-loading');
+  }
   $('#leaderboardModal').classList.add('open');
-  // Push first so our own score is fresh when we read back
   pushLeaderboard();
   const data = await fetchLeaderboard();
+  if (gen !== lbFetchGen) return;
   renderLeaderboard(data);
 }
 $('#openLeaderboard').addEventListener('click', openLeaderboardModal);
-$('#leaderboardClose').addEventListener('click', () => { Sound.tap(); $('#leaderboardModal').classList.remove('open'); });
-$('#leaderboardModal').addEventListener('click', (e) => { if (e.target === $('#leaderboardModal')) $('#leaderboardModal').classList.remove('open'); });
+$('#leaderboardClose').addEventListener('click', () => {
+  lbFetchGen++;
+  Sound.tap();
+  $('#leaderboardModal').classList.remove('open');
+});
+$('#leaderboardModal').addEventListener('click', (e) => {
+  if (e.target === $('#leaderboardModal')) {
+    lbFetchGen++;
+    $('#leaderboardModal').classList.remove('open');
+  }
+});
 
 /* ============================================================
    PREDICTIONS + SPIN WHEEL
@@ -4761,11 +5055,11 @@ async function playWheelSpinAnimation(segIdx) {
   if (!rotor) return;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const mobile = window.matchMedia('(max-width: 640px)').matches;
-  const minSpinMs = reduced ? 500 : (mobile ? 1600 : 2000);
-  const extraRots = reduced ? 1 : (mobile ? 5 : 7);
-  const settleMs = reduced ? 700 : 3200;
+  const minSpinMs = reduced ? 600 : (mobile ? 1800 : 2200);
+  const extraRots = reduced ? 2 : (mobile ? 6 : 8);
+  const settleMs = reduced ? 800 : 3600;
 
-  rotor.classList.remove('is-settling');
+  rotor.classList.remove('is-settling', 'is-winner-pulse');
   rotor.style.transition = 'none';
   rotor.style.transform = `rotate(${wheelRotationDeg}deg)`;
   rotor.classList.add('is-spinning');
@@ -4781,6 +5075,9 @@ async function playWheelSpinAnimation(segIdx) {
   await waitMs(settleMs);
   rotor.classList.remove('is-settling');
   rotor.style.transition = '';
+  rotor.classList.add('is-winner-pulse');
+  await waitMs(520);
+  rotor.classList.remove('is-winner-pulse');
 }
 
 function waitMs(ms) {
@@ -6234,7 +6531,8 @@ class DockController {
     this._lastWidth = 0;
     this._clickSnapTimer = null;
     this._motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this._liteMotion = window.matchMedia('(max-width: 640px)').matches;
+    this._liteMotion = document.documentElement.dataset.liquidGlass !== 'on'
+      && window.matchMedia('(max-width: 640px)').matches;
 
     this._measure();
     // Apply initial position without animation.
@@ -6549,7 +6847,8 @@ class DockController {
     }
   }
   _handleResize() {
-    this._liteMotion = window.matchMedia('(max-width: 640px)').matches;
+    this._liteMotion = document.documentElement.dataset.liquidGlass !== 'on'
+      && window.matchMedia('(max-width: 640px)').matches;
     this._measure();
     if (!this.scrubbing && !this.appSwiping) {
       this._setWidthInstant(this._widthForIdx(this.activeIdx));
@@ -6840,6 +7139,9 @@ class DockController {
   dockEl.addEventListener('touchcancel', release, { passive: true });
 })();
 
+// Apple Liquid Glass preference before dock init (controls _liteMotion)
+applyLiquidGlass();
+
 // Init the dock controller AFTER setTab has been defined (it's
 // referenced inside the controller's gesture handlers). The
 // controller picks up the saved currentTab and positions the pill
@@ -6927,19 +7229,17 @@ window.addEventListener('pageshow', (e) => {
   if (e.persisted) recoverFromBackground();
 });
 
-// ===== APPLE MUSIC LIQUID GLASS - Progressive Blur on Scroll =====
-(function() {
-  let t;
-  document.addEventListener('scroll', () => {
+// ===== iOS Liquid Glass — progressive blur on scroll (Apple + toggle on) =====
+(function initIosLiquidGlassScroll() {
+  let scrollT;
+  const onScroll = () => {
+    if (document.documentElement.dataset.liquidGlass !== 'on') return;
     document.body.classList.add('dock-scroll-active');
-    if (navigator.vibrate) navigator.vibrate(6);
-    clearTimeout(t);
-    t = setTimeout(() => document.body.classList.remove('dock-scroll-active'), 350);
-  }, { passive: true, capture: true });
-  document.querySelectorAll('.dock-btn').forEach(b => {
-    b.addEventListener('touchstart', () => { if (navigator.vibrate) navigator.vibrate(8); }, { passive: true });
-    b.addEventListener('click', () => { if (navigator.vibrate) navigator.vibrate([10, 6, 10]); });
-  });
+    clearTimeout(scrollT);
+    scrollT = setTimeout(() => document.body.classList.remove('dock-scroll-active'), 380);
+  };
+  document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+  window.addEventListener('scroll', onScroll, { passive: true });
 })();
 </script>
 </body>
