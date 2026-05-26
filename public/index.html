@@ -283,30 +283,26 @@
       0 8px 22px rgba(0, 0, 0, 0.10);
   }
   .plan-lb-btn:active { transform: scale(.94); opacity: 0.78; }
-  /* Glass-prominent variant — pops a touch more (used for primary action) */
+  /* Glass-prominent — iOS filled blue capsule, no neon glow */
   .plan-lb-btn.glass-prominent {
     background:
       linear-gradient(180deg,
-        color-mix(in srgb, var(--accent) 38%, transparent) 0%,
-        color-mix(in srgb, var(--accent) 22%, transparent) 100%),
-      var(--glass-strong);
+        rgba(10, 132, 255, 0.90) 0%,
+        rgba(10, 132, 255, 0.75) 100%);
     color: #fff;
-    border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+    border-color: rgba(10, 132, 255, 0.45);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.35),
-      0 2px 8px color-mix(in srgb, var(--accent) 22%, transparent),
-      0 10px 24px color-mix(in srgb, var(--accent) 18%, transparent);
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.30),
+      0 2px 6px rgba(10, 132, 255, 0.22);
   }
   .plan-lb-btn.glass-prominent:hover {
     background:
       linear-gradient(180deg,
-        color-mix(in srgb, var(--accent) 46%, transparent) 0%,
-        color-mix(in srgb, var(--accent) 28%, transparent) 100%),
-      var(--glass-strong);
+        rgba(10, 132, 255, 0.95) 0%,
+        rgba(10, 132, 255, 0.80) 100%);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.4),
-      0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent),
-      0 14px 32px color-mix(in srgb, var(--accent) 22%, transparent);
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.35),
+      0 3px 8px rgba(10, 132, 255, 0.28);
   }
 
   /* Icon button */
@@ -1870,8 +1866,8 @@
       display: none;
     }
     html[data-liquid-glass="on"] .dock {
-      backdrop-filter: blur(22px) saturate(1.75) contrast(1.08);
-      -webkit-backdrop-filter: blur(22px) saturate(1.75) contrast(1.08);
+      backdrop-filter: blur(40px) saturate(195%) brightness(1.1);
+      -webkit-backdrop-filter: blur(40px) saturate(195%) brightness(1.1);
     }
     .tab-pane.active {
       animation: none;
@@ -2149,50 +2145,94 @@
     overflow: hidden;
     pointer-events: none;
   }
-  /* The glass layer — sits behind the buttons, does the blur.
-     Apple iOS uses a chromaMaterial-like backdrop: ~28pt blur + ~180%
-     saturation + a thin neutral tint on top. The tint flips with the
-     color scheme so the bar reads against both light and dark content. */
+  /* ── iOS UITabBar material (Files / Music style) ──
+     Blur lives ON .dock itself — Safari iOS composites this best.
+     Tint must stay ultra-low or you get a solid grey bar (the bug). */
+  html[data-liquid-glass="on"] .dock {
+    padding: 7px;
+    border-radius: 999px;
+    left: 50%;
+    transform: translate3d(-50%, 0, 0);
+    -webkit-transform: translate3d(-50%, 0, 0);
+    width: min(92%, 420px);
+    /* Light: thin frosted veil — content MUST show through */
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.08) 55%,
+        rgba(255, 255, 255, 0.03) 100%);
+    backdrop-filter: blur(44px) saturate(195%) brightness(1.06);
+    -webkit-backdrop-filter: blur(44px) saturate(195%) brightness(1.06);
+    border: 0.5px solid rgba(255, 255, 255, 0.38);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.04),
+      0 0 0 0.5px rgba(255, 255, 255, 0.12),
+      0 4px 16px rgba(0, 0, 0, 0.06),
+      0 16px 44px rgba(0, 0, 0, 0.10);
+    will-change: transform, backdrop-filter;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    --dock-radius: 999px;
+    --dock-padding: 7px;
+  }
+  /* Specular rim — kube.io rim-light model (light at -60°). Works on all browsers. */
+  html[data-liquid-glass="on"] .dock-glass-specular {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 4;
+    opacity: calc(0.48 + var(--lg-specular, 0) * 0.42);
+    background:
+      radial-gradient(130% 85% at 50% -28%,
+        rgba(255, 255, 255, 0.72) 0%,
+        rgba(255, 255, 255, 0.18) 38%,
+        transparent 62%),
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.32) 0%,
+        rgba(255, 255, 255, 0.06) 28%,
+        transparent 52%);
+    mix-blend-mode: overlay;
+    transition: opacity 0.22s ease;
+  }
+  html[data-liquid-glass="on"] .dock.dock-is-gesturing .dock-glass-specular {
+    opacity: calc(0.62 + var(--lg-specular, 0) * 0.38);
+  }
+  /* Inner tint + edge lens cue (Safari fallback path) */
   html[data-liquid-glass="on"] .dock-glass-refract {
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
     z-index: 0;
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
-    /* Light material — slight neutral darken so bar is visible on white */
     background:
+      radial-gradient(ellipse 100% 70% at 50% 100%,
+        rgba(255, 255, 255, 0.06) 0%,
+        transparent 55%),
       linear-gradient(180deg,
-        rgba(245, 245, 247, 0.62) 0%,
-        rgba(245, 245, 247, 0.45) 100%);
-  }
-  html[data-liquid-glass="on"] .dock {
-    padding: 8px;
-    border-radius: 999px;
-    background: transparent;
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.03) 45%,
+        transparent 100%);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border: 0.5px solid rgba(0, 0, 0, 0.08);
+    /* Bezel lens cue (kube.io convex edge) — visible on Safari fallback path */
     box-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.6),
-      inset 0 -0.5px 0 rgba(0, 0, 0, 0.04),
-      0 1px 2px rgba(0, 0, 0, 0.04),
-      0 12px 36px rgba(0, 0, 0, 0.10);
-    /* CRITICAL: keep horizontal centering from the base .dock rule.
-       Apple's iOS tab bars are always centered as a single capsule. */
-    left: 50%;
-    transform: translate3d(-50%, 0, 0);
-    -webkit-transform: translate3d(-50%, 0, 0);
-    will-change: transform;
-    isolation: isolate;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    --dock-radius: 999px;
-    --dock-padding: 8px;
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.32),
+      inset 0 2px 14px rgba(255, 255, 255, calc(0.06 + var(--lg-specular, 0) * 0.12)),
+      inset 0 -2px 10px rgba(0, 0, 0, calc(0.04 + var(--lg-specular, 0) * 0.06));
+  }
+  /* Wet top highlight — the "liquid" sheen Apple uses on tab bars */
+  html[data-liquid-glass="on"] .dock::before {
+    display: block;
+    opacity: 0.72;
+    z-index: 3;
+    mix-blend-mode: overlay;
+  }
+  html[data-liquid-glass="on"] .dock::after {
+    display: block;
+    opacity: 0.45;
+    z-index: 2;
   }
   /* Scroll edge effect — subtle feathering on top so content scrolling
      beneath stays legible. Inspired by SwiftUI scrollEdgeEffectStyle. */
@@ -2287,58 +2327,60 @@
     top: 3px;
     bottom: 3px;
   }
-  :root[data-mode="dark"] html[data-liquid-glass="on"] .dock,
-  html[data-liquid-glass="on"]:root[data-mode="dark"] .dock {
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.22),
-      inset 0 -0.5px 0 rgba(0, 0, 0, 0.4),
-      0 10px 36px rgba(0, 0, 0, 0.45);
-  }
-  :root[data-mode="dark"] html[data-liquid-glass="on"] .dock-glass-refract,
-  html[data-liquid-glass="on"]:root[data-mode="dark"] .dock-glass-refract {
+  html[data-liquid-glass="on"][data-mode="dark"] .dock {
     background:
       linear-gradient(180deg,
-        rgba(28, 28, 30, 0.62) 0%,
-        rgba(28, 28, 30, 0.48) 100%);
-    backdrop-filter: blur(32px) saturate(170%);
-    -webkit-backdrop-filter: blur(32px) saturate(170%);
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.05) 55%,
+        rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(48px) saturate(185%) brightness(1.14);
+    -webkit-backdrop-filter: blur(48px) saturate(185%) brightness(1.14);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.35),
+      0 0 0 0.5px rgba(255, 255, 255, 0.06),
+      0 8px 28px rgba(0, 0, 0, 0.38),
+      0 20px 52px rgba(0, 0, 0, 0.28);
   }
-  /* Suppress legacy ::before / ::after gloss shimmer — was paint-heavy
-     and not how Apple does Liquid Glass. The single backdrop layer is enough. */
-  html[data-liquid-glass="on"] .dock::before,
-  html[data-liquid-glass="on"] .dock::after { display: none; }
+  html[data-liquid-glass="on"][data-mode="dark"] .dock-glass-refract {
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.16) 0%,
+        rgba(255, 255, 255, 0.04) 40%,
+        transparent 65%);
+  }
   /* Active indicator pill — Apple iOS 26 style: a frosted-white Glass
      bubble that sits above the dock blur. The icon below colors blue.
      All animation comes through transform — no animated radius/filter. */
   html[data-liquid-glass="on"] .dock-indicator {
     background:
       linear-gradient(180deg,
-        rgba(255, 255, 255, 0.95) 0%,
-        rgba(255, 255, 255, 0.82) 100%);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border: 0.5px solid rgba(255, 255, 255, 0.9);
+        rgba(255, 255, 255, 0.88) 0%,
+        rgba(255, 255, 255, 0.72) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 0.5px solid rgba(255, 255, 255, 0.72);
     box-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.96),
-      inset 0 -0.5px 0 rgba(0, 0, 0, 0.04),
-      0 1px 2px rgba(0, 0, 0, 0.05),
-      0 6px 16px rgba(0, 0, 0, 0.08);
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.05),
+      0 2px 8px rgba(0, 0, 0, 0.06);
     filter: none;
     will-change: transform;
     transform: translate3d(0, 0, 0);
     -webkit-transform: translate3d(0, 0, 0);
   }
-  :root[data-mode="dark"] html[data-liquid-glass="on"] .dock-indicator,
-  html[data-liquid-glass="on"]:root[data-mode="dark"] .dock-indicator {
+  html[data-liquid-glass="on"][data-mode="dark"] .dock-indicator {
     background:
       linear-gradient(180deg,
-        rgba(255, 255, 255, 0.32) 0%,
-        rgba(255, 255, 255, 0.18) 100%);
-    border-color: rgba(255, 255, 255, 0.36);
+        rgba(255, 255, 255, 0.42) 0%,
+        rgba(255, 255, 255, 0.24) 100%);
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border-color: rgba(255, 255, 255, 0.38);
     box-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.42),
-      0 6px 18px rgba(0, 0, 0, 0.30);
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      0 4px 14px rgba(0, 0, 0, 0.22);
   }
   /* Press-state visual on the pill — pure transform, GPU only */
   html[data-liquid-glass="on"] .dock-indicator.is-liquid-active {
@@ -2409,30 +2451,36 @@
   html[data-liquid-glass="on"] {
     --ios-curve: cubic-bezier(0.32, 0.72, 0, 1);
     --ios-blue: #007AFF;
-    --ios-fill-1: rgba(120, 120, 128, 0.12);
-    --ios-fill-2: rgba(120, 120, 128, 0.20);
-    --ios-hairline: rgba(60, 60, 67, 0.18);
-    --ios-ink: rgba(0, 0, 0, 0.92);
-    --ios-ink-2: rgba(60, 60, 67, 0.6);
+    --ios-fill-1: rgba(255, 255, 255, 0.14);
+    --ios-fill-2: rgba(255, 255, 255, 0.22);
+    --ios-hairline: rgba(255, 255, 255, 0.28);
+    --ios-ink: rgba(255, 255, 255, 0.92);
+    --ios-ink-2: rgba(235, 235, 245, 0.55);
+    --ios-blur: blur(32px) saturate(190%);
     --ios-glass-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.5),
-      inset 0 -0.5px 0 rgba(0, 0, 0, 0.05),
-      0 1px 2px rgba(0, 0, 0, 0.04),
-      0 8px 22px rgba(0, 0, 0, 0.08);
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.32),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.12);
   }
-  :root[data-mode="dark"] html[data-liquid-glass="on"],
-  html[data-liquid-glass="on"]:root[data-mode="dark"] {
+  html[data-liquid-glass="on"][data-mode="light"] {
+    --ios-blue: #007AFF;
+    --ios-fill-1: rgba(255, 255, 255, 0.55);
+    --ios-fill-2: rgba(255, 255, 255, 0.72);
+    --ios-hairline: rgba(0, 0, 0, 0.08);
+    --ios-ink: rgba(0, 0, 0, 0.88);
+    --ios-ink-2: rgba(60, 60, 67, 0.55);
+    --ios-glass-shadow:
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.65),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.04),
+      0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  html[data-liquid-glass="on"][data-mode="dark"] {
     --ios-blue: #0A84FF;
     --ios-fill-1: rgba(255, 255, 255, 0.10);
-    --ios-fill-2: rgba(255, 255, 255, 0.18);
-    --ios-hairline: rgba(255, 255, 255, 0.18);
+    --ios-fill-2: rgba(255, 255, 255, 0.16);
+    --ios-hairline: rgba(255, 255, 255, 0.16);
     --ios-ink: #fff;
-    --ios-ink-2: rgba(235, 235, 245, 0.6);
-    --ios-glass-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.22),
-      inset 0 -0.5px 0 rgba(0, 0, 0, 0.10),
-      0 1px 2px rgba(0, 0, 0, 0.20),
-      0 8px 22px rgba(0, 0, 0, 0.28);
+    --ios-ink-2: rgba(235, 235, 245, 0.55);
   }
 
   /* ---- Segmented control (UISegmentedControl) ---- */
@@ -2442,10 +2490,9 @@
     border: 0.5px solid var(--ios-hairline);
     padding: 3px;
     border-radius: 999px;
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.22);
-    isolation: isolate;
+    backdrop-filter: var(--ios-blur);
+    -webkit-backdrop-filter: var(--ios-blur);
+    box-shadow: var(--ios-glass-shadow);
   }
   html[data-liquid-glass="on"] .toggle button,
   html[data-liquid-glass="on"] .view-toggle button {
@@ -2469,10 +2516,8 @@
       0 1px 1px rgba(0, 0, 0, 0.06),
       0 4px 12px rgba(0, 0, 0, 0.10);
   }
-  :root[data-mode="dark"] html[data-liquid-glass="on"] .toggle button.active,
-  html[data-liquid-glass="on"]:root[data-mode="dark"] .toggle button.active,
-  :root[data-mode="dark"] html[data-liquid-glass="on"] .view-toggle button.active,
-  html[data-liquid-glass="on"]:root[data-mode="dark"] .view-toggle button.active {
+  html[data-liquid-glass="on"][data-mode="dark"] .toggle button.active,
+  html[data-liquid-glass="on"][data-mode="dark"] .view-toggle button.active {
     background:
       linear-gradient(180deg,
         rgba(255, 255, 255, 0.28) 0%,
@@ -2494,8 +2539,8 @@
     border: 0.5px solid var(--ios-hairline);
     background: var(--ios-fill-1);
     color: var(--ios-ink);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: var(--ios-blur);
+    -webkit-backdrop-filter: var(--ios-blur);
     box-shadow: var(--ios-glass-shadow);
     transition: transform .12s var(--ios-curve), background .18s var(--ios-curve);
     -webkit-tap-highlight-color: transparent;
@@ -2512,13 +2557,12 @@
   html[data-liquid-glass="on"] .smbtn.primary {
     background:
       linear-gradient(180deg,
-        color-mix(in srgb, var(--ios-blue) 100%, transparent) 0%,
-        color-mix(in srgb, var(--ios-blue) 88%, transparent) 100%);
-    border-color: color-mix(in srgb, var(--ios-blue) 70%, transparent);
+        rgba(10, 132, 255, 0.92) 0%,
+        rgba(10, 132, 255, 0.78) 100%);
+    border-color: rgba(10, 132, 255, 0.55);
     box-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.4),
-      0 2px 6px color-mix(in srgb, var(--ios-blue) 30%, transparent),
-      0 8px 22px color-mix(in srgb, var(--ios-blue) 22%, transparent);
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.35),
+      0 2px 6px rgba(10, 132, 255, 0.28);
     color: #fff;
   }
 
@@ -2554,57 +2598,73 @@
     background: var(--ios-fill-1);
     border: 0.5px solid var(--ios-hairline);
     color: var(--ios-ink);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: var(--ios-blur);
+    -webkit-backdrop-filter: var(--ios-blur);
     box-shadow: var(--ios-glass-shadow);
     font-weight: 590;
     letter-spacing: -0.01em;
     transition: transform .12s var(--ios-curve), background .18s var(--ios-curve);
   }
-  html[data-liquid-glass="on"] .plan-lb-btn:hover {
-    background: var(--ios-fill-2);
-    box-shadow: var(--ios-glass-shadow);
-  }
-  html[data-liquid-glass="on"] .plan-lb-btn:active {
-    transform: scale(0.94);
-  }
   html[data-liquid-glass="on"] .plan-lb-btn.glass-prominent {
     background:
       linear-gradient(180deg,
-        color-mix(in srgb, var(--ios-blue) 100%, transparent) 0%,
-        color-mix(in srgb, var(--ios-blue) 86%, transparent) 100%);
-    border-color: color-mix(in srgb, var(--ios-blue) 60%, transparent);
+        rgba(10, 132, 255, 0.88) 0%,
+        rgba(10, 132, 255, 0.72) 100%);
+    border-color: rgba(10, 132, 255, 0.50);
     box-shadow:
-      inset 0 0.5px 0 rgba(255, 255, 255, 0.4),
-      0 2px 6px color-mix(in srgb, var(--ios-blue) 32%, transparent),
-      0 8px 22px color-mix(in srgb, var(--ios-blue) 22%, transparent);
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.32),
+      0 2px 6px rgba(10, 132, 255, 0.25);
     color: #fff;
   }
-  html[data-liquid-glass="on"] .plan-lb-btn.glass-prominent:hover {
-    background:
-      linear-gradient(180deg,
-        color-mix(in srgb, var(--ios-blue) 100%, transparent) 0%,
-        color-mix(in srgb, var(--ios-blue) 92%, transparent) 100%);
-  }
 
-  /* Scroll-active: punch up the saturation slightly (still single pass) */
-  html[data-liquid-glass="on"] body.dock-scroll-active .dock-glass-refract {
-    backdrop-filter: blur(32px) saturate(200%);
-    -webkit-backdrop-filter: blur(32px) saturate(200%);
+  html[data-liquid-glass="on"] .dock {
+    transition:
+      transform 0.36s cubic-bezier(0.32, 0.72, 0, 1),
+      padding 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+      width 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+      backdrop-filter 0.28s ease,
+      -webkit-backdrop-filter 0.28s ease,
+      box-shadow 0.28s ease;
   }
-  /* While the user is scrubbing/swiping the dock, push the material
-     a touch wetter — single-property transition keeps it composited. */
-  html[data-liquid-glass="on"] .dock-glass-refract {
-    transition: backdrop-filter .25s ease, -webkit-backdrop-filter .25s ease;
+  html[data-liquid-glass="on"] body.dock-scroll-active .dock {
+    backdrop-filter: blur(52px) saturate(210%) brightness(1.08);
+    -webkit-backdrop-filter: blur(52px) saturate(210%) brightness(1.08);
   }
-  html[data-liquid-glass="on"] .dock.dock-is-gesturing .dock-glass-refract {
-    backdrop-filter: blur(36px) saturate(210%);
-    -webkit-backdrop-filter: blur(36px) saturate(210%);
+  html[data-liquid-glass="on"] .dock.dock-is-gesturing {
+    backdrop-filter: blur(52px) saturate(215%) brightness(1.1);
+    -webkit-backdrop-filter: blur(52px) saturate(215%) brightness(1.1);
   }
   @media (prefers-reduced-motion: reduce) {
-    html[data-liquid-glass="on"] .dock-glass-refract {
-      backdrop-filter: blur(24px) saturate(160%);
-      -webkit-backdrop-filter: blur(24px) saturate(160%);
+    html[data-liquid-glass="on"] .dock {
+      backdrop-filter: blur(32px) saturate(170%);
+      -webkit-backdrop-filter: blur(32px) saturate(170%);
+    }
+  }
+
+  /* kube.io: SVG displacement as backdrop-filter (Chromium — true refraction).
+     Safari iOS keeps blur-only path above; specular layer still applies. */
+  @supports (backdrop-filter: url("#lg-dock-glass")) or (-webkit-backdrop-filter: url("#lg-dock-glass")) {
+    html[data-liquid-glass="on"][data-lg-refract="1"] .dock {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: url(#lg-dock-glass) blur(42px) saturate(195%) brightness(1.05);
+      -webkit-backdrop-filter: url(#lg-dock-glass) blur(42px) saturate(195%) brightness(1.05);
+    }
+    html[data-liquid-glass="on"][data-lg-refract="1"][data-mode="dark"] .dock {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: url(#lg-dock-glass) blur(46px) saturate(190%) brightness(1.1);
+      -webkit-backdrop-filter: url(#lg-dock-glass) blur(46px) saturate(190%) brightness(1.1);
+    }
+    html[data-liquid-glass="on"][data-lg-refract="1"] .dock-indicator {
+      backdrop-filter: url(#lg-pill-glass) blur(18px) saturate(185%);
+      -webkit-backdrop-filter: url(#lg-pill-glass) blur(18px) saturate(185%);
+    }
+    html[data-liquid-glass="on"][data-lg-refract="1"] body.dock-scroll-active .dock {
+      backdrop-filter: url(#lg-dock-glass) blur(48px) saturate(210%) brightness(1.06);
+      -webkit-backdrop-filter: url(#lg-dock-glass) blur(48px) saturate(210%) brightness(1.06);
+    }
+    html[data-liquid-glass="on"][data-lg-refract="1"] .dock.dock-is-gesturing {
+      backdrop-filter: url(#lg-dock-glass) blur(50px) saturate(220%) brightness(1.08);
+      -webkit-backdrop-filter: url(#lg-dock-glass) blur(50px) saturate(220%) brightness(1.08);
     }
   }
 
@@ -3299,24 +3359,25 @@
 </style>
 </head>
 <body>
-<!-- SVG Liquid Glass — backdrop refraction (Safari / WebKit + Chromium) -->
+<!-- SVG Liquid Glass — kube.io refraction pipeline (Snell + displacement map)
+     https://kube.io/blog/liquid-glass-css-svg/ -->
 <svg class="lg-svg-filters" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="lg-dock-refract" x="-28%" y="-55%" width="156%" height="210%"
+    <filter id="lg-dock-glass" x="-18%" y="-32%" width="136%" height="164%"
             color-interpolation-filters="sRGB" filterUnits="objectBoundingBox">
-      <feTurbulence id="lgDockTurb" type="fractalNoise" baseFrequency="0.008 0.017"
-                    numOctaves="2" seed="12" result="lgDockNoise"/>
-      <feGaussianBlur in="lgDockNoise" stdDeviation="0.55" result="lgDockNoiseSoft"/>
-      <feDisplacementMap id="lgDockDisp" in="SourceGraphic" in2="lgDockNoiseSoft"
-                         scale="4" xChannelSelector="R" yChannelSelector="G"/>
+      <feImage id="lgDockDispImg" preserveAspectRatio="none" result="lgDockDispMap"/>
+      <feDisplacementMap id="lgDockDisp" in="SourceGraphic" in2="lgDockDispMap"
+                         scale="7" xChannelSelector="R" yChannelSelector="G" result="lgDockRefracted"/>
+      <feImage id="lgDockSpecImg" preserveAspectRatio="none" result="lgDockSpecMap"/>
+      <feBlend in="lgDockRefracted" in2="lgDockSpecMap" mode="screen"/>
     </filter>
-    <filter id="lg-pill-refract" x="-35%" y="-45%" width="170%" height="190%"
+    <filter id="lg-pill-glass" x="-22%" y="-28%" width="144%" height="156%"
             color-interpolation-filters="sRGB" filterUnits="objectBoundingBox">
-      <feTurbulence id="lgPillTurb" type="fractalNoise" baseFrequency="0.011 0.022"
-                    numOctaves="2" seed="27" result="lgPillNoise"/>
-      <feGaussianBlur in="lgPillNoise" stdDeviation="0.45" result="lgPillNoiseSoft"/>
-      <feDisplacementMap id="lgPillDisp" in="SourceGraphic" in2="lgPillNoiseSoft"
-                         scale="3" xChannelSelector="R" yChannelSelector="G"/>
+      <feImage id="lgPillDispImg" preserveAspectRatio="none" result="lgPillDispMap"/>
+      <feDisplacementMap id="lgPillDisp" in="SourceGraphic" in2="lgPillDispMap"
+                         scale="5" xChannelSelector="R" yChannelSelector="G" result="lgPillRefracted"/>
+      <feImage id="lgPillSpecImg" preserveAspectRatio="none" result="lgPillSpecMap"/>
+      <feBlend in="lgPillRefracted" in2="lgPillSpecMap" mode="screen"/>
     </filter>
   </defs>
 </svg>
@@ -3614,6 +3675,7 @@
 <nav class="dock" id="bottomDock" aria-label="Navigation">
   <div class="dock-scroll-edge" aria-hidden="true"></div>
   <div class="dock-glass-refract" aria-hidden="true"></div>
+  <div class="dock-glass-specular" aria-hidden="true"></div>
   <div class="dock-indicator" id="dockIndicator" aria-hidden="true"></div>
   <button class="dock-btn active" data-tab="plan" aria-label="Stundenplan">
     <span class="ico" id="dockIcoPlan"></span>
@@ -4375,8 +4437,10 @@ function applyLiquidGlass() {
   }
   const lgr = window.LiquidGlassRefraction;
   if (lgr) {
-    if (wantOn) lgr.start();
-    else lgr.stop();
+    if (wantOn) {
+      lgr.start();
+      setTimeout(() => { try { lgr.rebuild?.(); } catch (e) {} }, 450);
+    } else lgr.stop();
   }
 }
 function updateSwitches() {
@@ -7162,6 +7226,7 @@ class DockController {
   }
   _setDockInteracting(on) {
     this.dock.classList.toggle('dock-is-gesturing', !!on);
+    window.LiquidGlassRefraction?.pulse?.();
   }
   _neutralLiquid() {
     return { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
@@ -7206,6 +7271,7 @@ class DockController {
       T.br = 18 + mag * 7;
     }
     this._ensureMotionLoop();
+    window.LiquidGlassRefraction?.pulse?.();
   }
   _widthBetweenTabs(x, w) {
     if (!this.positions.length) return w;
@@ -7910,26 +7976,268 @@ window.addEventListener('pageshow', (e) => {
   appView.addEventListener('touchcancel', release, { passive: true });
 })();
 
-// ===== SVG backdrop refraction (feDisplacementMap + turbulence) =====
+// ===== Liquid Glass Engine (kube.io theory) =====
+// Refraction via Snell's law + convex squircle bezel profile → SVG displacement map.
+// Specular rim at -60° (article). Maps rebuilt on resize, scale animated on gesture.
+// https://kube.io/blog/liquid-glass-css-svg/
 window.LiquidGlassRefraction = (function() {
-  // The animated SVG displacement-map pipeline used to run here was
-  // the single biggest jank source on iOS Safari (chained
-  // backdrop-filters + feTurbulence + feDisplacementMap each frame
-  // forces full repaint and busts the compositor). Disabled in favor
-  // of a single GPU-accelerated blur+saturate layer driven by CSS.
-  // Kept as a no-op so the rest of the codebase keeps calling start/stop
-  // without conditionals.
-  const dockDisp = () => document.getElementById('lgDockDisp');
-  const pillDisp = () => document.getElementById('lgPillDisp');
-  function clearFilters() {
-    const dd = dockDisp();
-    const pd = pillDisp();
-    if (dd) dd.setAttribute('scale', '0');
-    if (pd) pd.setAttribute('scale', '0');
+  const N2 = 1.52;
+  const LIGHT_DEG = -60;
+  const MAP_W = 256;
+  const MAP_H = 96;
+  const PILL_MAP_W = 128;
+  const PILL_MAP_H = 64;
+
+  let ro = null;
+  let pillRo = null;
+  let rafId = null;
+  let dockBaseScale = 7;
+  let pillBaseScale = 5;
+
+  function convexSquircle(t) {
+    t = Math.max(0, Math.min(1, t));
+    return Math.pow(1 - Math.pow(1 - t, 4), 0.25);
   }
+  function squircleDeriv(t) {
+    const e = 0.0008;
+    return (convexSquircle(t + e) - convexSquircle(t - e)) / (2 * e);
+  }
+
+  /** Precompute 128 radial samples — kube.io "pre-calculating displacement magnitude" */
+  function precomputeProfile(bezelPx, maxDispPx) {
+    const samples = new Array(128);
+    let maxMag = 0.001;
+    for (let i = 0; i <= 127; i++) {
+      const t = i / 127;
+      const h = convexSquircle(t);
+      const deriv = squircleDeriv(t);
+      const nx = -deriv;
+      const ny = 1;
+      const len = Math.hypot(nx, ny) || 1;
+      const nnx = nx / len;
+      const nny = ny / len;
+      const cosI = Math.max(0, Math.min(1, nny));
+      const sinI = Math.sqrt(Math.max(0, 1 - cosI * cosI));
+      const sinR = sinI / N2;
+      let disp = 0;
+      if (sinR <= 1 && cosI > 0.001) {
+        const tanI = sinI / cosI;
+        const cosR = Math.sqrt(1 - sinR * sinR);
+        const tanR = sinR / cosR;
+        disp = Math.abs(tanR - tanI) * h * maxDispPx;
+      }
+      samples[i] = disp;
+      maxMag = Math.max(maxMag, disp);
+    }
+    return { samples, maxMag };
+  }
+
+  function roundedRectDist(px, py, w, h, rad) {
+    const cx = px - w / 2;
+    const cy = py - h / 2;
+    const hw = w / 2 - rad;
+    const hh = h / 2 - rad;
+    const qx = Math.abs(cx) - hw;
+    const qy = Math.abs(cy) - hh;
+    const ax = Math.max(qx, 0);
+    const ay = Math.max(qy, 0);
+    const outside = Math.hypot(ax, ay);
+    const inside = Math.min(Math.max(qx, qy), 0);
+    return outside + inside - rad;
+  }
+
+  function distGradient(px, py, w, h, rad) {
+    const e = 0.75;
+    const d0 = -roundedRectDist(px, py, w, h, rad);
+    const dx = (-roundedRectDist(px + e, py, w, h, rad)) - (-roundedRectDist(px - e, py, w, h, rad));
+    const dy = (-roundedRectDist(px, py + e, w, h, rad)) - (-roundedRectDist(px, py - e, w, h, rad));
+    const len = Math.hypot(dx, dy) || 1;
+    return { dist: Math.max(0, d0), gx: dx / len, gy: dy / len };
+  }
+
+  /** Build feDisplacementMap RGBA image (128 = neutral) */
+  function buildDispMap(w, h, radius, bezel, maxScale) {
+    radius = Math.min(radius, w / 2, h / 2);
+    bezel = Math.max(5, Math.min(bezel, Math.min(w, h) * 0.22));
+    const profile = precomputeProfile(bezel, maxScale);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { dist, gx, gy } = distGradient(x + 0.5, y + 0.5, w, h, radius);
+        const i = (y * w + x) * 4;
+        if (dist <= 0 || dist > bezel) {
+          img.data[i] = 128;
+          img.data[i + 1] = 128;
+          img.data[i + 2] = 128;
+          img.data[i + 3] = 255;
+          continue;
+        }
+        const t = dist / bezel;
+        const si = Math.min(127, Math.floor(t * 127));
+        const mag = profile.samples[si] / profile.maxMag;
+        img.data[i] = Math.max(0, Math.min(255, Math.round(128 + gx * mag * 127)));
+        img.data[i + 1] = Math.max(0, Math.min(255, Math.round(128 + gy * mag * 127)));
+        img.data[i + 2] = 128;
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return { dataUrl: c.toDataURL('image/png'), scale: profile.maxMag };
+  }
+
+  /** Specular highlight map — kube.io rim light at LIGHT_DEG */
+  function buildSpecMap(w, h, radius, bezel) {
+    radius = Math.min(radius, w / 2, h / 2);
+    bezel = Math.max(5, Math.min(bezel, Math.min(w, h) * 0.22));
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(w, h);
+    const lx = Math.cos((LIGHT_DEG + 90) * Math.PI / 180);
+    const ly = Math.sin((LIGHT_DEG + 90) * Math.PI / 180);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { dist, gx, gy } = distGradient(x + 0.5, y + 0.5, w, h, radius);
+        const i = (y * w + x) * 4;
+        let spec = 0;
+        if (dist > 0 && dist <= bezel * 1.15) {
+          const nd = Math.max(0, gx * lx + gy * ly);
+          const edge = 1 - Math.abs(dist / (bezel * 1.15) - 0.55) / 0.55;
+          spec = Math.pow(nd, 2.8) * Math.max(0, edge) * 0.9;
+        }
+        const v = Math.round(spec * 255);
+        img.data[i] = v;
+        img.data[i + 1] = v;
+        img.data[i + 2] = v;
+        img.data[i + 3] = Math.round(spec * 200);
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL('image/png');
+  }
+
+  function supportsSvgBackdrop() {
+    if (typeof CSS === 'undefined' || !CSS.supports) return false;
+    return CSS.supports('backdrop-filter', 'url("#lg-dock-glass")')
+      || CSS.supports('-webkit-backdrop-filter', 'url("#lg-dock-glass")');
+  }
+
+  function setImg(id, href) {
+    const el = document.getElementById(id);
+    if (!el || !href) return;
+    el.setAttribute('href', href);
+    el.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+  }
+
+  function rebuildDockMaps() {
+    const dock = document.getElementById('bottomDock');
+    if (!dock) return;
+    const rect = dock.getBoundingClientRect();
+    if (rect.width < 20 || rect.height < 20) return;
+    const radius = Math.min(rect.height / 2, 999);
+    const bezel = Math.max(8, Math.min(22, rect.height * 0.28));
+    const disp = buildDispMap(MAP_W, MAP_H, MAP_H / 2, bezel, 10);
+    const spec = buildSpecMap(MAP_W, MAP_H, MAP_H / 2, bezel);
+    setImg('lgDockDispImg', disp.dataUrl);
+    setImg('lgDockSpecImg', spec);
+    dockBaseScale = disp.scale;
+    const dd = document.getElementById('lgDockDisp');
+    if (dd) dd.setAttribute('scale', String(disp.scale));
+  }
+
+  function rebuildPillMaps() {
+    const pill = document.getElementById('dockIndicator');
+    if (!pill) return;
+    const w = pill.offsetWidth;
+    const h = pill.offsetHeight;
+    if (w < 8 || h < 8) return;
+    const radius = h / 2;
+    const bezel = Math.max(4, Math.min(14, h * 0.32));
+    const disp = buildDispMap(PILL_MAP_W, PILL_MAP_H, PILL_MAP_H / 2, bezel, 8);
+    const spec = buildSpecMap(PILL_MAP_W, PILL_MAP_H, PILL_MAP_H / 2, bezel);
+    setImg('lgPillDispImg', disp.dataUrl);
+    setImg('lgPillSpecImg', spec);
+    pillBaseScale = disp.scale;
+    const pd = document.getElementById('lgPillDisp');
+    if (pd) pd.setAttribute('scale', String(disp.scale));
+  }
+
+  function tick() {
+    rafId = null;
+    if (document.documentElement.dataset.liquidGlass !== 'on') return;
+    const dc = typeof dockController !== 'undefined' ? dockController : null;
+    const deform = dc ? dc._liquidDeformAmount() : 0;
+    const gesturing = dc && (dc.scrubbing || dc.appSwiping || dc._liquidSpringing);
+    const strain = dc ? (dc._stretchHint || 0) : 0;
+    const bump = dc ? (dc._morphBump || 0) : 0;
+    const specular = Math.min(1, deform * 2.2 + strain * 0.8 + bump * 0.6);
+    document.documentElement.style.setProperty('--lg-specular', specular.toFixed(3));
+    const dock = document.getElementById('bottomDock');
+    if (dock) dock.style.setProperty('--lg-specular', specular.toFixed(3));
+    if (supportsSvgBackdrop()) {
+      const boost = gesturing ? 1 + deform * 0.85 + strain * 0.35 + bump * 0.25 : 1;
+      const dd = document.getElementById('lgDockDisp');
+      const pd = document.getElementById('lgPillDisp');
+      if (dd) dd.setAttribute('scale', (dockBaseScale * boost).toFixed(2));
+      if (pd) pd.setAttribute('scale', (pillBaseScale * boost).toFixed(2));
+    }
+    if (gesturing || specular > 0.02) rafId = requestAnimationFrame(tick);
+  }
+
+  function ensureLoop() {
+    if (rafId == null) rafId = requestAnimationFrame(tick);
+  }
+
+  function attachObservers() {
+    const dock = document.getElementById('bottomDock');
+    const pill = document.getElementById('dockIndicator');
+    if (typeof ResizeObserver === 'undefined') return;
+    if (dock && !ro) {
+      ro = new ResizeObserver(() => {
+        clearTimeout(ro._t);
+        ro._t = setTimeout(rebuildDockMaps, 120);
+      });
+      ro.observe(dock);
+    }
+    if (pill && !pillRo) {
+      pillRo = new ResizeObserver(() => {
+        clearTimeout(pillRo._t);
+        pillRo._t = setTimeout(rebuildPillMaps, 120);
+      });
+      pillRo.observe(pill);
+    }
+  }
+
   return {
-    start() { clearFilters(); },
-    stop()  { clearFilters(); },
+    start() {
+      if (document.documentElement.dataset.liquidGlass !== 'on') return;
+      const refract = supportsSvgBackdrop();
+      document.documentElement.dataset.lgRefract = refract ? '1' : '0';
+      rebuildDockMaps();
+      rebuildPillMaps();
+      attachObservers();
+      ensureLoop();
+    },
+    stop() {
+      document.documentElement.dataset.lgRefract = '0';
+      document.documentElement.style.removeProperty('--lg-specular');
+      if (rafId != null) cancelAnimationFrame(rafId);
+      rafId = null;
+      const dd = document.getElementById('lgDockDisp');
+      const pd = document.getElementById('lgPillDisp');
+      if (dd) dd.setAttribute('scale', '0');
+      if (pd) pd.setAttribute('scale', '0');
+    },
+    rebuild() {
+      rebuildDockMaps();
+      rebuildPillMaps();
+    },
+    pulse() { ensureLoop(); },
   };
 })();
 
