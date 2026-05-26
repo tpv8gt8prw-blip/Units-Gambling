@@ -2082,32 +2082,74 @@
   html[data-liquid-glass="on"] .dock {
     padding: 10px;
     border-radius: 32px;
+    /* Ultra-clear glass — content bleeds through (Apple Liquid Glass) */
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.20) 0%,
+        rgba(255, 255, 255, 0.05) 38%,
+        rgba(255, 255, 255, 0.00) 100%),
+      rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px) saturate(1.72) brightness(1.04);
+    -webkit-backdrop-filter: blur(10px) saturate(1.72) brightness(1.04);
+    border: 0.5px solid rgba(255, 255, 255, 0.26);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.48),
+      1px 0 0 inset rgba(255, 255, 255, 0.14),
+      -1px 0 0 inset rgba(255, 255, 255, 0.14),
+      0 2px 10px rgba(0, 0, 0, 0.05),
+      0 10px 28px rgba(0, 0, 0, 0.10);
+  }
+  :root[data-mode="dark"] html[data-liquid-glass="on"] .dock,
+  html[data-liquid-glass="on"]:root[data-mode="dark"] .dock {
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.10) 0%,
+        rgba(255, 255, 255, 0.02) 42%,
+        rgba(255, 255, 255, 0.00) 100%),
+      rgba(18, 18, 20, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.22),
+      1px 0 0 inset rgba(255, 255, 255, 0.06),
+      -1px 0 0 inset rgba(255, 255, 255, 0.06),
+      0 2px 10px rgba(0, 0, 0, 0.18),
+      0 10px 28px rgba(0, 0, 0, 0.28);
   }
   html[data-liquid-glass="on"] .dock::before {
-    animation: dockGlossShimmer 5.2s ease-in-out infinite;
+    opacity: 0.72;
+    animation: dockGlossShimmer 4.8s ease-in-out infinite;
+  }
+  html[data-liquid-glass="on"] .dock::after {
+    opacity: 0.38;
+  }
+  html[data-liquid-glass="on"] .dock.dock-is-gesturing {
+    backdrop-filter: blur(8px) saturate(1.88) brightness(1.05);
+    -webkit-backdrop-filter: blur(8px) saturate(1.88) brightness(1.05);
   }
   html[data-liquid-glass="on"] .dock-indicator {
+    --pill-alpha: 0.30;
     background:
-      linear-gradient(145deg,
-        rgba(255, 255, 255, 0.42) 0%,
-        rgba(255, 255, 255, 0.12) 42%,
+      linear-gradient(148deg,
+        rgba(255, 255, 255, 0.34) 0%,
+        rgba(255, 255, 255, 0.10) 44%,
         color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 100%), transparent) 100%);
-    backdrop-filter: blur(22px) saturate(1.55) brightness(1.06);
-    -webkit-backdrop-filter: blur(22px) saturate(1.55) brightness(1.06);
-    border: 0.5px solid rgba(255, 255, 255, 0.42);
+    backdrop-filter: blur(14px) saturate(1.62) brightness(1.08);
+    -webkit-backdrop-filter: blur(14px) saturate(1.62) brightness(1.08);
+    border: 0.5px solid rgba(255, 255, 255, 0.36);
     box-shadow:
-      inset 0 1.5px 0 rgba(255, 255, 255, 0.62),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-      0 2px 12px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 42%), transparent),
-      0 10px 28px rgba(0, 0, 0, 0.14);
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+      0 2px 14px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 38%), transparent),
+      0 8px 22px rgba(0, 0, 0, 0.10);
     filter: none;
   }
   html[data-liquid-glass="on"] .dock-indicator.is-liquid-active {
+    --pill-alpha: 0.26;
     box-shadow:
-      inset 0 1.5px 0 rgba(255, 255, 255, 0.72),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-      0 4px 18px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 52%), transparent),
-      0 14px 36px rgba(0, 0, 0, 0.18);
+      inset 0 2px 0 rgba(255, 255, 255, 0.68),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+      0 6px 22px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 55%), transparent),
+      0 16px 40px rgba(0, 0, 0, 0.16);
   }
   html[data-liquid-glass="on"] .dock-indicator::after {
     animation: dockIndicatorGleam 2.8s ease-in-out infinite;
@@ -2121,31 +2163,15 @@
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
   }
 
-  /* PROGRESSIVE BLUR - Beim Scrollen noch glassiger */
+  /* Scroll: etwas mehr Sättigung, bleibt aber durchsichtig */
   html[data-liquid-glass="on"] body.dock-scroll-active .dock {
-    backdrop-filter: blur(32px) saturate(2.05) brightness(1.05) contrast(1.1);
-    -webkit-backdrop-filter: blur(32px) saturate(2.05) brightness(1.05) contrast(1.1);
-    box-shadow:
-      0 1px 0 inset rgba(255,255,255,0.92),
-      1px 0 0 inset rgba(255,255,255,0.30),
-      -1px 0 0 inset rgba(255,255,255,0.30),
-      0 0 0 0.5px rgba(255,255,255,0.40),
-      0 6px 16px rgba(0,0,0,0.08),
-      0 14px 36px rgba(0,0,0,0.16),
-      0 28px 64px rgba(0,0,0,0.20);
+    backdrop-filter: blur(12px) saturate(1.92) brightness(1.05);
+    -webkit-backdrop-filter: blur(12px) saturate(1.92) brightness(1.05);
   }
   html[data-liquid-glass="on"] :root[data-mode="dark"] body.dock-scroll-active .dock,
   :root[data-mode="dark"] html[data-liquid-glass="on"] body.dock-scroll-active .dock {
-    backdrop-filter: blur(32px) saturate(2.05) brightness(1.04) contrast(1.12);
-    -webkit-backdrop-filter: blur(32px) saturate(2.05) brightness(1.04) contrast(1.12);
-    box-shadow:
-      0 1px 0 inset rgba(255,255,255,0.32),
-      1px 0 0 inset rgba(255,255,255,0.12),
-      -1px 0 0 inset rgba(255,255,255,0.12),
-      0 0 0 0.5px rgba(255,255,255,0.16),
-      0 6px 16px rgba(0,0,0,0.22),
-      0 14px 36px rgba(0,0,0,0.36),
-      0 28px 64px rgba(0,0,0,0.52);
+    backdrop-filter: blur(14px) saturate(1.92) brightness(1.03);
+    -webkit-backdrop-filter: blur(14px) saturate(1.92) brightness(1.03);
   }
 
   /* ============================================================
@@ -6059,7 +6085,7 @@ $$('.dock-btn').forEach(btn => {
   });
 });
 
-// Tab-Wechsel nur über Dock (Klick + Scrub) — kein App-weites Tab-Swipe.
+// Tab-Wechsel: Dock (Klick + Scrub). Mit Liquid Glass auch horizontaler Tab-Swipe.
 
 // ============================================================
 // PLAN CAROUSEL — native-style infinite swipe controller
@@ -6533,6 +6559,7 @@ class DockController {
     this._motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this._liteMotion = document.documentElement.dataset.liquidGlass !== 'on'
       && window.matchMedia('(max-width: 640px)').matches;
+    this._liquidSpringing = false;
 
     this._measure();
     // Apply initial position without animation.
@@ -6566,12 +6593,16 @@ class DockController {
     const p = this.positions[idx];
     return p ? p.width : 0;
   }
+  _iosGlass() {
+    return document.documentElement.dataset.liquidGlass === 'on';
+  }
   _pillAlphaTarget() {
-    if (this.scrubbing || this.appSwiping) {
+    const base = this._iosGlass() ? 0.30 : 0.42;
+    if (this.scrubbing || this.appSwiping || this._liquidSpringing) {
       const s = Math.min(1, this._stretchHint * 0.5 + this._liquidDeformAmount() * 1.6);
-      return 0.42 - s * 0.12;
+      return base - s * (this._iosGlass() ? 0.08 : 0.12);
     }
-    return 0.42;
+    return base;
   }
   _applyTransform() {
     const gesturing = this.scrubbing || this.appSwiping;
@@ -6634,8 +6665,8 @@ class DockController {
   _setLiquidActive(on) {
     this.indicator.classList.toggle('is-liquid-active', !!on);
   }
-  _setDockInteracting(_on) {
-    /* Dock stays opaque — only the pill changes transparency. */
+  _setDockInteracting(on) {
+    this.dock.classList.toggle('dock-is-gesturing', !!on);
   }
   _neutralLiquid() {
     return { sx: 1, sy: 1, skew: 0, ty: 0, br: 18 };
@@ -6649,8 +6680,8 @@ class DockController {
     this._stretchHint = stretchHint;
     const v = dt > 0 ? deltaX / dt : 0;
     this._scrubVel = this._scrubVel * 0.7 + v * 0.3;
-    const velMag = Math.min(1, Math.abs(this._scrubVel) / 1500);
-    const mag = Math.min(1, velMag * 0.42 + Math.min(1, stretchHint) * 0.58);
+    const velMag = Math.min(1, Math.abs(this._scrubVel) / (this._iosGlass() ? 1100 : 1500));
+    const mag = Math.min(1, velMag * 0.38 + Math.min(1, stretchHint) * 0.62);
     const dir = Math.sign(this._scrubVel) || Math.sign(deltaX) || 0;
     const T = this._liquidTarget;
     if (this._liteMotion) {
@@ -6659,6 +6690,12 @@ class DockController {
       T.skew = dir * mag * 2.2;
       T.ty = -mag * 0.55;
       T.br = 18 + mag * 2.5;
+    } else if (this._iosGlass()) {
+      T.sx = 1 + mag * 0.32;
+      T.sy = 1 - mag * 0.11;
+      T.skew = dir * mag * 11;
+      T.ty = -mag * 2.6;
+      T.br = 18 + mag * 16;
     } else {
       T.sx = 1 + mag * 0.15;
       T.sy = 1 - mag * 0.055;
@@ -6709,18 +6746,24 @@ class DockController {
         const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
         this.velocity += accel * dt;
         this.x += this.velocity * dt;
+        if (this._iosGlass() && this._liquidSpringing) {
+          const stretch = Math.min(1, Math.abs(this.velocity) / 280 + Math.abs(dx) / 100);
+          this._feedLiquidMotion(this.velocity * dt * 52, dt, stretch);
+        }
         if (Math.abs(dx) < 0.5 && Math.abs(this.velocity) < 22) {
           this.x = this._springTarget;
           this.velocity = 0;
           this._springTarget = null;
+          this._liquidSpringing = false;
           const w = this._widthForIdx(this.activeIdx);
           this.indicator.style.width = w + 'px';
           this._lastWidth = w;
+          this._relaxLiquid();
         }
       }
 
       const gesturing = this.scrubbing || this.appSwiping;
-      const lk = 1 - Math.exp(-dt * (gesturing ? 130 : 62));
+      const lk = 1 - Math.exp(-dt * (gesturing ? (this._iosGlass() ? 168 : 130) : 62));
       const L = this.liquid;
       const T = this._liquidTarget;
       L.sx += (T.sx - L.sx) * lk;
@@ -6740,11 +6783,12 @@ class DockController {
 
       this._applyTransform();
 
-      if (running || this.scrubbing || this.appSwiping) {
+      if (running || this.scrubbing || this.appSwiping || this._liquidSpringing) {
         this._motionLoopId = requestAnimationFrame(tick);
       } else {
         this._motionLoopId = null;
         this._setLiquidActive(false);
+        this._setDockInteracting(false);
       }
     };
     this._motionLoopId = requestAnimationFrame(tick);
@@ -6924,7 +6968,7 @@ class DockController {
 
     const curW = parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx);
     const idealW = this._widthBetweenTabs(nextX, curW);
-    const widthK = 1 - Math.exp(-dt * 16);
+    const widthK = 1 - Math.exp(-dt * (this._iosGlass() ? 24 : 16));
     const newW = curW + (idealW - curW) * widthK;
     if (Math.abs(newW - this._lastWidth) > 0.25) {
       this._lastWidth = newW;
@@ -6934,7 +6978,7 @@ class DockController {
     const nearest = this._nearestIdx(nextX, idealW);
     const refX = this._xForIdx(this.scrubLastNearestIdx);
     const span = Math.max(1, (this._xForIdx(this.buttons.length - 1) - this._xForIdx(0)));
-    const stretchHint = Math.min(1, Math.abs(nextX - refX) / (span * 0.42));
+    const stretchHint = Math.min(1, Math.abs(nextX - refX) / (span * (this._iosGlass() ? 0.32 : 0.42)));
     this._feedLiquidMotion(frameDx, dt, stretchHint);
     this._ensureMotionLoop();
 
@@ -6960,10 +7004,17 @@ class DockController {
     }
     this.indicator.style.width = targetW + 'px';
     this._lastWidth = targetW;
-    this._relaxLiquid();
-    const flingV = Math.max(-700, Math.min(700, this._scrubVel * 0.00018));
-    this._springTo(targetX, flingV);
-    this._setDockInteracting(false);
+    const flingV = Math.max(-700, Math.min(700, this._scrubVel * (this._iosGlass() ? 0.00028 : 0.00018)));
+    if (this._iosGlass()) {
+      this._liquidSpringing = true;
+      this._setLiquidActive(true);
+      this._setDockInteracting(true);
+      this._springTo(targetX, flingV);
+    } else {
+      this._relaxLiquid();
+      this._springTo(targetX, flingV);
+      this._setDockInteracting(false);
+    }
   }
   _nearestIdx(indicatorX, widthHint) {
     const w = widthHint ?? (parseFloat(this.indicator.style.width) || this._widthForIdx(this.activeIdx));
@@ -7031,15 +7082,15 @@ class DockController {
       this.indicator.style.width = swipeW + 'px';
     }
     if (Math.abs(frameDx) < 0.5) {
-      const k = 0.18;
+      const k = this._iosGlass() ? 0.24 : 0.18;
       const T = this._liquidTarget;
-      const hold = 1 + progress * 0.05;
+      const hold = 1 + progress * (this._iosGlass() ? 0.12 : 0.05);
       const dir = dx < 0 ? -1 : 1;
       T.sx += (hold - T.sx) * k;
-      T.sy += (hold - 0.02 - T.sy) * k;
-      T.skew += (dir * progress * 3.5 - T.skew) * k;
-      T.ty += (0 - T.ty) * k;
-      T.br += ((18 + progress * 4) - T.br) * k;
+      T.sy += ((hold - (this._iosGlass() ? 0.06 : 0.02)) - T.sy) * k;
+      T.skew += (dir * progress * (this._iosGlass() ? 8 : 3.5) - T.skew) * k;
+      T.ty += ((this._iosGlass() ? -progress * 1.2 : 0) - T.ty) * k;
+      T.br += ((18 + progress * (this._iosGlass() ? 12 : 4)) - T.br) * k;
       this._scrubVel *= 0.85;
     } else {
       this._feedLiquidMotion(frameDx, dt, progress);
@@ -7064,10 +7115,17 @@ class DockController {
     if (targetIdx < 0 || targetIdx >= this.buttons.length) {
       this._setStyleActive(fromIdx);
       this._scrubVel *= 0.18;
-      this._relaxLiquid();
-      this._springTo(this._xForIdx(fromIdx));
       this.indicator.style.width = this._widthForIdx(fromIdx) + 'px';
-      this._setDockInteracting(false);
+      if (this._iosGlass()) {
+        this._liquidSpringing = true;
+        this._setLiquidActive(true);
+        this._setDockInteracting(true);
+        this._springTo(this._xForIdx(fromIdx));
+      } else {
+        this._relaxLiquid();
+        this._springTo(this._xForIdx(fromIdx));
+        this._setDockInteracting(false);
+      }
       return;
     }
     const w = viewportWidth || window.innerWidth || 1;
@@ -7076,10 +7134,17 @@ class DockController {
     const snapIdx = commit ? targetIdx : fromIdx;
     const targetX = this._xForIdx(snapIdx);
     this._scrubVel = (velocity || this._scrubVel) * (commit ? 0.22 : 0.15);
-    this._relaxLiquid();
     this.indicator.style.width = this._widthForIdx(snapIdx) + 'px';
-    this._springTo(targetX, commit ? velocity * 0.0004 : 0);
-    this._setDockInteracting(false);
+    if (this._iosGlass()) {
+      this._liquidSpringing = true;
+      this._setLiquidActive(true);
+      this._setDockInteracting(true);
+      this._springTo(targetX, commit ? velocity * 0.0005 : 0);
+    } else {
+      this._relaxLiquid();
+      this._springTo(targetX, commit ? velocity * 0.0004 : 0);
+      this._setDockInteracting(false);
+    }
     if (commit) {
       Haptic.light();
       setTab(TAB_NAMES[targetIdx], { dockSync: true });
@@ -7228,6 +7293,70 @@ window.addEventListener('pageshow', (e) => {
   // bfcache restore — same recovery as visibilitychange.
   if (e.persisted) recoverFromBackground();
 });
+
+// ===== Liquid Glass: horizontal tab swipe (content area) =====
+(function setupLiquidGlassTabSwipe() {
+  if (!appView) return;
+  const TH = 10;
+  let pending = null;
+
+  function sampleVelocity(samples) {
+    if (!samples || samples.length < 2) return 0;
+    const last = samples[samples.length - 1];
+    let oldest = samples[0];
+    for (let i = samples.length - 1; i >= 0; i--) {
+      if (last.t - samples[i].t > 80) { oldest = samples[i]; break; }
+    }
+    const dt = (last.t - oldest.t) / 1000;
+    return dt > 0 ? (last.x - oldest.x) / dt : 0;
+  }
+
+  appView.addEventListener('touchstart', (e) => {
+    if (document.documentElement.dataset.liquidGlass !== 'on') return;
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (t.target.closest('.dock, .modal-bg, button, a, input, textarea, select, .reels, .reel')) return;
+    if (currentTab === 'plan' && t.target.closest('#planPager')) return;
+    pending = {
+      x: t.clientX,
+      y: t.clientY,
+      started: false,
+      samples: [{ x: t.clientX, t: performance.now() }],
+    };
+  }, { passive: true });
+
+  appView.addEventListener('touchmove', (e) => {
+    if (!pending || !dockController) return;
+    if (document.documentElement.dataset.liquidGlass !== 'on') return;
+    const t = e.touches[0];
+    const dx = t.clientX - pending.x;
+    const dy = t.clientY - pending.y;
+    if (!pending.started) {
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > TH) { pending = null; return; }
+      if (Math.abs(dx) < TH) return;
+      pending.started = true;
+      dockController.beginAppSwipe();
+    }
+    if (e.cancelable) e.preventDefault();
+    pending.samples.push({ x: t.clientX, t: performance.now() });
+    if (pending.samples.length > 8) pending.samples.shift();
+    dockController.updateAppSwipe(dx, window.innerWidth);
+  }, { passive: false });
+
+  const release = (e) => {
+    if (!pending) return;
+    const wasStarted = pending.started;
+    const startX = pending.x;
+    const samples = pending.samples;
+    pending = null;
+    if (!wasStarted || !dockController) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    dockController.endAppSwipe(dx, sampleVelocity(samples), window.innerWidth);
+  };
+  appView.addEventListener('touchend', release, { passive: true });
+  appView.addEventListener('touchcancel', release, { passive: true });
+})();
 
 // ===== iOS Liquid Glass — progressive blur on scroll (Apple + toggle on) =====
 (function initIosLiquidGlassScroll() {
