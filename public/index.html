@@ -1788,53 +1788,70 @@
     display: none;
     align-items: center;
     gap: 0;
-    padding: 12px;
+    padding: 10px;
+
+    /* ============================================
+       ECHTER iOS LIQUID GLASS
+       SVG feDisplacementMap = echte Licht-Refraktion
+       Genau wie Apple iOS 26!
+    ============================================ */
     background:
       linear-gradient(180deg,
-        rgba(255, 255, 255, 0.52) 0%,
-        rgba(255, 255, 255, 0.28) 15%,
-        rgba(255, 255, 255, 0.08) 30%,
-        transparent 50%),
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.18) 0%,
-        rgba(255, 255, 255, 0.06) 100%),
+        rgba(255,255,255,0.48) 0%,
+        rgba(255,255,255,0.22) 18%,
+        rgba(255,255,255,0.06) 36%,
+        rgba(255,255,255,0.00) 55%),
       var(--glass);
-    border-radius: 36px;
+
+    /* ECHTER LIQUID GLASS - SVG Filter mit feDisplacementMap! */
+    backdrop-filter:
+      url(#liquid-glass)
+      blur(0.5px)
+      saturate(1.6);
+    -webkit-backdrop-filter:
+      url(#liquid-glass)
+      blur(0.5px)
+      saturate(1.6);
+
+    border-radius: 34px;
     border: 0.5px solid var(--glass-border);
-    /* ULTRA PREMIUM APPLE LIQUID GLASS */
-    backdrop-filter: blur(32px) saturate(1.95) contrast(1.2) brightness(1.05);
-    -webkit-backdrop-filter: blur(32px) saturate(1.95) contrast(1.2) brightness(1.05);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.78),
-      0 -1px 0 inset rgba(255, 255, 255, 0.12),
-      0 0 0 0.5px rgba(255, 255, 255, 0.2),
-      0 4px 8px rgba(0, 0, 0, 0.05),
-      0 8px 24px rgba(0, 0, 0, 0.1),
-      0 20px 60px rgba(0, 0, 0, 0.2);
+      /* Haupt Wetness Highlight */
+      0 1px 0 inset rgba(255,255,255,0.72),
+      /* Seite Highlights */
+      1px 0 0 inset rgba(255,255,255,0.18),
+      -1px 0 0 inset rgba(255,255,255,0.18),
+      /* Bottom Rim */
+      0 -0.5px 0 inset rgba(255,255,255,0.10),
+      /* Outer Border Glow */
+      0 0 0 0.5px rgba(255,255,255,0.22),
+      /* Elevation Shadows */
+      0 4px 10px rgba(0,0,0,0.06),
+      0 10px 28px rgba(0,0,0,0.12),
+      0 22px 56px rgba(0,0,0,0.20);
     z-index: 50;
     touch-action: pan-y;
     isolation: isolate;
-    will-change: backdrop-filter, transform, box-shadow;
+    will-change: backdrop-filter, transform;
   }
   :root[data-mode="dark"] .dock {
     background:
       linear-gradient(180deg,
-        rgba(255, 255, 255, 0.22) 0%,
-        rgba(255, 255, 255, 0.08) 15%,
-        rgba(255, 255, 255, 0.02) 30%,
-        transparent 50%),
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.08) 0%,
-        rgba(255, 255, 255, 0.01) 100%),
-      rgba(28, 28, 30, 0.82);
-    border-color: rgba(255, 255, 255, 0.18);
+        rgba(255,255,255,0.20) 0%,
+        rgba(255,255,255,0.07) 18%,
+        rgba(255,255,255,0.01) 36%,
+        rgba(255,255,255,0.00) 55%),
+      rgba(28,28,30,0.78);
+    border-color: rgba(255,255,255,0.16);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.32),
-      0 -1px 0 inset rgba(255, 255, 255, 0.05),
-      0 0 0 0.5px rgba(0, 0, 0, 0.6),
-      0 4px 8px rgba(0, 0, 0, 0.1),
-      0 8px 24px rgba(0, 0, 0, 0.25),
-      0 20px 60px rgba(0, 0, 0, 0.75);
+      0 1px 0 inset rgba(255,255,255,0.28),
+      1px 0 0 inset rgba(255,255,255,0.08),
+      -1px 0 0 inset rgba(255,255,255,0.08),
+      0 -0.5px 0 inset rgba(255,255,255,0.05),
+      0 0 0 0.5px rgba(0,0,0,0.58),
+      0 4px 10px rgba(0,0,0,0.14),
+      0 10px 28px rgba(0,0,0,0.28),
+      0 22px 56px rgba(0,0,0,0.68);
   }
   /* Top specular gloss — the curved light highlight that makes
      real liquid glass look wet. Positioned just inside the top
@@ -1842,71 +1859,89 @@
   .dock::before {
     content: '';
     position: absolute;
-    left: 8%;
-    right: 8%;
-    top: 1px;
-    height: 44%;
+    left: 7%; right: 7%; top: 1px;
+    height: 48%;
     border-radius: 999px;
     background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.56) 0%,
-      rgba(255, 255, 255, 0.22) 42%,
-      rgba(255, 255, 255, 0.00) 100%);
+      rgba(255,255,255,0.62) 0%,
+      rgba(255,255,255,0.32) 35%,
+      rgba(255,255,255,0.08) 65%,
+      rgba(255,255,255,0.00) 100%);
     pointer-events: none;
-    filter: blur(0.7px);
-    /* Above the indicator pill (so the pill picks up the wet shine)
-       but below the buttons (so icons stay crisp). */
+    filter: blur(0.6px);
     z-index: 2;
     mix-blend-mode: overlay;
-    transition: opacity 0.3s ease-out;
+    transition: opacity 0.25s ease;
   }
   :root[data-mode="dark"] .dock::before {
     background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.28) 0%,
-      rgba(255, 255, 255, 0.08) 42%,
-      rgba(255, 255, 255, 0.00) 100%);
+      rgba(255,255,255,0.32) 0%,
+      rgba(255,255,255,0.12) 35%,
+      rgba(255,255,255,0.02) 65%,
+      rgba(255,255,255,0.00) 100%);
   }
-  /* Bottom rim — adds depth so the dock feels lifted from content. */
+  /* Second specular layer - inner glow */
   .dock::after {
     content: '';
     position: absolute;
-    inset: 0;
-    border-radius: inherit;
+    left: 14%; right: 14%; top: 6px;
+    height: 26%;
+    border-radius: 999px;
     background: linear-gradient(180deg,
-      transparent 60%,
-      rgba(0, 0, 0, 0.05) 100%);
+      rgba(255,255,255,0.40) 0%,
+      rgba(255,255,255,0.10) 70%,
+      rgba(255,255,255,0.00) 100%);
     pointer-events: none;
-    z-index: 0;
+    filter: blur(1px);
+    z-index: 1;
+    mix-blend-mode: screen;
+    opacity: 0.65;
   }
   :root[data-mode="dark"] .dock::after {
     background: linear-gradient(180deg,
-      transparent 60%,
-      rgba(0, 0, 0, 0.18) 100%);
+      rgba(255,255,255,0.16) 0%,
+      rgba(255,255,255,0.04) 70%,
+      rgba(255,255,255,0.00) 100%);
+    opacity: 0.45;
   }
   .dock.visible { display: flex; }
 
-  /* MASSIVE PROGRESSIVE BLUR ON SCROLL - ULTRA INTENSE */
+  /* ECHTER LIQUID GLASS - Progressive Blur on Scroll mit SVG Filter */
   body.dock-scroll-active .dock {
-    backdrop-filter: blur(40px) saturate(2.1) contrast(1.3) brightness(1.1);
-    -webkit-backdrop-filter: blur(40px) saturate(2.1) contrast(1.3) brightness(1.1);
+    backdrop-filter:
+      url(#liquid-glass-scroll)
+      blur(1px)
+      saturate(1.9);
+    -webkit-backdrop-filter:
+      url(#liquid-glass-scroll)
+      blur(1px)
+      saturate(1.9);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.88),
-      0 -1px 0 inset rgba(255, 255, 255, 0.14),
-      0 0 0 0.5px rgba(255, 255, 255, 0.28),
-      0 6px 12px rgba(0, 0, 0, 0.08),
-      0 12px 32px rgba(0, 0, 0, 0.16),
-      0 28px 80px rgba(0, 0, 0, 0.28);
+      0 1px 0 inset rgba(255,255,255,0.82),
+      1px 0 0 inset rgba(255,255,255,0.22),
+      -1px 0 0 inset rgba(255,255,255,0.22),
+      0 0 0 0.5px rgba(255,255,255,0.28),
+      0 6px 14px rgba(0,0,0,0.08),
+      0 14px 36px rgba(0,0,0,0.18),
+      0 28px 72px rgba(0,0,0,0.28);
   }
-
   :root[data-mode="dark"] body.dock-scroll-active .dock {
-    backdrop-filter: blur(40px) saturate(2.1) contrast(1.3) brightness(1.1);
-    -webkit-backdrop-filter: blur(40px) saturate(2.1) contrast(1.3) brightness(1.1);
+    backdrop-filter:
+      url(#liquid-glass-scroll)
+      blur(1px)
+      saturate(1.9);
+    -webkit-backdrop-filter:
+      url(#liquid-glass-scroll)
+      blur(1px)
+      saturate(1.9);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.42),
-      0 -1px 0 inset rgba(255, 255, 255, 0.08),
-      0 0 0 0.5px rgba(0, 0, 0, 0.72),
-      0 6px 12px rgba(0, 0, 0, 0.18),
-      0 12px 32px rgba(0, 0, 0, 0.32),
-      0 28px 80px rgba(0, 0, 0, 0.85);
+      0 1px 0 inset rgba(255,255,255,0.36),
+      1px 0 0 inset rgba(255,255,255,0.10),
+      -1px 0 0 inset rgba(255,255,255,0.10),
+      0 0 0 0.5px rgba(0,0,0,0.68),
+      0 6px 14px rgba(0,0,0,0.20),
+      0 14px 36px rgba(0,0,0,0.36),
+      0 28px 72px rgba(0,0,0,0.82);
   }
 
   /* ============================================================
@@ -1931,9 +1966,14 @@
         color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 100%), transparent) 0%,
         color-mix(in srgb, var(--accent-2, var(--accent)) calc(var(--pill-alpha) * 82%), transparent) 100%);
     border: 0.5px solid color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 48%), transparent);
+    /* ECHTER LIQUID GLASS auf dem Pill */
+    backdrop-filter: url(#liquid-glass-pill) blur(0.3px) saturate(1.3);
+    -webkit-backdrop-filter: url(#liquid-glass-pill) blur(0.3px) saturate(1.3);
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white calc(var(--pill-alpha) * 32%), transparent),
-      0 2px 10px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 32%), transparent);
+      inset 0 1px 0 color-mix(in srgb, white calc(var(--pill-alpha) * 52%), transparent),
+      0 0 0 0.5px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 32%), transparent),
+      0 2px 10px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 32%), transparent),
+      0 4px 20px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 18%), transparent);
     transform: translate3d(0, 0, 0);
     transform-origin: center center;
     filter: blur(0.3px) saturate(1.1);
@@ -2878,6 +2918,38 @@
     <span>v4.0 · powered by SiteBuilt</span>
   </footer>
 </div>
+
+<!-- ===================== LIQUID GLASS SVG FILTER ===================== -->
+<!-- ECHTER Apple iOS Liquid Glass - feDisplacementMap + feGaussianBlur -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true">
+  <defs>
+    <!-- HAUPT LIQUID GLASS FILTER -->
+    <filter id="liquid-glass" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65 0.75" numOctaves="3" seed="2" result="noise"/>
+      <!-- Licht Refraktion - das macht es zu ECHTEM Liquid Glass! -->
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      <feGaussianBlur in="displaced" stdDeviation="12" result="blurred"/>
+      <feColorMatrix in="blurred" type="saturate" values="1.8" result="saturated"/>
+      <feComposite in="saturated" in2="SourceGraphic" operator="atop"/>
+    </filter>
+    <!-- INTENSIVER SCROLL FILTER -->
+    <filter id="liquid-glass-scroll" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65 0.75" numOctaves="4" seed="2" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      <feGaussianBlur in="displaced" stdDeviation="18" result="blurred"/>
+      <feColorMatrix in="blurred" type="saturate" values="2.1" result="saturated"/>
+      <feComposite in="saturated" in2="SourceGraphic" operator="atop"/>
+    </filter>
+    <!-- INDICATOR PILL FILTER -->
+    <filter id="liquid-glass-pill" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9 0.8" numOctaves="2" seed="5" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      <feGaussianBlur in="displaced" stdDeviation="8" result="blurred"/>
+      <feColorMatrix in="blurred" type="saturate" values="1.6" result="saturated"/>
+      <feComposite in="saturated" in2="SourceGraphic" operator="atop"/>
+    </filter>
+  </defs>
+</svg>
 
 <!-- ===================== BOTTOM DOCK ===================== -->
 <nav class="dock" id="bottomDock" aria-label="Navigation">
@@ -6904,68 +6976,26 @@ window.addEventListener('pageshow', (e) => {
   if (e.persisted) recoverFromBackground();
 });
 
-// ===== ECHTES iOS LIQUID GLASS - PROGRESSIVE BLUR ON SCROLL =====
+// ===== ECHTER iOS LIQUID GLASS - Progressive Blur on Scroll =====
 (function initLiquidGlassScroll() {
-  const dock = document.getElementById('bottomDock');
-  const appView = document.querySelector('.app-view.visible');
-  
-  if (!dock || !appView) return;
-  
   let scrollTimeout;
-  
-  appView.addEventListener('scroll', () => {
+  document.addEventListener('scroll', () => {
     document.body.classList.add('dock-scroll-active');
-    
-    // Haptic Feedback auf iPhone
-    if (navigator.vibrate) {
-      navigator.vibrate(8);
-    }
-    
+    if (navigator.vibrate) navigator.vibrate(8);
     clearTimeout(scrollTimeout);
     scrollTimeout = setTimeout(() => {
       document.body.classList.remove('dock-scroll-active');
     }, 400);
-  }, { passive: true });
-})();
+  }, { passive: true, capture: true });
 
-// ===== DOCK BUTTON HAPTIC FEEDBACK =====
-(function initDockInteractions() {
-  const dockButtons = document.querySelectorAll('.dock-btn');
-  
-  dockButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (navigator.vibrate) {
-        navigator.vibrate([15, 10, 15]);
-      }
-    });
-    
+  // Auch auf Touch Events reagieren
+  document.querySelectorAll('.dock-btn').forEach(btn => {
     btn.addEventListener('touchstart', () => {
-      if (navigator.vibrate) {
-        navigator.vibrate(10);
-      }
+      if (navigator.vibrate) navigator.vibrate(10);
     }, { passive: true });
-  });
-})();
-
-// ===== DARK MODE SMOOTH TRANSITION =====
-(function initThemeTransition() {
-  const root = document.documentElement;
-  const originalTransition = root.style.transition;
-  
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.attributeName === 'data-mode') {
-        root.style.transition = 'background-color 0.3s ease, color 0.3s ease';
-        setTimeout(() => {
-          root.style.transition = originalTransition;
-        }, 300);
-      }
+    btn.addEventListener('click', () => {
+      if (navigator.vibrate) navigator.vibrate([12, 8, 12]);
     });
-  });
-  
-  observer.observe(root, {
-    attributes: true,
-    attributeFilter: ['data-mode']
   });
 })();
 </script>
