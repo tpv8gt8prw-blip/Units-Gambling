@@ -2129,57 +2129,64 @@
     -webkit-backdrop-filter: blur(16px) saturate(1.28);
   }
 
-  /* ===== iOS Liquid Glass (nur Apple + Toggle an) ===== */
-  @keyframes dockGlossShimmer {
-    0%, 100% { opacity: 0.82; transform: translate3d(0, 0, 0) scaleX(1); }
-    50% { opacity: 1; transform: translate3d(1.5%, 0, 0) scaleX(1.02); }
-  }
-  @keyframes dockIndicatorGleam {
-    0%, 100% { opacity: calc(0.22 + var(--pill-strain) * 0.38); }
-    50% { opacity: calc(0.42 + var(--pill-strain) * 0.48); }
-  }
+  /* ============================================================
+     iOS LIQUID GLASS — GPU-accelerated, single backdrop layer.
+     Modeled after UITabBar / UINavigationBar on iOS 26:
+       - ONE backdrop-filter pass (blur + saturate). No chained
+         SVG displacement maps (they wreck the compositor on iOS Safari).
+       - Animations are TRANSFORM + OPACITY only — composited on GPU,
+         never trigger paint.
+       - No mix-blend-mode on large surfaces, no animated box-shadow,
+         no animated filter() per frame.
+     Refs:
+       Materials  https://developer.apple.com/design/Human-Interface-Guidelines/materials
+       Tab bars   https://developer.apple.com/design/Human-Interface-Guidelines/tab-bars
+       Buttons    https://developer.apple.com/design/Human-Interface-Guidelines/buttons
+  ============================================================ */
   .lg-svg-filters {
     position: absolute;
-    width: 0;
-    height: 0;
+    width: 0; height: 0;
     overflow: hidden;
     pointer-events: none;
   }
+  /* The glass layer — sits behind the buttons, does the blur. */
   html[data-liquid-glass="on"] .dock-glass-refract {
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
     z-index: 0;
-    opacity: 1;
-    backdrop-filter: url(#lg-dock-refract) blur(11px) saturate(1.78) brightness(1.04) contrast(1.02);
-    -webkit-backdrop-filter: url(#lg-dock-refract) blur(11px) saturate(1.78) brightness(1.04) contrast(1.02);
-    transition: backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease;
-  }
-  html[data-liquid-glass="on"] .dock.dock-is-gesturing .dock-glass-refract {
-    backdrop-filter: url(#lg-dock-refract) blur(9px) saturate(1.92) brightness(1.06) contrast(1.04);
-    -webkit-backdrop-filter: url(#lg-dock-refract) blur(9px) saturate(1.92) brightness(1.06) contrast(1.04);
+    /* Single composited filter pass — Apple uses ~40pt material on iOS */
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    /* Subtle internal tint sits on top of the blur (light material) */
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.18) 0%,
+        rgba(255, 255, 255, 0.06) 60%,
+        rgba(255, 255, 255, 0.02) 100%);
   }
   html[data-liquid-glass="on"] .dock {
     padding: 10px;
     border-radius: 32px;
-    /* Ultra-clear glass — content bleeds through (Apple Liquid Glass) */
-    background:
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.20) 0%,
-        rgba(255, 255, 255, 0.05) 38%,
-        rgba(255, 255, 255, 0.00) 100%),
-      rgba(255, 255, 255, 0.03);
+    background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border: 0.5px solid rgba(255, 255, 255, 0.26);
+    border: 0.5px solid rgba(255, 255, 255, 0.22);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.48),
-      1px 0 0 inset rgba(255, 255, 255, 0.14),
-      -1px 0 0 inset rgba(255, 255, 255, 0.14),
-      0 2px 10px rgba(0, 0, 0, 0.05),
-      0 10px 28px rgba(0, 0, 0, 0.10);
-    /* Apple ConcentricRectangle: --dock-radius drives concentric pill radius */
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      0 8px 24px rgba(0, 0, 0, 0.10);
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    isolation: isolate;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
     --dock-radius: 32px;
     --dock-padding: 10px;
   }
@@ -2273,107 +2280,109 @@
   }
   :root[data-mode="dark"] html[data-liquid-glass="on"] .dock,
   html[data-liquid-glass="on"]:root[data-mode="dark"] .dock {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 8px 28px rgba(0, 0, 0, 0.45);
+  }
+  :root[data-mode="dark"] html[data-liquid-glass="on"] .dock-glass-refract,
+  html[data-liquid-glass="on"]:root[data-mode="dark"] .dock-glass-refract {
     background:
       linear-gradient(180deg,
         rgba(255, 255, 255, 0.10) 0%,
-        rgba(255, 255, 255, 0.02) 42%,
-        rgba(255, 255, 255, 0.00) 100%),
-      rgba(18, 18, 20, 0.08);
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.22),
-      1px 0 0 inset rgba(255, 255, 255, 0.06),
-      -1px 0 0 inset rgba(255, 255, 255, 0.06),
-      0 2px 10px rgba(0, 0, 0, 0.18),
-      0 10px 28px rgba(0, 0, 0, 0.28);
+        rgba(255, 255, 255, 0.04) 60%,
+        rgba(0, 0, 0, 0.12) 100%);
+    backdrop-filter: blur(32px) saturate(170%);
+    -webkit-backdrop-filter: blur(32px) saturate(170%);
   }
-  html[data-liquid-glass="on"] .dock::before {
-    opacity: 0.72;
-    animation: dockGlossShimmer 4.8s ease-in-out infinite;
-  }
-  html[data-liquid-glass="on"] .dock::after {
-    opacity: 0.38;
-  }
+  /* Suppress legacy ::before / ::after gloss shimmer — was paint-heavy
+     and not how Apple does Liquid Glass. The single backdrop layer is enough. */
+  html[data-liquid-glass="on"] .dock::before,
+  html[data-liquid-glass="on"] .dock::after { display: none; }
+  /* Active indicator pill — fully GPU-composited. All animation comes
+     through transform from JS. No animated radius, filter or shadow. */
   html[data-liquid-glass="on"] .dock-indicator {
-    --pill-alpha: 0.48;
-    --pill-gloss-x: 0;
-    --glass-refract: 1;
     background:
-      linear-gradient(168deg,
-        rgba(255, 255, 255, 0.58) 0%,
-        rgba(255, 255, 255, 0.32) 38%,
-        rgba(255, 255, 255, 0.14) 72%,
-        color-mix(in srgb, var(--accent) 12%, rgba(255, 255, 255, 0.10)) 100%);
-    backdrop-filter: url(#lg-pill-refract) blur(16px) saturate(1.82) brightness(1.1);
-    -webkit-backdrop-filter: url(#lg-pill-refract) blur(16px) saturate(1.82) brightness(1.1);
-    border: 0.5px solid rgba(255, 255, 255, 0.48);
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 92%, transparent) 0%,
+        color-mix(in srgb, var(--accent-2, var(--accent)) 88%, transparent) 100%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 0.5px solid color-mix(in srgb, var(--accent) 60%, transparent);
     box-shadow:
-      inset 0 2px 0 rgba(255, 255, 255, 0.72),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-      0 2px 12px rgba(255, 255, 255, 0.12),
-      0 10px 28px rgba(0, 0, 0, 0.12);
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+      0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
     filter: none;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
   }
+  /* Press-state visual on the pill — pure transform, GPU only */
   html[data-liquid-glass="on"] .dock-indicator.is-liquid-active {
-    --pill-alpha: 0.42;
     box-shadow:
-      inset 0 2.5px 0 rgba(255, 255, 255, 0.82),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-      0 8px 26px rgba(255, 255, 255, 0.14),
-      0 18px 44px rgba(0, 0, 0, 0.18);
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      0 6px 20px color-mix(in srgb, var(--accent) 45%, transparent);
   }
+  /* Pill gloss — single moving gradient driven by --pill-gloss-x.
+     During scrub JS writes every frame (no transition needed); after
+     scrub _relaxLiquid resets to 0 and CSS easings glides it back. */
   html[data-liquid-glass="on"] .dock-indicator::before {
-    opacity: calc(0.35 + var(--pill-strain) * 0.45);
+    opacity: 0.55;
     background: linear-gradient(
-      105deg,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(255, 255, 255, 0.62) calc(42% + var(--pill-gloss-x, 0) * 22%),
-      rgba(255, 255, 255, 0.18) 100%
-    );
+      110deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.55) 50%,
+      transparent 100%);
+    transform: translate3d(calc(var(--pill-gloss-x, 0) * 28%), 0, 0);
+    will-change: transform;
+    mix-blend-mode: normal;
+    transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  /* Active scrub: kill transition so JS can drive transform per frame */
+  html[data-liquid-glass="on"] .dock.dock-is-gesturing .dock-indicator::before {
+    transition: none;
   }
   html[data-liquid-glass="on"] .dock-indicator::after {
-    animation: dockIndicatorGleam 2.4s ease-in-out infinite;
-    opacity: calc(0.38 + var(--pill-strain) * 0.42);
-  }
-  html[data-liquid-glass="on"] .dock::before {
-    transform: translate3d(calc(var(--dock-gloss-x, 0) * 8px), 0, 0);
+    animation: none;
+    opacity: 0.35;
   }
   html[data-liquid-glass="on"] .dock-btn {
-    color: rgba(255, 255, 255, 0.52);
+    color: rgba(255, 255, 255, 0.62);
+    -webkit-tap-highlight-color: transparent;
   }
-  html[data-liquid-glass="on"] .dock-btn .icon-svg {
-    opacity: 0.78;
-  }
+  html[data-liquid-glass="on"] .dock-btn .icon-svg { opacity: 0.82; }
   html[data-liquid-glass="on"] .dock-btn.active {
     color: #fff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
   }
   html[data-liquid-glass="on"] .dock-btn.active .icon-svg {
     opacity: 1;
-    transform: scale(1.12);
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22));
+    transform: scale(1.08);
   }
-
-  /* Scroll: etwas mehr Sättigung auf Refraktions-Layer */
+  /* Native iOS tap feedback — instant scale down, GPU composited */
+  html[data-liquid-glass="on"] .dock-btn:active {
+    transform: scale(0.93);
+    transition: transform .08s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  /* Scroll-active: punch up the saturation slightly (still single pass) */
   html[data-liquid-glass="on"] body.dock-scroll-active .dock-glass-refract {
-    backdrop-filter: url(#lg-dock-refract) blur(12px) saturate(1.95) brightness(1.05);
-    -webkit-backdrop-filter: url(#lg-dock-refract) blur(12px) saturate(1.95) brightness(1.05);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
   }
-  @supports not ((backdrop-filter: url(#lg-dock-refract)) or (-webkit-backdrop-filter: url(#lg-dock-refract))) {
-    html[data-liquid-glass="on"] .dock-glass-refract {
-      backdrop-filter: blur(11px) saturate(1.78) brightness(1.04);
-      -webkit-backdrop-filter: blur(11px) saturate(1.78) brightness(1.04);
-    }
-    html[data-liquid-glass="on"] .dock-indicator {
-      backdrop-filter: blur(16px) saturate(1.82) brightness(1.1);
-      -webkit-backdrop-filter: blur(16px) saturate(1.82) brightness(1.1);
-    }
+  /* While the user is scrubbing/swiping the dock, push the material
+     a touch wetter — single-property transition keeps it composited. */
+  html[data-liquid-glass="on"] .dock-glass-refract {
+    transition: backdrop-filter .25s ease, -webkit-backdrop-filter .25s ease;
+  }
+  html[data-liquid-glass="on"] .dock.dock-is-gesturing .dock-glass-refract {
+    backdrop-filter: blur(36px) saturate(210%);
+    -webkit-backdrop-filter: blur(36px) saturate(210%);
   }
   @media (prefers-reduced-motion: reduce) {
-    html[data-liquid-glass="on"] .dock-glass-refract,
-    html[data-liquid-glass="on"] .dock-indicator {
-      backdrop-filter: blur(11px) saturate(1.5);
-      -webkit-backdrop-filter: blur(11px) saturate(1.5);
+    html[data-liquid-glass="on"] .dock-glass-refract {
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
     }
   }
 
@@ -6885,12 +6894,20 @@ class DockController {
       return;
     }
 
-    const { sx, sy, skew, ty, br } = this.liquid;
-    const origin = skew < 0 ? 'right center' : skew > 0 ? 'left center' : 'center center';
-    const deform = this._liquidDeformAmount();
-    const strain = Math.min(1, deform * 3.2);
+    const { sx, sy, skew, ty } = this.liquid;
+    const ios = this._iosGlass();
+    // iOS Glass: ONLY transform (translate3d + scale3d). No skew,
+    // no per-frame border-radius, no per-frame CSS-var writes —
+    // those force style recalc + paint and break compositing.
+    const origin = (!ios && skew < 0) ? 'right center'
+                 : (!ios && skew > 0) ? 'left center'
+                 : 'center center';
     const y = Math.round(ty);
-    const xf = `translate3d(${x}px,${y}px,0) scale3d(${sx.toFixed(3)},${sy.toFixed(3)},1) skewX(${skew.toFixed(1)}deg)`;
+    const sxA = sx.toFixed(3);
+    const syA = sy.toFixed(3);
+    const xf = ios
+      ? `translate3d(${x}px,${y}px,0) scale3d(${sxA},${syA},1)`
+      : `translate3d(${x}px,${y}px,0) scale3d(${sxA},${syA},1) skewX(${skew.toFixed(1)}deg)`;
     if (this._xf !== xf) {
       this._xf = xf;
       this.indicator.style.transform = xf;
@@ -6899,18 +6916,23 @@ class DockController {
       this._xfOrigin = origin;
       this.indicator.style.transformOrigin = origin;
     }
-    const brR = Math.round(br);
-    if (this._xfBr !== brR) {
-      this._xfBr = brR;
-      this.indicator.style.borderRadius = brR + 'px';
-    }
-    if (this._xfStrain !== strain) {
-      this._xfStrain = strain;
-      this.indicator.style.setProperty('--pill-strain', strain.toFixed(2));
-    }
-    if (this._xfAlpha !== this._pillAlpha) {
-      this._xfAlpha = this._pillAlpha;
-      this.indicator.style.setProperty('--pill-alpha', this._pillAlpha.toFixed(2));
+    // Classic mode keeps the original look (border-radius morph etc.)
+    if (!ios) {
+      const deform = this._liquidDeformAmount();
+      const strain = Math.min(1, deform * 3.2);
+      const brR = Math.round(this.liquid.br);
+      if (this._xfBr !== brR) {
+        this._xfBr = brR;
+        this.indicator.style.borderRadius = brR + 'px';
+      }
+      if (this._xfStrain !== strain) {
+        this._xfStrain = strain;
+        this.indicator.style.setProperty('--pill-strain', strain.toFixed(2));
+      }
+      if (this._xfAlpha !== this._pillAlpha) {
+        this._xfAlpha = this._pillAlpha;
+        this.indicator.style.setProperty('--pill-alpha', this._pillAlpha.toFixed(2));
+      }
     }
   }
   _setLiquidActive(on) {
@@ -6942,12 +6964,16 @@ class DockController {
       T.ty = -mag * 0.55;
       T.br = 18 + mag * 2.5;
     } else if (this._iosGlass()) {
-      const bump = 1 + this._morphBump * 0.22;
-      T.sx = (1 + mag * 0.38) * bump;
-      T.sy = 1 - mag * 0.13 - this._morphBump * 0.04;
-      T.skew = dir * mag * 13;
-      T.ty = -mag * 3.2;
-      T.br = 18 + mag * 18;
+      // iOS feel: gentle horizontal stretch + tiny vertical squish, no skew.
+      // Apple's UITabBar.indicator subtly elongates toward the direction of
+      // travel and settles with a spring. We DO NOT animate radius/filter
+      // because the visual lives in box-shadow + GPU transform only.
+      const bump = 1 + this._morphBump * 0.18;
+      T.sx = (1 + mag * 0.14) * bump;
+      T.sy = 1 - mag * 0.05 - this._morphBump * 0.02;
+      T.skew = 0;
+      T.ty = 0;
+      T.br = 18;
       this._morphBump *= 0.82;
       if (this._morphBump < 0.02) this._morphBump = 0;
     } else {
@@ -6978,6 +7004,9 @@ class DockController {
   _relaxLiquid() {
     Object.assign(this._liquidTarget, this._neutralLiquid());
     this._scrubVel *= 0.12;
+    if (this._iosGlass()) {
+      this.indicator.style.setProperty('--pill-gloss-x', '0');
+    }
     this._ensureMotionLoop();
   }
   _snapLiquidIfIdle() {
@@ -7661,56 +7690,24 @@ window.addEventListener('pageshow', (e) => {
 
 // ===== SVG backdrop refraction (feDisplacementMap + turbulence) =====
 window.LiquidGlassRefraction = (function() {
+  // The animated SVG displacement-map pipeline used to run here was
+  // the single biggest jank source on iOS Safari (chained
+  // backdrop-filters + feTurbulence + feDisplacementMap each frame
+  // forces full repaint and busts the compositor). Disabled in favor
+  // of a single GPU-accelerated blur+saturate layer driven by CSS.
+  // Kept as a no-op so the rest of the codebase keeps calling start/stop
+  // without conditionals.
   const dockDisp = () => document.getElementById('lgDockDisp');
   const pillDisp = () => document.getElementById('lgPillDisp');
-  const dockTurb = () => document.getElementById('lgDockTurb');
-  const pillTurb = () => document.getElementById('lgPillTurb');
-  let rafId = null;
-  let t0 = performance.now();
-
-  function tick(now) {
-    rafId = null;
-    if (document.documentElement.dataset.liquidGlass !== 'on') return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    const t = (now - t0) / 1000;
-    const dc = dockController;
-    const deform = dc ? dc._liquidDeformAmount() : 0;
-    const gesturing = dc && (dc.scrubbing || dc.appSwiping || dc._liquidSpringing);
-    const strain = dc ? (dc._stretchHint || 0) : 0;
-    const bump = dc ? (dc._morphBump || 0) : 0;
-
-    const dockBase = 3.5 + Math.sin(t * 0.85) * 1.4;
-    const dockScale = dockBase + (gesturing ? deform * 16 + strain * 7 + bump * 5 : 0);
-    const pillScale = 2.5 + Math.sin(t * 1.05) * 1.1 + deform * 20 + strain * 9 + bump * 6;
-
+  function clearFilters() {
     const dd = dockDisp();
     const pd = pillDisp();
-    if (dd) dd.setAttribute('scale', dockScale.toFixed(2));
-    if (pd) pd.setAttribute('scale', pillScale.toFixed(2));
-
-    const bf = 0.0072 + Math.sin(t * 0.45) * 0.0018;
-    const dt = dockTurb();
-    const pt = pillTurb();
-    if (dt) dt.setAttribute('baseFrequency', `${bf.toFixed(4)} ${(bf * 2.05).toFixed(4)}`);
-    if (pt) pt.setAttribute('baseFrequency', `${(bf * 1.15).toFixed(4)} ${(bf * 2.35).toFixed(4)}`);
-
-    rafId = requestAnimationFrame(tick);
+    if (dd) dd.setAttribute('scale', '0');
+    if (pd) pd.setAttribute('scale', '0');
   }
-
   return {
-    start() {
-      t0 = performance.now();
-      if (rafId == null) rafId = requestAnimationFrame(tick);
-    },
-    stop() {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      rafId = null;
-      const dd = dockDisp();
-      const pd = pillDisp();
-      if (dd) dd.setAttribute('scale', '0');
-      if (pd) pd.setAttribute('scale', '0');
-    },
+    start() { clearFilters(); },
+    stop()  { clearFilters(); },
   };
 })();
 
