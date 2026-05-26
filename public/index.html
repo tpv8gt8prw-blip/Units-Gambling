@@ -1837,33 +1837,11 @@
       box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.22);
     }
     html:not([data-liquid-glass="on"]) .dock {
-      backdrop-filter: blur(10px) saturate(1.15);
-      -webkit-backdrop-filter: blur(10px) saturate(1.15);
-      box-shadow:
-        0 1px 0 inset rgba(255, 255, 255, 0.35),
-        0 4px 14px rgba(0, 0, 0, 0.12);
-    }
-    html:not([data-liquid-glass="on"]) :root[data-mode="dark"] .dock {
-      box-shadow:
-        0 1px 0 inset rgba(255, 255, 255, 0.1),
-        0 4px 14px rgba(0, 0, 0, 0.35);
-    }
-    html:not([data-liquid-glass="on"]) .dock::before,
-    html:not([data-liquid-glass="on"]) .dock::after {
-      display: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
     html:not([data-liquid-glass="on"]) .dock-indicator {
       filter: none;
-      box-shadow:
-        inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
-        0 1px 6px color-mix(in srgb, var(--accent) 22%, transparent);
-    }
-    html:not([data-liquid-glass="on"]) .dock-indicator.is-liquid-active {
-      filter: none;
-    }
-    html:not([data-liquid-glass="on"]) .dock-indicator::before,
-    html:not([data-liquid-glass="on"]) .dock-indicator::after {
-      display: none;
     }
     html[data-liquid-glass="on"] .dock {
       backdrop-filter: blur(40px) saturate(195%) brightness(1.1);
@@ -2081,48 +2059,160 @@
 
   .dock.visible { display: flex; }
 
-  /* ===== Classic dock (Android + Liquid Glass aus) ===== */
+  /* ===== Classic dock (Liquid Glass OFF) — same modern layout, opaque solid ===== */
+  html:not([data-liquid-glass="on"]) .dock-glass-refract,
+  html:not([data-liquid-glass="on"]) .dock-glass-specular,
+  html:not([data-liquid-glass="on"]) .dock-scroll-edge {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
   html:not([data-liquid-glass="on"]) .dock {
-    padding: 8px;
-    background:
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.58) 0%,
-        rgba(255, 255, 255, 0.22) 100%),
-      var(--glass);
-    backdrop-filter: blur(16px) saturate(1.28);
-    -webkit-backdrop-filter: blur(16px) saturate(1.28);
-    border-radius: 28px;
+    padding: 4px;
+    border-radius: 999px;
+    left: 50%;
+    transform: translate3d(-50%, 0, 0);
+    -webkit-transform: translate3d(-50%, 0, 0);
+    width: min(88%, 360px);
+    background: #ffffff;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 0.5px solid var(--glass-border);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.42),
-      0 4px 12px rgba(0, 0, 0, 0.08),
-      0 14px 32px rgba(0, 0, 0, 0.12);
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 4px 16px rgba(0, 0, 0, 0.10),
+      0 12px 32px rgba(0, 0, 0, 0.08);
     will-change: transform;
+    overflow: hidden;
+    transition: none !important;
+    --dock-radius: 999px;
+    --dock-padding: 4px;
   }
-  html:not([data-liquid-glass="on"]):root[data-mode="dark"] .dock,
+  html:not([data-liquid-glass="on"])[data-mode="dark"] .dock,
   :root[data-mode="dark"] html:not([data-liquid-glass="on"]) .dock {
-    background:
-      linear-gradient(180deg,
-        rgba(255, 255, 255, 0.12) 0%,
-        rgba(255, 255, 255, 0.02) 100%),
-      rgba(28, 28, 30, 0.68);
+    background: #242428;
+    border-color: rgba(255, 255, 255, 0.12);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.14),
-      0 4px 12px rgba(0, 0, 0, 0.22),
-      0 14px 32px rgba(0, 0, 0, 0.42);
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 8px 28px rgba(0, 0, 0, 0.38);
   }
   html:not([data-liquid-glass="on"]) .dock::before,
   html:not([data-liquid-glass="on"]) .dock::after {
     display: none;
   }
-  html:not([data-liquid-glass="on"]) .dock-indicator {
+  html:not([data-liquid-glass="on"]) .dock .dock-btn {
+    height: 44px;
+    min-width: 52px;
+    color: var(--ink-3);
+  }
+  html:not([data-liquid-glass="on"]) .dock .dock-btn .lbl {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  html:not([data-liquid-glass="on"]) .dock-btn.active {
+    color: var(--accent);
+    font-weight: 700;
+    text-shadow: none;
+  }
+  html:not([data-liquid-glass="on"]) .dock-btn.active .icon-svg {
+    color: var(--accent);
+    opacity: 1;
+    transform: scale(1.08);
     filter: none;
+  }
+  html:not([data-liquid-glass="on"]) .dock-indicator {
+    top: 3px;
+    bottom: 3px;
+    border-radius: calc(var(--dock-radius, 999px) - var(--dock-padding, 4px));
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.96) 0%,
+        rgba(245, 245, 247, 0.90) 100%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 0.5px solid rgba(255, 255, 255, 0.85);
+    filter: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 2px 10px rgba(0, 0, 0, 0.08);
+  }
+  html:not([data-liquid-glass="on"])[data-mode="dark"] .dock-indicator,
+  :root[data-mode="dark"] html:not([data-liquid-glass="on"]) .dock-indicator {
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(255, 255, 255, 0.14) 100%);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 4px 14px rgba(0, 0, 0, 0.22);
+  }
+  html:not([data-liquid-glass="on"]) .dock-indicator.is-liquid-active {
+    filter: none;
+  }
+  html:not([data-liquid-glass="on"]) .dock-indicator::before,
+  html:not([data-liquid-glass="on"]) .dock-indicator::after {
+    display: none !important;
+    opacity: 0 !important;
+  }
+  html:not([data-liquid-glass="on"]) body.dock-scroll-active .dock {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
-  html:not([data-liquid-glass="on"]) body.dock-scroll-active .dock {
-    backdrop-filter: blur(16px) saturate(1.28);
-    -webkit-backdrop-filter: blur(16px) saturate(1.28);
+  /* Opaque modern capsules for toggles when Liquid Glass is off */
+  html:not([data-liquid-glass="on"]) .toggle,
+  html:not([data-liquid-glass="on"]) .view-toggle {
+    border-radius: 999px;
+    background: var(--fill);
+    border: 0.5px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  html:not([data-liquid-glass="on"]) .toggle button,
+  html:not([data-liquid-glass="on"]) .view-toggle button {
+    border-radius: 999px;
+    font-weight: 590;
+  }
+  html:not([data-liquid-glass="on"]) .toggle button.active,
+  html:not([data-liquid-glass="on"]) .view-toggle button.active {
+    background: #ffffff;
+    color: var(--ink);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  html:not([data-liquid-glass="on"])[data-mode="dark"] .toggle button.active,
+  html:not([data-liquid-glass="on"])[data-mode="dark"] .view-toggle button.active,
+  :root[data-mode="dark"] html:not([data-liquid-glass="on"]) .toggle button.active,
+  :root[data-mode="dark"] html:not([data-liquid-glass="on"]) .view-toggle button.active {
+    background: #3a3a3e;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 2px 8px rgba(0, 0, 0, 0.22);
+  }
+  html:not([data-liquid-glass="on"]) .plan-lb-btn {
+    background: var(--glass-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html:not([data-liquid-glass="on"]) .plan-lb-btn.glass-prominent {
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 92%, transparent) 0%,
+        color-mix(in srgb, var(--accent) 78%, transparent) 100%);
+  }
+  .toggle.swipe-segment,
+  .view-toggle.swipe-segment {
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: grab;
+  }
+  .toggle.swipe-segment.is-swiping,
+  .view-toggle.swipe-segment.is-swiping {
+    cursor: grabbing;
   }
 
   /* ============================================================
@@ -3456,7 +3546,7 @@
 
       <div class="plan-header-controls">
         <div class="toggle-section">
-          <div class="toggle" id="casinoToggle">
+          <div class="toggle swipe-segment" id="casinoToggle">
             <button data-casino="off" class="active">Plan</button>
             <button data-casino="on">Casino</button>
           </div>
@@ -3483,7 +3573,7 @@
           <button class="smbtn primary" id="todayBtn">Heute</button>
           <button class="smbtn" id="nextBtn">Next →</button>
         </div>
-        <div class="view-toggle" id="viewToggle" aria-label="Ansicht">
+        <div class="view-toggle swipe-segment" id="viewToggle" aria-label="Ansicht">
           <button data-view="day" class="active">Tag</button>
           <button data-view="week">Woche</button>
         </div>
@@ -4442,11 +4532,28 @@ function getLiquidGlassPref() {
 function applyLiquidGlass() {
   const apple = isApplePlatform();
   const wantOn = apple && getLiquidGlassPref() === 'on';
+  const dock = document.getElementById('bottomDock');
   document.documentElement.dataset.liquidGlass = wantOn ? 'on' : 'off';
   const row = $('#liquidGlassRow');
   if (row) row.hidden = !apple;
   const sw = $('#liquidGlassSwitch');
   if (sw) sw.classList.toggle('on', getLiquidGlassPref() === 'on');
+  if (!wantOn) {
+    if (typeof window.clearDockScrollFx === 'function') window.clearDockScrollFx();
+    else {
+      document.body.classList.remove('dock-scroll-active');
+      dock?.classList.remove('dock-minimized', 'dock-is-gesturing');
+    }
+    document.documentElement.style.removeProperty('--lg-specular');
+    dock?.style.removeProperty('--lg-specular');
+    dock?.querySelector('.dock-scroll-edge')?.style.setProperty('opacity', '0');
+    dock?.querySelector('.dock-glass-refract')?.style.setProperty('opacity', '0');
+    dock?.querySelector('.dock-glass-specular')?.style.setProperty('opacity', '0');
+  } else {
+    dock?.querySelector('.dock-scroll-edge')?.style.removeProperty('opacity');
+    dock?.querySelector('.dock-glass-refract')?.style.removeProperty('opacity');
+    dock?.querySelector('.dock-glass-specular')?.style.removeProperty('opacity');
+  }
   if (dockController) {
     dockController._liteMotion = !wantOn && window.matchMedia('(max-width: 640px)').matches;
     dockController.measure?.();
@@ -6567,6 +6674,88 @@ $$('#viewToggle button').forEach(btn => {
   });
 });
 
+/** Horizontal swipe on segmented controls (Plan/Casino, Tag/Woche). */
+function setupSwipeSegment(el, { values, getValue, setValue }) {
+  if (!el || !values?.length) return;
+  let startX = 0;
+  let startY = 0;
+  let tracking = false;
+  let decided = false;
+  const THRESH = 36;
+  const pickNext = (dx) => {
+    const cur = getValue();
+    const idx = values.indexOf(cur);
+    if (idx < 0) return null;
+    const nextIdx = dx < 0 ? Math.min(values.length - 1, idx + 1) : Math.max(0, idx - 1);
+    return nextIdx === idx ? null : values[nextIdx];
+  };
+  const onStart = (clientX, clientY) => {
+    startX = clientX;
+    startY = clientY;
+    tracking = true;
+    decided = false;
+  };
+  const onEnd = (clientX, clientY) => {
+    if (!tracking) return;
+    tracking = false;
+    el.classList.remove('is-swiping');
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    if (Math.abs(dx) < THRESH || Math.abs(dx) < Math.abs(dy) * 1.1) return;
+    const next = pickNext(dx);
+    if (!next) return;
+    setValue(next);
+    Sound.tap?.();
+    Haptic.select?.();
+  };
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if (!tracking || decided || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+      decided = true;
+      el.classList.add('is-swiping');
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    if (!t) return;
+    onEnd(t.clientX, t.clientY);
+  }, { passive: true });
+  el.addEventListener('touchcancel', () => {
+    tracking = false;
+    decided = false;
+    el.classList.remove('is-swiping');
+  }, { passive: true });
+  el.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
+    if (e.button !== 0) return;
+    onStart(e.clientX, e.clientY);
+  });
+  el.addEventListener('pointerup', (e) => {
+    if (e.pointerType === 'touch') return;
+    onEnd(e.clientX, e.clientY);
+  });
+  el.addEventListener('pointercancel', () => {
+    tracking = false;
+    el.classList.remove('is-swiping');
+  });
+}
+setupSwipeSegment($('#casinoToggle'), {
+  values: ['off', 'on'],
+  getValue: () => document.documentElement.dataset.casino || 'off',
+  setValue: (v) => setCasino(v, true),
+});
+setupSwipeSegment($('#viewToggle'), {
+  values: ['day', 'week'],
+  getValue: () => viewMode,
+  setValue: (v) => setViewMode(v),
+});
+
 ['server','school','user','pass'].forEach(id => {
   $('#'+id).addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#loginBtn').click(); });
 });
@@ -8335,10 +8524,21 @@ window.LiquidGlassRefraction = (function() {
 
   document.addEventListener('scroll', onScroll, { passive: true, capture: true });
   window.addEventListener('scroll', onScroll, { passive: true });
+
+  window.clearDockScrollFx = () => {
+    clearTimeout(scrollT);
+    scrollT = null;
+    dock?.classList.remove('dock-minimized', 'dock-is-gesturing');
+    document.body.classList.remove('dock-scroll-active');
+    dock?.querySelector('.dock-scroll-edge')?.style.setProperty('opacity', '0');
+    document.documentElement.style.removeProperty('--lg-specular');
+    dock?.style.removeProperty('--lg-specular');
+  };
+
   // Restore dock when Liquid Glass gets toggled off externally.
   new MutationObserver(() => {
     if (document.documentElement.dataset.liquidGlass !== 'on') {
-      dock?.classList.remove('dock-minimized');
+      window.clearDockScrollFx();
     }
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-liquid-glass'] });
 })();
