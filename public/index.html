@@ -235,20 +235,79 @@
     display: flex; align-items: center; justify-content: flex-end;
     flex-wrap: wrap; gap: 8px;
   }
+  /* Glass button style — based on SwiftUI .glass / .glassProminent
+     https://developer.apple.com/documentation/SwiftUI/PrimitiveButtonStyle/glass */
   .plan-lb-btn {
     display: none;
     align-items: center; gap: 6px;
-    background: var(--glass-strong); color: var(--ink);
-    border: 1px solid var(--glass-border); border-radius: 12px;
-    padding: 7px 12px; font-size: 13px; font-weight: 650;
+    min-height: 36px;
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.20) 0%,
+        rgba(255, 255, 255, 0.06) 60%,
+        rgba(255, 255, 255, 0.02) 100%),
+      var(--glass-strong);
+    color: var(--ink);
+    border: 0.5px solid color-mix(in srgb, var(--ink) 12%, var(--glass-border));
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px; font-weight: 650;
     cursor: pointer; line-height: 1;
-    transition: transform .15s var(--ease-out), background .15s var(--ease-out), box-shadow .2s var(--ease-out);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    transition: transform .14s cubic-bezier(0.32, 0.72, 0, 1),
+                background .15s var(--ease-out),
+                box-shadow .2s var(--ease-out),
+                opacity .15s var(--ease-out);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.04),
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 6px 16px rgba(0, 0, 0, 0.08);
+    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(14px) saturate(1.5);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
   }
   [data-casino="on"] .plan-lb-btn { display: inline-flex; }
-  .plan-lb-btn .ico { font-size: 14px; }
-  .plan-lb-btn:hover { background: var(--fill-2); box-shadow: 0 6px 18px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.08); }
-  .plan-lb-btn:active { transform: scale(.96); opacity: 0.8; }
+  .plan-lb-btn .ico {
+    font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px;
+  }
+  .plan-lb-btn:hover {
+    background:
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(255, 255, 255, 0.08) 100%),
+      var(--fill-2);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 8px 22px rgba(0, 0, 0, 0.10);
+  }
+  .plan-lb-btn:active { transform: scale(.94); opacity: 0.78; }
+  /* Glass-prominent variant — pops a touch more (used for primary action) */
+  .plan-lb-btn.glass-prominent {
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 38%, transparent) 0%,
+        color-mix(in srgb, var(--accent) 22%, transparent) 100%),
+      var(--glass-strong);
+    color: #fff;
+    border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 2px 8px color-mix(in srgb, var(--accent) 22%, transparent),
+      0 10px 24px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .plan-lb-btn.glass-prominent:hover {
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 46%, transparent) 0%,
+        color-mix(in srgb, var(--accent) 28%, transparent) 100%),
+      var(--glass-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent),
+      0 14px 32px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
 
   /* Icon button */
   .icon-btn {
@@ -2079,6 +2138,28 @@
     0%, 100% { opacity: calc(0.22 + var(--pill-strain) * 0.38); }
     50% { opacity: calc(0.42 + var(--pill-strain) * 0.48); }
   }
+  .lg-svg-filters {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  html[data-liquid-glass="on"] .dock-glass-refract {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 1;
+    backdrop-filter: url(#lg-dock-refract) blur(11px) saturate(1.78) brightness(1.04) contrast(1.02);
+    -webkit-backdrop-filter: url(#lg-dock-refract) blur(11px) saturate(1.78) brightness(1.04) contrast(1.02);
+    transition: backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease;
+  }
+  html[data-liquid-glass="on"] .dock.dock-is-gesturing .dock-glass-refract {
+    backdrop-filter: url(#lg-dock-refract) blur(9px) saturate(1.92) brightness(1.06) contrast(1.04);
+    -webkit-backdrop-filter: url(#lg-dock-refract) blur(9px) saturate(1.92) brightness(1.06) contrast(1.04);
+  }
   html[data-liquid-glass="on"] .dock {
     padding: 10px;
     border-radius: 32px;
@@ -2089,8 +2170,8 @@
         rgba(255, 255, 255, 0.05) 38%,
         rgba(255, 255, 255, 0.00) 100%),
       rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(10px) saturate(1.72) brightness(1.04);
-    -webkit-backdrop-filter: blur(10px) saturate(1.72) brightness(1.04);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border: 0.5px solid rgba(255, 255, 255, 0.26);
     box-shadow:
       0 1px 0 inset rgba(255, 255, 255, 0.48),
@@ -2098,6 +2179,97 @@
       -1px 0 0 inset rgba(255, 255, 255, 0.14),
       0 2px 10px rgba(0, 0, 0, 0.05),
       0 10px 28px rgba(0, 0, 0, 0.10);
+    /* Apple ConcentricRectangle: --dock-radius drives concentric pill radius */
+    --dock-radius: 32px;
+    --dock-padding: 10px;
+  }
+  /* Scroll edge effect — subtle feathering on top so content scrolling
+     beneath stays legible. Inspired by SwiftUI scrollEdgeEffectStyle. */
+  html[data-liquid-glass="on"] .dock-scroll-edge {
+    position: absolute;
+    left: -2%; right: -2%;
+    top: -16px;
+    height: 28px;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(180deg,
+      rgba(0, 0, 0, 0) 0%,
+      color-mix(in srgb, var(--bg) 32%, transparent) 60%,
+      color-mix(in srgb, var(--bg) 70%, transparent) 100%);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    z-index: -1;
+  }
+  html[data-liquid-glass="on"] body.dock-scroll-active .dock-scroll-edge {
+    opacity: 0.85;
+  }
+  /* Tab-bar minimize (Apple tabBarMinimizeBehavior.onScrollDown).
+     When the user scrolls DOWN, the dock recedes — labels fade,
+     icons shrink, height contracts. Scrolling up restores it. */
+  html[data-liquid-glass="on"] .dock {
+    transition:
+      transform 0.36s cubic-bezier(0.32, 0.72, 0, 1),
+      padding 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+      border-radius 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+      box-shadow 0.32s ease,
+      opacity 0.28s ease,
+      width 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  html[data-liquid-glass="on"] .dock.dock-minimized {
+    padding: 4px;
+    --dock-radius: 22px;
+    border-radius: 22px;
+    width: min(60%, 320px);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.42),
+      0 4px 14px rgba(0, 0, 0, 0.08);
+  }
+  html[data-liquid-glass="on"] .dock .dock-btn {
+    transition:
+      color .14s var(--ease-out),
+      transform .18s cubic-bezier(0.32, 0.72, 0, 1),
+      height .32s cubic-bezier(0.32, 0.72, 0, 1),
+      padding .32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  html[data-liquid-glass="on"] .dock.dock-minimized .dock-btn { height: 38px; }
+  html[data-liquid-glass="on"] .dock.dock-minimized .dock-btn .icon-svg {
+    transform: scale(0.86);
+  }
+  html[data-liquid-glass="on"] .dock.dock-minimized .dock-btn.active .icon-svg {
+    transform: scale(0.94);
+  }
+  html[data-liquid-glass="on"] .dock.dock-minimized .dock-btn .lbl {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-2px);
+    pointer-events: none;
+  }
+  html[data-liquid-glass="on"] .dock .dock-btn .lbl {
+    transition:
+      opacity .22s var(--ease-out),
+      max-height .28s cubic-bezier(0.32, 0.72, 0, 1),
+      transform .28s cubic-bezier(0.32, 0.72, 0, 1);
+    max-height: 14px;
+    overflow: hidden;
+  }
+  /* Apple ConcentricRectangle:
+     inner radius = outer radius − padding. The pill is inset by the
+     dock's padding, so its radius is calculated concentrically. */
+  html[data-liquid-glass="on"] .dock-indicator {
+    border-radius: calc(var(--dock-radius, 32px) - var(--dock-padding, 10px));
+    transition: border-radius .32s cubic-bezier(0.32, 0.72, 0, 1),
+                top .32s cubic-bezier(0.32, 0.72, 0, 1),
+                bottom .32s cubic-bezier(0.32, 0.72, 0, 1),
+                width 200ms ease-out,
+                filter 200ms ease-out,
+                box-shadow .25s ease;
+  }
+  html[data-liquid-glass="on"] .dock.dock-minimized {
+    --dock-padding: 4px;
+  }
+  html[data-liquid-glass="on"] .dock.dock-minimized .dock-indicator {
+    top: 3px;
+    bottom: 3px;
   }
   :root[data-mode="dark"] html[data-liquid-glass="on"] .dock,
   html[data-liquid-glass="on"]:root[data-mode="dark"] .dock {
@@ -2122,56 +2294,87 @@
   html[data-liquid-glass="on"] .dock::after {
     opacity: 0.38;
   }
-  html[data-liquid-glass="on"] .dock.dock-is-gesturing {
-    backdrop-filter: blur(8px) saturate(1.88) brightness(1.05);
-    -webkit-backdrop-filter: blur(8px) saturate(1.88) brightness(1.05);
-  }
   html[data-liquid-glass="on"] .dock-indicator {
-    --pill-alpha: 0.30;
+    --pill-alpha: 0.48;
+    --pill-gloss-x: 0;
+    --glass-refract: 1;
     background:
-      linear-gradient(148deg,
-        rgba(255, 255, 255, 0.34) 0%,
-        rgba(255, 255, 255, 0.10) 44%,
-        color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 100%), transparent) 100%);
-    backdrop-filter: blur(14px) saturate(1.62) brightness(1.08);
-    -webkit-backdrop-filter: blur(14px) saturate(1.62) brightness(1.08);
-    border: 0.5px solid rgba(255, 255, 255, 0.36);
+      linear-gradient(168deg,
+        rgba(255, 255, 255, 0.58) 0%,
+        rgba(255, 255, 255, 0.32) 38%,
+        rgba(255, 255, 255, 0.14) 72%,
+        color-mix(in srgb, var(--accent) 12%, rgba(255, 255, 255, 0.10)) 100%);
+    backdrop-filter: url(#lg-pill-refract) blur(16px) saturate(1.82) brightness(1.1);
+    -webkit-backdrop-filter: url(#lg-pill-refract) blur(16px) saturate(1.82) brightness(1.1);
+    border: 0.5px solid rgba(255, 255, 255, 0.48);
     box-shadow:
-      inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.06),
-      0 2px 14px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 38%), transparent),
-      0 8px 22px rgba(0, 0, 0, 0.10);
+      inset 0 2px 0 rgba(255, 255, 255, 0.72),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+      0 2px 12px rgba(255, 255, 255, 0.12),
+      0 10px 28px rgba(0, 0, 0, 0.12);
     filter: none;
   }
   html[data-liquid-glass="on"] .dock-indicator.is-liquid-active {
-    --pill-alpha: 0.26;
+    --pill-alpha: 0.42;
     box-shadow:
-      inset 0 2px 0 rgba(255, 255, 255, 0.68),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-      0 6px 22px color-mix(in srgb, var(--accent) calc(var(--pill-alpha) * 55%), transparent),
-      0 16px 40px rgba(0, 0, 0, 0.16);
+      inset 0 2.5px 0 rgba(255, 255, 255, 0.82),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+      0 8px 26px rgba(255, 255, 255, 0.14),
+      0 18px 44px rgba(0, 0, 0, 0.18);
+  }
+  html[data-liquid-glass="on"] .dock-indicator::before {
+    opacity: calc(0.35 + var(--pill-strain) * 0.45);
+    background: linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.62) calc(42% + var(--pill-gloss-x, 0) * 22%),
+      rgba(255, 255, 255, 0.18) 100%
+    );
   }
   html[data-liquid-glass="on"] .dock-indicator::after {
-    animation: dockIndicatorGleam 2.8s ease-in-out infinite;
+    animation: dockIndicatorGleam 2.4s ease-in-out infinite;
+    opacity: calc(0.38 + var(--pill-strain) * 0.42);
+  }
+  html[data-liquid-glass="on"] .dock::before {
+    transform: translate3d(calc(var(--dock-gloss-x, 0) * 8px), 0, 0);
+  }
+  html[data-liquid-glass="on"] .dock-btn {
+    color: rgba(255, 255, 255, 0.52);
+  }
+  html[data-liquid-glass="on"] .dock-btn .icon-svg {
+    opacity: 0.78;
   }
   html[data-liquid-glass="on"] .dock-btn.active {
     color: #fff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
   }
   html[data-liquid-glass="on"] .dock-btn.active .icon-svg {
+    opacity: 1;
     transform: scale(1.12);
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22));
   }
 
-  /* Scroll: etwas mehr Sättigung, bleibt aber durchsichtig */
-  html[data-liquid-glass="on"] body.dock-scroll-active .dock {
-    backdrop-filter: blur(12px) saturate(1.92) brightness(1.05);
-    -webkit-backdrop-filter: blur(12px) saturate(1.92) brightness(1.05);
+  /* Scroll: etwas mehr Sättigung auf Refraktions-Layer */
+  html[data-liquid-glass="on"] body.dock-scroll-active .dock-glass-refract {
+    backdrop-filter: url(#lg-dock-refract) blur(12px) saturate(1.95) brightness(1.05);
+    -webkit-backdrop-filter: url(#lg-dock-refract) blur(12px) saturate(1.95) brightness(1.05);
   }
-  html[data-liquid-glass="on"] :root[data-mode="dark"] body.dock-scroll-active .dock,
-  :root[data-mode="dark"] html[data-liquid-glass="on"] body.dock-scroll-active .dock {
-    backdrop-filter: blur(14px) saturate(1.92) brightness(1.03);
-    -webkit-backdrop-filter: blur(14px) saturate(1.92) brightness(1.03);
+  @supports not ((backdrop-filter: url(#lg-dock-refract)) or (-webkit-backdrop-filter: url(#lg-dock-refract))) {
+    html[data-liquid-glass="on"] .dock-glass-refract {
+      backdrop-filter: blur(11px) saturate(1.78) brightness(1.04);
+      -webkit-backdrop-filter: blur(11px) saturate(1.78) brightness(1.04);
+    }
+    html[data-liquid-glass="on"] .dock-indicator {
+      backdrop-filter: blur(16px) saturate(1.82) brightness(1.1);
+      -webkit-backdrop-filter: blur(16px) saturate(1.82) brightness(1.1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-liquid-glass="on"] .dock-glass-refract,
+    html[data-liquid-glass="on"] .dock-indicator {
+      backdrop-filter: blur(11px) saturate(1.5);
+      -webkit-backdrop-filter: blur(11px) saturate(1.5);
+    }
   }
 
   /* ============================================================
@@ -2865,6 +3068,27 @@
 </style>
 </head>
 <body>
+<!-- SVG Liquid Glass — backdrop refraction (Safari / WebKit + Chromium) -->
+<svg class="lg-svg-filters" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="lg-dock-refract" x="-28%" y="-55%" width="156%" height="210%"
+            color-interpolation-filters="sRGB" filterUnits="objectBoundingBox">
+      <feTurbulence id="lgDockTurb" type="fractalNoise" baseFrequency="0.008 0.017"
+                    numOctaves="2" seed="12" result="lgDockNoise"/>
+      <feGaussianBlur in="lgDockNoise" stdDeviation="0.55" result="lgDockNoiseSoft"/>
+      <feDisplacementMap id="lgDockDisp" in="SourceGraphic" in2="lgDockNoiseSoft"
+                         scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="lg-pill-refract" x="-35%" y="-45%" width="170%" height="190%"
+            color-interpolation-filters="sRGB" filterUnits="objectBoundingBox">
+      <feTurbulence id="lgPillTurb" type="fractalNoise" baseFrequency="0.011 0.022"
+                    numOctaves="2" seed="27" result="lgPillNoise"/>
+      <feGaussianBlur in="lgPillNoise" stdDeviation="0.45" result="lgPillNoiseSoft"/>
+      <feDisplacementMap id="lgPillDisp" in="SourceGraphic" in2="lgPillNoiseSoft"
+                         scale="3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
 
 <div class="wrap">
 
@@ -2930,7 +3154,7 @@
           </div>
         </div>
         <div class="leader-section">
-          <button type="button" class="plan-lb-btn" id="openPredictions" aria-label="Predictions öffnen">
+          <button type="button" class="plan-lb-btn glass-prominent" id="openPredictions" aria-label="Predictions öffnen">
             <span class="ico" aria-hidden="true">🎯</span>
             <span class="lbl">Predictions</span>
           </button>
@@ -3157,6 +3381,8 @@
 
 <!-- ===================== BOTTOM DOCK ===================== -->
 <nav class="dock" id="bottomDock" aria-label="Navigation">
+  <div class="dock-scroll-edge" aria-hidden="true"></div>
+  <div class="dock-glass-refract" aria-hidden="true"></div>
   <div class="dock-indicator" id="dockIndicator" aria-hidden="true"></div>
   <button class="dock-btn active" data-tab="plan" aria-label="Stundenplan">
     <span class="ico" id="dockIcoPlan"></span>
@@ -3916,6 +4142,8 @@ function applyLiquidGlass() {
     dockController._liteMotion = !wantOn && window.matchMedia('(max-width: 640px)').matches;
     dockController.measure?.();
   }
+  if (wantOn) LiquidGlassRefraction.start();
+  else LiquidGlassRefraction.stop();
 }
 function updateSwitches() {
   $('#soundSwitch').classList.toggle('on', state.soundEnabled);
@@ -6560,6 +6788,9 @@ class DockController {
     this._liteMotion = document.documentElement.dataset.liquidGlass !== 'on'
       && window.matchMedia('(max-width: 640px)').matches;
     this._liquidSpringing = false;
+    this._springStiffness = 460;
+    this._springDamping = 42;
+    this._morphBump = 0;
 
     this._measure();
     // Apply initial position without animation.
@@ -6597,19 +6828,36 @@ class DockController {
     return document.documentElement.dataset.liquidGlass === 'on';
   }
   _pillAlphaTarget() {
-    const base = this._iosGlass() ? 0.30 : 0.42;
+    const base = this._iosGlass() ? 0.48 : 0.42;
     if (this.scrubbing || this.appSwiping || this._liquidSpringing) {
-      const s = Math.min(1, this._stretchHint * 0.5 + this._liquidDeformAmount() * 1.6);
-      return base - s * (this._iosGlass() ? 0.08 : 0.12);
+      const s = Math.min(1, this._stretchHint * 0.5 + this._liquidDeformAmount() * 1.6 + this._morphBump * 0.35);
+      return base - s * (this._iosGlass() ? 0.06 : 0.12);
     }
     return base;
   }
+  _isMorphing() {
+    if (this.scrubbing || this.appSwiping) return true;
+    return this._iosGlass() && (this._liquidSpringing || this._liquidDeformAmount() > 0.003);
+  }
+  _setGlossFromMotion(deltaX, dt) {
+    if (!this._iosGlass()) return;
+    const v = dt > 0 ? deltaX / dt : 0;
+    const gx = Math.max(-1, Math.min(1, v / 900));
+    const px = Math.max(-1, Math.min(1, (this._scrubVel || 0) / 1200));
+    this.indicator.style.setProperty('--pill-gloss-x', px.toFixed(3));
+    this.dock.style.setProperty('--dock-gloss-x', gx.toFixed(3));
+  }
+  _pulseMorphBump(amount = 0.55) {
+    if (!this._iosGlass()) return;
+    this._morphBump = amount;
+    this._ensureMotionLoop();
+  }
   _applyTransform() {
-    const gesturing = this.scrubbing || this.appSwiping;
-    const x = gesturing ? this.x : Math.round(this.x);
+    const morphing = this._isMorphing();
+    const x = morphing ? this.x : Math.round(this.x);
 
-    // Click / spring settle: translate only — no scale, skew, or blur morph.
-    if (!gesturing) {
+    // Ruhezustand: nur Position, keine Verformung.
+    if (!morphing) {
       const xf = `translate3d(${x}px,0,0)`;
       if (this._xf !== xf) {
         this._xf = xf;
@@ -6691,11 +6939,14 @@ class DockController {
       T.ty = -mag * 0.55;
       T.br = 18 + mag * 2.5;
     } else if (this._iosGlass()) {
-      T.sx = 1 + mag * 0.32;
-      T.sy = 1 - mag * 0.11;
-      T.skew = dir * mag * 11;
-      T.ty = -mag * 2.6;
-      T.br = 18 + mag * 16;
+      const bump = 1 + this._morphBump * 0.22;
+      T.sx = (1 + mag * 0.38) * bump;
+      T.sy = 1 - mag * 0.13 - this._morphBump * 0.04;
+      T.skew = dir * mag * 13;
+      T.ty = -mag * 3.2;
+      T.br = 18 + mag * 18;
+      this._morphBump *= 0.82;
+      if (this._morphBump < 0.02) this._morphBump = 0;
     } else {
       T.sx = 1 + mag * 0.15;
       T.sy = 1 - mag * 0.055;
@@ -6743,12 +6994,15 @@ class DockController {
       if (this._springTarget != null) {
         running = true;
         const dx = this._springTarget - this.x;
-        const accel = dx * this.STIFFNESS - this.velocity * this.DAMPING;
+        const stiff = this._springStiffness;
+        const damp = this._springDamping;
+        const accel = dx * stiff - this.velocity * damp;
         this.velocity += accel * dt;
         this.x += this.velocity * dt;
         if (this._iosGlass() && this._liquidSpringing) {
-          const stretch = Math.min(1, Math.abs(this.velocity) / 280 + Math.abs(dx) / 100);
-          this._feedLiquidMotion(this.velocity * dt * 52, dt, stretch);
+          const stretch = Math.min(1, Math.abs(this.velocity) / 240 + Math.abs(dx) / 85);
+          this._feedLiquidMotion(this.velocity * dt * 58, dt, stretch);
+          this._setGlossFromMotion(this.velocity * dt * 58, dt);
         }
         if (Math.abs(dx) < 0.5 && Math.abs(this.velocity) < 22) {
           this.x = this._springTarget;
@@ -6763,7 +7017,8 @@ class DockController {
       }
 
       const gesturing = this.scrubbing || this.appSwiping;
-      const lk = 1 - Math.exp(-dt * (gesturing ? (this._iosGlass() ? 168 : 130) : 62));
+      const morphing = this._isMorphing();
+      const lk = 1 - Math.exp(-dt * (gesturing ? (this._iosGlass() ? 185 : 130) : (morphing ? 95 : 62)));
       const L = this.liquid;
       const T = this._liquidTarget;
       L.sx += (T.sx - L.sx) * lk;
@@ -6779,7 +7034,7 @@ class DockController {
       if (this._liquidDeformAmount() > 0.001) running = true;
       else this._snapLiquidIfIdle();
 
-      this._setLiquidActive(gesturing);
+      this._setLiquidActive(morphing);
 
       this._applyTransform();
 
@@ -6853,10 +7108,39 @@ class DockController {
   }
 
   // ---- spring (unified motion loop) ----
-  _springTo(targetX, initialVelocity = 0) {
+  _springTo(targetX, initialVelocity = 0, opts = {}) {
     this._springTarget = targetX;
     this.velocity = initialVelocity || 0;
+    if (opts.liquid && this._iosGlass()) {
+      this._springStiffness = 300;
+      this._springDamping = 26;
+    } else {
+      this._springStiffness = 460;
+      this._springDamping = 42;
+    }
     this._ensureMotionLoop();
+  }
+  _morphSpringToTab(idx) {
+    this._cancelSpringOnly();
+    this._stopMotionLoop();
+    const target = this._xForIdx(idx);
+    const targetW = this._widthForIdx(idx);
+    const dir = Math.sign(target - this.x) || 1;
+    this._liquidSpringing = true;
+    this._setLiquidActive(true);
+    this._setDockInteracting(true);
+    this.indicator.style.transition = 'none';
+    this.indicator.style.width = targetW + 'px';
+    this._lastWidth = targetW;
+    const T = this._liquidTarget;
+    T.sx = 1.14;
+    T.sy = 0.9;
+    T.skew = dir * 5;
+    T.ty = -1.2;
+    T.br = 22;
+    Object.assign(this.liquid, { ...T });
+    this._pulseMorphBump(0.45);
+    this._springTo(target, dir * 0.00035, { liquid: true });
   }
   _cancelSpringOnly() {
     this._springTarget = null;
@@ -6875,6 +7159,12 @@ class DockController {
     this._xfStrain = 0;
     this._xfAlpha = 0.4;
     this._setLiquidActive(false);
+    this._liquidSpringing = false;
+    this._morphBump = 0;
+    if (this._iosGlass()) {
+      this.indicator.style.setProperty('--pill-gloss-x', '0');
+      this.dock.style.setProperty('--dock-gloss-x', '0');
+    }
     if (!this.scrubbing && !this.appSwiping) this._stopMotionLoop();
   }
 
@@ -6926,6 +7216,8 @@ class DockController {
       this._cancelMotion();
       this.x = target;
       this._applyTransform();
+    } else if (this._iosGlass() && this._motionOk) {
+      this._morphSpringToTab(idx);
     } else {
       this._snapClickToTab(idx);
     }
@@ -6978,13 +7270,15 @@ class DockController {
     const nearest = this._nearestIdx(nextX, idealW);
     const refX = this._xForIdx(this.scrubLastNearestIdx);
     const span = Math.max(1, (this._xForIdx(this.buttons.length - 1) - this._xForIdx(0)));
-    const stretchHint = Math.min(1, Math.abs(nextX - refX) / (span * (this._iosGlass() ? 0.32 : 0.42)));
+    const stretchHint = Math.min(1, Math.abs(nextX - refX) / (span * (this._iosGlass() ? 0.28 : 0.42)));
     this._feedLiquidMotion(frameDx, dt, stretchHint);
+    this._setGlossFromMotion(frameDx, dt);
     this._ensureMotionLoop();
 
     if (nearest !== this.scrubLastNearestIdx) {
       this._setStyleActive(nearest);
       this.scrubLastNearestIdx = nearest;
+      this._pulseMorphBump(this._iosGlass() ? 0.72 : 0);
       Haptic.select();
     }
   }
@@ -7009,7 +7303,7 @@ class DockController {
       this._liquidSpringing = true;
       this._setLiquidActive(true);
       this._setDockInteracting(true);
-      this._springTo(targetX, flingV);
+      this._springTo(targetX, flingV, { liquid: true });
     } else {
       this._relaxLiquid();
       this._springTo(targetX, flingV);
@@ -7095,6 +7389,7 @@ class DockController {
     } else {
       this._feedLiquidMotion(frameDx, dt, progress);
     }
+    this._setGlossFromMotion(frameDx, dt);
     this._ensureMotionLoop();
     // Once we cross the midpoint, swap the .active class to the
     // target so its icon scales up live — feels "physically connected".
@@ -7102,6 +7397,7 @@ class DockController {
     if (nearest !== this.appSwipeLastNearestIdx) {
       this._setStyleActive(nearest);
       this.appSwipeLastNearestIdx = nearest;
+      this._pulseMorphBump(this._iosGlass() ? 0.65 : 0);
       Haptic.select();
     }
   }
@@ -7120,7 +7416,7 @@ class DockController {
         this._liquidSpringing = true;
         this._setLiquidActive(true);
         this._setDockInteracting(true);
-        this._springTo(this._xForIdx(fromIdx));
+        this._springTo(this._xForIdx(fromIdx), 0, { liquid: true });
       } else {
         this._relaxLiquid();
         this._springTo(this._xForIdx(fromIdx));
@@ -7135,11 +7431,13 @@ class DockController {
     const targetX = this._xForIdx(snapIdx);
     this._scrubVel = (velocity || this._scrubVel) * (commit ? 0.22 : 0.15);
     this.indicator.style.width = this._widthForIdx(snapIdx) + 'px';
+    this._lastWidth = this._widthForIdx(snapIdx);
     if (this._iosGlass()) {
       this._liquidSpringing = true;
       this._setLiquidActive(true);
       this._setDockInteracting(true);
-      this._springTo(targetX, commit ? velocity * 0.0005 : 0);
+      if (commit && snapIdx !== fromIdx) this._pulseMorphBump(0.5);
+      this._springTo(targetX, commit ? velocity * 0.0005 : 0, { liquid: true });
     } else {
       this._relaxLiquid();
       this._springTo(targetX, commit ? velocity * 0.0004 : 0);
@@ -7358,17 +7656,145 @@ window.addEventListener('pageshow', (e) => {
   appView.addEventListener('touchcancel', release, { passive: true });
 })();
 
+// ===== SVG backdrop refraction (feDisplacementMap + turbulence) =====
+const LiquidGlassRefraction = (function() {
+  const dockDisp = () => document.getElementById('lgDockDisp');
+  const pillDisp = () => document.getElementById('lgPillDisp');
+  const dockTurb = () => document.getElementById('lgDockTurb');
+  const pillTurb = () => document.getElementById('lgPillTurb');
+  let rafId = null;
+  let t0 = performance.now();
+
+  function tick(now) {
+    rafId = null;
+    if (document.documentElement.dataset.liquidGlass !== 'on') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const t = (now - t0) / 1000;
+    const dc = dockController;
+    const deform = dc ? dc._liquidDeformAmount() : 0;
+    const gesturing = dc && (dc.scrubbing || dc.appSwiping || dc._liquidSpringing);
+    const strain = dc ? (dc._stretchHint || 0) : 0;
+    const bump = dc ? (dc._morphBump || 0) : 0;
+
+    const dockBase = 3.5 + Math.sin(t * 0.85) * 1.4;
+    const dockScale = dockBase + (gesturing ? deform * 16 + strain * 7 + bump * 5 : 0);
+    const pillScale = 2.5 + Math.sin(t * 1.05) * 1.1 + deform * 20 + strain * 9 + bump * 6;
+
+    const dd = dockDisp();
+    const pd = pillDisp();
+    if (dd) dd.setAttribute('scale', dockScale.toFixed(2));
+    if (pd) pd.setAttribute('scale', pillScale.toFixed(2));
+
+    const bf = 0.0072 + Math.sin(t * 0.45) * 0.0018;
+    const dt = dockTurb();
+    const pt = pillTurb();
+    if (dt) dt.setAttribute('baseFrequency', `${bf.toFixed(4)} ${(bf * 2.05).toFixed(4)}`);
+    if (pt) pt.setAttribute('baseFrequency', `${(bf * 1.15).toFixed(4)} ${(bf * 2.35).toFixed(4)}`);
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  return {
+    start() {
+      t0 = performance.now();
+      if (rafId == null) rafId = requestAnimationFrame(tick);
+    },
+    stop() {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      rafId = null;
+      const dd = dockDisp();
+      const pd = pillDisp();
+      if (dd) dd.setAttribute('scale', '0');
+      if (pd) pd.setAttribute('scale', '0');
+    },
+  };
+})();
+
 // ===== iOS Liquid Glass — progressive blur on scroll (Apple + toggle on) =====
+// Also implements SwiftUI's `tabBarMinimizeBehavior(.onScrollDown)`:
+// scrolling DOWN minimizes the dock, scrolling UP restores it.
+// Docs: https://developer.apple.com/documentation/SwiftUI/View/tabBarMinimizeBehavior(_:)
 (function initIosLiquidGlassScroll() {
   let scrollT;
+  let lastY = 0;
+  let lastDir = 0;
+  let pendingDir = null;
+  let rafPending = false;
+  const dock = document.getElementById('bottomDock');
+  const MIN_DELTA = 8;          // ignore micro scrolls
+  const MIN_OFFSET_TO_MIN = 64; // only minimize once user scrolled past this from top
+
+  const getScrollTop = () => {
+    const el = document.scrollingElement || document.documentElement;
+    return el ? el.scrollTop : window.scrollY || 0;
+  };
+
+  const applyDirection = () => {
+    rafPending = false;
+    if (pendingDir === null) return;
+    if (!dock) return;
+    if (document.documentElement.dataset.liquidGlass !== 'on') {
+      dock.classList.remove('dock-minimized');
+      return;
+    }
+    const inModal = !!document.querySelector('.modal-bg.open')
+      || dock.classList.contains('dock-is-gesturing');
+    if (inModal) return;
+    const wasMin = dock.classList.contains('dock-minimized');
+    if (pendingDir > 0) dock.classList.add('dock-minimized');
+    else dock.classList.remove('dock-minimized');
+    const isMin = dock.classList.contains('dock-minimized');
+    if (wasMin !== isMin) {
+      // Remeasure pill after layout transition so it tracks the new size.
+      const ctrl = (typeof window !== 'undefined' && window.dockController)
+        ? window.dockController
+        : (typeof dockController !== 'undefined' ? dockController : null);
+      if (ctrl && typeof ctrl.measure === 'function') {
+        setTimeout(() => { try { ctrl.measure(); } catch (e) {} }, 340);
+      }
+    }
+    pendingDir = null;
+  };
+
   const onScroll = () => {
+    const y = getScrollTop();
+    const dy = y - lastY;
+    if (Math.abs(dy) >= MIN_DELTA) {
+      const dir = dy > 0 ? 1 : -1;
+      // Don't minimize when essentially at the top of the page.
+      if (dir > 0 && y < MIN_OFFSET_TO_MIN) {
+        pendingDir = -1;
+      } else if (dir !== lastDir) {
+        pendingDir = dir;
+      }
+      lastDir = dir;
+      lastY = y;
+      if (!rafPending) {
+        rafPending = true;
+        requestAnimationFrame(applyDirection);
+      }
+    }
     if (document.documentElement.dataset.liquidGlass !== 'on') return;
     document.body.classList.add('dock-scroll-active');
     clearTimeout(scrollT);
-    scrollT = setTimeout(() => document.body.classList.remove('dock-scroll-active'), 380);
+    scrollT = setTimeout(() => {
+      document.body.classList.remove('dock-scroll-active');
+      // After scroll settles near the top, ensure dock is restored.
+      if (getScrollTop() < MIN_OFFSET_TO_MIN) {
+        dock?.classList.remove('dock-minimized');
+      }
+    }, 380);
   };
+
   document.addEventListener('scroll', onScroll, { passive: true, capture: true });
   window.addEventListener('scroll', onScroll, { passive: true });
+  // Restore dock when Liquid Glass gets toggled off externally.
+  new MutationObserver(() => {
+    if (document.documentElement.dataset.liquidGlass !== 'on') {
+      dock?.classList.remove('dock-minimized');
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-liquid-glass'] });
 })();
 </script>
 </body>
