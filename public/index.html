@@ -4142,8 +4142,11 @@ function applyLiquidGlass() {
     dockController._liteMotion = !wantOn && window.matchMedia('(max-width: 640px)').matches;
     dockController.measure?.();
   }
-  if (wantOn) LiquidGlassRefraction.start();
-  else LiquidGlassRefraction.stop();
+  const lgr = window.LiquidGlassRefraction;
+  if (lgr) {
+    if (wantOn) lgr.start();
+    else lgr.stop();
+  }
 }
 function updateSwitches() {
   $('#soundSwitch').classList.toggle('on', state.soundEnabled);
@@ -7657,7 +7660,7 @@ window.addEventListener('pageshow', (e) => {
 })();
 
 // ===== SVG backdrop refraction (feDisplacementMap + turbulence) =====
-const LiquidGlassRefraction = (function() {
+window.LiquidGlassRefraction = (function() {
   const dockDisp = () => document.getElementById('lgDockDisp');
   const pillDisp = () => document.getElementById('lgPillDisp');
   const dockTurb = () => document.getElementById('lgDockTurb');
