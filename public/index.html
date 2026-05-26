@@ -1788,43 +1788,45 @@
     display: none;
     align-items: center;
     gap: 0;
-    padding: 8px;
+    padding: 10px;
     background:
       linear-gradient(180deg,
-        rgba(255, 255, 255, 0.34) 0%,
-        rgba(255, 255, 255, 0.10) 38%,
-        rgba(255, 255, 255, 0.04) 100%),
+        rgba(255, 255, 255, 0.42) 0%,
+        rgba(255, 255, 255, 0.12) 35%,
+        rgba(255, 255, 255, 0.02) 100%),
       var(--glass);
-    border-radius: 28px;
+    border-radius: 32px;
     border: 0.5px solid var(--glass-border);
-    backdrop-filter: blur(24px) saturate(1.5);
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    /* ECHTES iOS LIQUID GLASS - Stärker Blur + Saturate */
+    backdrop-filter: blur(28px) saturate(1.8) contrast(1.1);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8) contrast(1.1);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.48),
+      0 1px 0 inset rgba(255, 255, 255, 0.62),
       0 -1px 0 inset rgba(255, 255, 255, 0.08),
-      0 0 0 0.5px rgba(0, 0, 0, 0.04),
-      0 4px 12px rgba(0, 0, 0, 0.06),
-      0 14px 36px rgba(0, 0, 0, 0.16);
+      0 0 0 0.5px rgba(255, 255, 255, 0.15),
+      0 6px 16px rgba(0, 0, 0, 0.08),
+      0 18px 48px rgba(0, 0, 0, 0.18);
     z-index: 50;
     /* Pan-y lets vertical scroll through; horizontal gestures
        are owned by JS (scrub / tab-swipe). */
     touch-action: pan-y;
     isolation: isolate;
+    will-change: backdrop-filter, transform;
   }
   :root[data-mode="dark"] .dock {
     background:
       linear-gradient(180deg,
-        rgba(255, 255, 255, 0.11) 0%,
-        rgba(255, 255, 255, 0.03) 38%,
-        rgba(255, 255, 255, 0.01) 100%),
-      rgba(28, 28, 30, 0.62);
-    border-color: rgba(255, 255, 255, 0.12);
+        rgba(255, 255, 255, 0.18) 0%,
+        rgba(255, 255, 255, 0.04) 35%,
+        rgba(255, 255, 255, 0.00) 100%),
+      rgba(28, 28, 30, 0.72);
+    border-color: rgba(255, 255, 255, 0.16);
     box-shadow:
-      0 1px 0 inset rgba(255, 255, 255, 0.16),
+      0 1px 0 inset rgba(255, 255, 255, 0.24),
       0 -1px 0 inset rgba(255, 255, 255, 0.04),
-      0 0 0 0.5px rgba(0, 0, 0, 0.45),
-      0 4px 12px rgba(0, 0, 0, 0.18),
-      0 14px 36px rgba(0, 0, 0, 0.55);
+      0 0 0 0.5px rgba(0, 0, 0, 0.55),
+      0 6px 16px rgba(0, 0, 0, 0.22),
+      0 18px 48px rgba(0, 0, 0, 0.62);
   }
   /* Top specular gloss — the curved light highlight that makes
      real liquid glass look wet. Positioned just inside the top
@@ -1832,26 +1834,27 @@
   .dock::before {
     content: '';
     position: absolute;
-    left: 7%;
-    right: 7%;
+    left: 8%;
+    right: 8%;
     top: 1px;
-    height: 38%;
+    height: 44%;
     border-radius: 999px;
     background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.48) 0%,
-      rgba(255, 255, 255, 0.18) 40%,
+      rgba(255, 255, 255, 0.56) 0%,
+      rgba(255, 255, 255, 0.22) 42%,
       rgba(255, 255, 255, 0.00) 100%);
     pointer-events: none;
-    filter: blur(0.5px);
+    filter: blur(0.7px);
     /* Above the indicator pill (so the pill picks up the wet shine)
        but below the buttons (so icons stay crisp). */
     z-index: 2;
     mix-blend-mode: overlay;
+    transition: opacity 0.3s ease-out;
   }
   :root[data-mode="dark"] .dock::before {
     background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.06) 40%,
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0.08) 42%,
       rgba(255, 255, 255, 0.00) 100%);
   }
   /* Bottom rim — adds depth so the dock feels lifted from content. */
@@ -1872,6 +1875,29 @@
       rgba(0, 0, 0, 0.18) 100%);
   }
   .dock.visible { display: flex; }
+
+  /* PROGRESSIVE BLUR ON SCROLL — iOS Style */
+  body.dock-scroll-active .dock {
+    backdrop-filter: blur(32px) saturate(1.9) contrast(1.15);
+    -webkit-backdrop-filter: blur(32px) saturate(1.9) contrast(1.15);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.7),
+      0 -1px 0 inset rgba(255, 255, 255, 0.1),
+      0 0 0 0.5px rgba(255, 255, 255, 0.2),
+      0 8px 20px rgba(0, 0, 0, 0.1),
+      0 24px 64px rgba(0, 0, 0, 0.22);
+  }
+
+  :root[data-mode="dark"] body.dock-scroll-active .dock {
+    backdrop-filter: blur(32px) saturate(1.9) contrast(1.15);
+    -webkit-backdrop-filter: blur(32px) saturate(1.9) contrast(1.15);
+    box-shadow:
+      0 1px 0 inset rgba(255, 255, 255, 0.32),
+      0 -1px 0 inset rgba(255, 255, 255, 0.06),
+      0 0 0 0.5px rgba(0, 0, 0, 0.65),
+      0 8px 20px rgba(0, 0, 0, 0.28),
+      0 24px 64px rgba(0, 0, 0, 0.72);
+  }
 
   /* ============================================================
      ACTIVE INDICATOR PILL
@@ -6867,6 +6893,71 @@ window.addEventListener('pageshow', (e) => {
   // bfcache restore — same recovery as visibilitychange.
   if (e.persisted) recoverFromBackground();
 });
+
+// ===== ECHTES iOS LIQUID GLASS - PROGRESSIVE BLUR ON SCROLL =====
+(function initLiquidGlassScroll() {
+  const dock = document.getElementById('bottomDock');
+  const appView = document.querySelector('.app-view.visible');
+  
+  if (!dock || !appView) return;
+  
+  let scrollTimeout;
+  
+  appView.addEventListener('scroll', () => {
+    document.body.classList.add('dock-scroll-active');
+    
+    // Haptic Feedback auf iPhone
+    if (navigator.vibrate) {
+      navigator.vibrate(8);
+    }
+    
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      document.body.classList.remove('dock-scroll-active');
+    }, 400);
+  }, { passive: true });
+})();
+
+// ===== DOCK BUTTON HAPTIC FEEDBACK =====
+(function initDockInteractions() {
+  const dockButtons = document.querySelectorAll('.dock-btn');
+  
+  dockButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (navigator.vibrate) {
+        navigator.vibrate([15, 10, 15]);
+      }
+    });
+    
+    btn.addEventListener('touchstart', () => {
+      if (navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+    }, { passive: true });
+  });
+})();
+
+// ===== DARK MODE SMOOTH TRANSITION =====
+(function initThemeTransition() {
+  const root = document.documentElement;
+  const originalTransition = root.style.transition;
+  
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'data-mode') {
+        root.style.transition = 'background-color 0.3s ease, color 0.3s ease';
+        setTimeout(() => {
+          root.style.transition = originalTransition;
+        }, 300);
+      }
+    });
+  });
+  
+  observer.observe(root, {
+    attributes: true,
+    attributeFilter: ['data-mode']
+  });
+})();
 </script>
 </body>
 </html>
