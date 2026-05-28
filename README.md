@@ -1,6 +1,6 @@
-# untis.sync // sync-test
+# schedule-client.sync // sync-test
 
-Test-Prototyp für die spätere Gambling-Stundenplan-App. Macht erstmal nur eins: bei WebUntis einloggen, deinen Stundenplan holen, sauber anzeigen — inkl. Markierung für **suppliert** und **entfällt**.
+Test-Prototyp für die spätere Gambling-Stundenplan-App. Macht erstmal nur eins: bei der School Schedule einloggen, deinen Stundenplan holen, sauber anzeigen — inkl. Markierung für **suppliert** und **entfällt**.
 
 ## Setup
 
@@ -20,22 +20,22 @@ Du brauchst 4 Sachen:
 
 | Feld | Was | Beispiel |
 |------|-----|----------|
-| **server** | WebUntis-Server deiner Schule | `mese.webuntis.com` |
+| **server** | Schedule server deiner Schule | `schedule.school.com` |
 | **schule** | Schul-Identifier | `grg10-laaerberg` |
-| **username** | Dein normaler Untis-Login | — |
-| **passwort** | Dein normales Untis-Passwort | — |
+| **username** | Dein normaler Login | — |
+| **passwort** | Dein normales Passwort | — |
 
-**Server + Schule rausfinden:** Geh auf [webuntis.com](https://webuntis.com), such deine Schule, logg dich ein. Die URL wird dann sowas wie:
+**Server + Schule rausfinden:** Geh auf dein Schedule Portal, such deine Schule, logg dich ein. Die URL wird dann sowas wie:
 
 ```
-https://mese.webuntis.com/WebUntis/?school=grg10-laaerberg#/basic/login
-        └────── server ──────┘                └── schule ──┘
+https://schedule.school.com/Schedule/?school=grg10-laaerberg#/basic/login
+        └────── server ──────┘              └── schule ──┘
 ```
 
 ## Was die App macht
 
 1. Frontend sendet deine Credentials an dein lokales Backend (`POST /api/timetable`)
-2. Backend nutzt die `webuntis`-npm-Library um sich bei WebUntis einzuloggen
+2. Backend nutzt die `schedule-client`-npm-Library um sich bei der School Schedule einzuloggen
 3. Holt den Stundenplan für das gewählte Datum
 4. Schickt das Ergebnis als JSON zurück → Frontend rendert
 
@@ -43,14 +43,14 @@ https://mese.webuntis.com/WebUntis/?school=grg10-laaerberg#/basic/login
 
 ## Status-Codes (wichtig für später)
 
-WebUntis liefert pro Stunde ein `code`-Feld:
+Das Schedule System liefert pro Stunde ein `code`-Feld:
 - *kein code* → Stunde findet normal statt
 - `irregular` → suppliert (anderer Lehrer/Raum) → **das ist was wir später vergamblen**
 - `cancelled` → entfällt komplett
 
 ## Troubleshooting
 
-**"Login fehlgeschlagen":** Server-URL oder Schul-Identifier falsch. Check die URL auf webuntis.com nochmal.
+**"Login fehlgeschlagen":** Server-URL oder Schul-Identifier falsch. Check die URL auf deinem Schedule Portal nochmal.
 
 **"Bad credentials":** Username/Passwort stimmt nicht. Manchmal ist der Username nicht dein Vorname sondern ein Schul-Username (frag im Sekretariat oder bei nem Lehrer).
 

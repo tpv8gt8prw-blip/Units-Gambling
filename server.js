@@ -4,7 +4,7 @@
 const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
-const { WebUntis } = require('webuntis');
+const ScheduleClient = require('webuntis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,14 +72,14 @@ function validCreds(c) {
   return c && c.school && c.server && c.username && c.password;
 }
 
-async function withUntis(creds, fn) {
+async function withScheduleClient(creds, fn) {
   const { school, server, username, password } = creds;
-  const untis = new WebUntis(school, username, password, server);
+  const client = new ScheduleClient(school, username, password, server);
   try {
-    await untis.login();
-    return await fn(untis);
+    await client.login();
+    return await fn(client);
   } finally {
-    try { await untis.logout(); } catch (_) {}
+    try { await client.logout(); } catch (_) {}
   }
 }
 
@@ -167,12 +167,12 @@ app.post('/api/timetable', async (req, res) => {
   if (!validCreds(creds)) return res.status(400).json({ error: 'Fehlende Felder.' });
   try {
     const target = date ? new Date(date) : new Date();
-    const timetable = await withUntis(creds, u => u.getOwnTimetableFor(target));
+    const timetable = await withScheduleClient(creds, u => u.getOwnTimetableFor(target));
     timetable.sort((a, b) => a.startTime - b.startTime);
     annotateLessons(timetable);
     res.json({ ok: true, date: target.toISOString(), timetable });
   } catch (err) {
-    console.error('[Untis Day Error]', err.message);
+    console.error('[Schedule Day Error]', err.message);
     res.status(401).json({ error: err.message || 'Login fehlgeschlagen' });
   }
 });
@@ -186,7 +186,7 @@ app.post('/api/timetable-week', async (req, res) => {
     const start = new Date(rangeStart);
     const end = new Date(rangeEnd);
 
-    const result = await withUntis(creds, async (u) => {
+    const result = await withScheduleClient(creds, async (u) => {
       const timetable = await u.getOwnTimetableForRange(start, end);
 
       // Homework (primary endpoint)
@@ -274,14 +274,14 @@ app.post('/api/timetable-week', async (req, res) => {
       exams,
     });
   } catch (err) {
-    console.error('[Untis Week Error]', err.message);
+    console.error('[Schedule Week Error]', err.message);
     res.status(401).json({ error: err.message || 'Login fehlgeschlagen' });
   }
 });
 
 /* ============================================================
    PROFILE — student's own foreName / longName.
-   The webuntis lib stores sessionInformation after login (personId,
+   The schedule client library stores sessionInformation after login (personId,
    personType, klasseId). getStudents() then lets us look up our own
    row. Many schools restrict that endpoint to teachers, so we wrap
    in try/catch and just return empty fields on failure — the
@@ -300,7 +300,7 @@ app.post('/api/profile', async (req, res) => {
   const creds = req.body || {};
   if (!validCreds(creds)) return res.status(400).json({ error: 'Fehlende Felder.' });
   try {
-    const profile = await withUntis(creds, async (u) => {
+    const profile = await withScheduleClient(creds, async (u) => {
       const sess = u.sessionInformation || {};
       let foreName = '', longName = '';
       if (sess.personType === 5 && sess.personId) {
@@ -333,14 +333,14 @@ app.post('/api/profile', async (req, res) => {
 
 /* ============================================================
    OFFICE HOURS (Sprechzeiten) — uses raw JSON-RPC since the
-   webuntis library doesn't expose this method directly
+   schedule client library doesn't expose this method directly
 ============================================================ */
 app.post('/api/office-hours', async (req, res) => {
   const creds = req.body || {};
   if (!validCreds(creds)) return res.status(400).json({ error: 'Fehlende Felder.' });
   try {
-    const officeHours = await withUntis(creds, async (u) => {
-      // Try the internal JSON-RPC method — works on most modern WebUntis installs
+    const officeHours = await withScheduleClient(creds, async (u) => {
+      // Try the internal JSON-RPC method — works on most modern schedule client installations
       try {
         const r = await u._request('getOfficeHours2017', {});
         if (Array.isArray(r)) return r;
@@ -682,10 +682,10 @@ async function evaluateOnePrediction(pred, credsOverride) {
   let lessons = [];
   try {
     const target = new Date(dayIso + 'T12:00:00');
-    lessons = await withUntis(creds, u => u.getOwnTimetableFor(target));
+    lessons = await withScheduleClient(creds, u => u.getOwnTimetableFor(target));
     annotateLessons(lessons);
   } catch (err) {
-    console.error('[Prediction eval Untis]', pred.id, err.message);
+    console.error('[Prediction eval Schedule]', pred.id, err.message);
     return pred;
   }
 
@@ -977,6 +977,6 @@ app.get('/api/cloud-status', async (_req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n  untis.sync running -> http://localhost:${PORT}`);
+  console.log(`\n  schedule-sync running -> http://localhost:${PORT}`);
   console.log(`  cloud sync: ${CLOUD_ENABLED ? 'ON' : 'OFF (set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)'}\n`);
 });
